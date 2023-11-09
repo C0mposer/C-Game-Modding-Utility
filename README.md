@@ -39,7 +39,7 @@ d. Choose .c/.cpp files in your projects *src/* dir you'd like to be compiled in
 (This utility attempts to automatically find every-frame hooks for most platforms. It however isn't perfect, so if you need help manually finding a hook, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Finding-A-Hook#finding-an-every-frame-hook))
 
 Here is a very basic visualization of the concept:
-![Hook](images/hooks.png)
+![Hook](images/hooks.png)s
 As seen here, we are simply redirecting the games instruction flow to jump to our custom code in the code cave, and then jumping right back to where it planned to go initially.
 
 By default, the automatic hook uses ***asm/main_hook.s*** as the asm file that jumps/branches to the codecave. By default, main_hook.s jumps/branches to **CustomFunction** in the main.c file
