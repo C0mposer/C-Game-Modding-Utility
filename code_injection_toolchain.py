@@ -3331,6 +3331,8 @@ remove_patch_button.place(x=545, y=494)
 
 #! Compile Tab
 # Create a Button to compile the mod
+optimization_label = ttk.Label(compile_tab, text="Choose Optimization Level:")
+optimization_label.pack()
 selected_optimization_level = tk.StringVar(value="O2")
 optimization_levels = ["O0", "O1", "O2", "Os"]
 optimization_level_combobox = ttk.Combobox(compile_tab, values=optimization_levels, textvariable=selected_optimization_level, font=("Segoe UI", 11))
