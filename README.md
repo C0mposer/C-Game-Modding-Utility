@@ -40,12 +40,12 @@ Here is a very basic visual of the concept:
 ![Hook](images/hooks.png)
 As seen here, we are simply redirecting the games instruction flow to jump to our custom code in the code cave, and then jumping right back to where it planned to go initially.
 
-By default, the automatic hook uses ***asm/main_hook.s*** as the file that jumps/branches to the codecave. By default, main_hook.s jumps/branches to **CustomFunction** in the main.c file
+By default, the automatic hook uses ***asm/main_hook.s*** as the asm file that jumps/branches to the codecave. By default, main_hook.s jumps/branches to **CustomFunction** in the main.c file
 ```asm
 j CustomFunction
 ```
 
-If you want to change which function gets jumped to by the hook, you can change the **.s** file to jump/branch to any function name in your project.
+If you want to change which function gets jumped to by the hook, you can change the **.s** file to jump/branch to any function name in your project. (*Keep this in mind if you rename CustomFunction*)
 
 #### Writing Mods
 Once you have found a codecave to place your mod code, and a hook to jump to it, you are ready to start writing mods for your game! 
