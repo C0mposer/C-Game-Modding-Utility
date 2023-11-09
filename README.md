@@ -38,7 +38,7 @@ d. Choose .c/.cpp files in your projects *src/* dir you'd like to be compiled in
 
 Here is a very basic visual of the concept:
 ![Hook](images/hooks.png)
-As seen here, we are simply redirecting the games instruction flow to jump to our custom code, and then jumping right back to where it planned to go initially.
+As seen here, we are simply redirecting the games instruction flow to jump to our custom code in the code cave, and then jumping right back to where it planned to go initially.
 
 By default, the automatic hook uses ***asm/main_hook.s*** as the file that jumps/branches to the codecave. By default, main_hook.s jumps/branches to **CustomFunction** in the main.c file
 ```asm
