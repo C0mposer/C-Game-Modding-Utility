@@ -26,7 +26,7 @@ Next, you'll need to find a ***code cave(s)*** to place your mod code, and a ***
 At a high level, here is how injecting mod code into a game using this utility works:
 1.  **Code caves:** First things first, we need a free place in the games ram that can be used for the mod code. The easiest way is to look for unused/free sections of the games main executable, that also still happens to get loaded into ram. These free sections are called [code caves.](https://en.wikipedia.org/wiki/Code_cave)  (*These can unused/debug strings, unused functions/code, sometimes a block of 0's, etc*. If you need help finding a code cave, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Finding-a-Code-Cave))
 Once you have found a code cave you fill out its info, and click "**Add/Save Codecave**": 
-![codecaves](codecaves.png)
+![codecaves](images/codecaves.png)
 a. Give the codecave a name  
 b. Fill out the address in RAM  
 c. Fill out the equivalent address in main executable  
@@ -37,7 +37,7 @@ d. Choose .c/.cpp files in your projects *src/* dir   you'd like to be compiled 
 (This utility attempts to automatically find every-frame hooks for most platforms. It however isn't perfect, so if you need help manually finding a hook, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Finding-A-Hook#finding-an-every-frame-hook))
 
 Here is a very basic visual of the concept:
-![Hook](Visual.png)
+![Hook](images/hook.png)
 As seen here, we are simply redirecting the games instruction flow to jump to our custom code, and then jumping right back to where it planned to go initially.
 
 By default, the automatic hook uses ***asm/main_hook.s*** as the file that jumps/branches to the codecave. By default, main_hook.s jumps/branches to **CustomFunction** in the main.c file
