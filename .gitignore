@@ -950,3 +950,10 @@ todo list.txt
 refactord.py
 tool icon.ico
 prereq/graph.drawio
+projects/PracticeCodesPort.zip
+projects/PracticeCodesPort/.compile_scripts/compile.bat
+projects/PracticeCodesPort/.compile_scripts/inject_bizhawk_2.6.1.bat
+projects/PracticeCodesPort/.compile_scripts/inject_duckstation.bat
+projects/PracticeCodesPort/.compile_scripts/inject_mednafen_1.29.bat
+projects/PracticeCodesPort/.compile_scripts/inject_mednafen_1.31.bat
+projects/PracticeCodesPort/.compile_scripts/ISO_build.bat

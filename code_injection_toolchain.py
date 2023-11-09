@@ -1237,9 +1237,16 @@ def PatchPS1ISO():
     os.remove("patched_" + g_current_project_game_exe_name)
     try:
         os.rename("mkpsxiso.bin", "ModdedGame.bin")
+    
+    #If File exists
     except FileExistsError:
-        os.remove("ModdedGame.bin")
-        os.rename("mkpsxiso.bin", "ModdedGame.bin")
+        try:
+            os.remove("ModdedGame.bin")
+            os.rename("mkpsxiso.bin", "ModdedGame.bin")
+        #If file in use
+        except PermissionError:
+            messagebox.showerror("Error", "File is currently in use, cannot replace.")
+            os.chdir(old_dir)
     try:
         os.rename("mkpsxiso.cue", "ModdedGame.cue")
     except FileExistsError:
@@ -1549,7 +1556,7 @@ def auto_find_hook_in_ps1_game(event=0):
         elif ps1_draw_otag_2_opcodes in game_exe_bytes:
             print("Found DrawOTag 2!")
             start_of_otag = game_exe_bytes.index(ps1_draw_otag_2_opcodes)
-            jr_ra_placement = start_of_otag + 0x14
+            jr_ra_placement = start_of_otag + 0x10
             print("Hook address will be: " + hex(jr_ra_placement))
             
             g_hooks.append(("AutoHook", hex(0x80000000 + jr_ra_placement + 0xF800), hex(jr_ra_placement), ["main_hook.s"], "-0xF800"))
@@ -2235,15 +2242,19 @@ def create_project():
         g_current_project_folder = ""
         return
     
+    #Create Main Project Folder
+    try:
+        os.makedirs(g_current_project_folder)
+    except Exception as e:
+        print(e)
+        messagebox.showerror("Error", "Invalid Project Name")
+        return
+    
     project_switched()
     print("Currently Selected Project is now: "+ g_current_project_name)
 
     g_current_project_feature_mode = "Normal"
     
-    #Create Main Project Folder
-    os.makedirs(g_current_project_folder)
-    
-        
     # Create default project files and directories
     os.makedirs(f"{g_current_project_folder}/.config")
     with open(f"{g_current_project_folder}/.config/codecaves.txt", "w") as codecaves_file:
