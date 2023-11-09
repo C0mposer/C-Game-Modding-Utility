@@ -53,6 +53,8 @@ g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2
 g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
 g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string}
     
+g_optimization_level = "O2"
+    
 g_src_files = ""
 g_header_files = ""
 g_asm_files = ""
@@ -663,6 +665,7 @@ def ParseCSourceForSymbols():
 
 #! Compile Function, which calls out to relavent GCC version
 def Compile():  
+    
     if bizhawk_ramwatch_checkbox_state.get() == 1:
         print("Parsing Bizhawk Ramwatch")
         ParseBizhawkRamWatch()
@@ -2001,6 +2004,14 @@ def update_linker_script():
     except Exception as e:
         print("No project currently loaded")
         #print(e)
+ 
+def on_optimization_level_select(event=0):
+    global g_optimization_level
+    
+    g_optimization_level = str(optimization_level_combobox.get())
+    
+    # To Reset Compile Strings
+    on_platform_select()
         
 def update_codecaves_hooks_patches_config_file():
     with open(f"{g_current_project_folder}/.config/codecaves.txt", "w") as codecaves_file:
@@ -2905,9 +2916,9 @@ def on_platform_select(event=0):
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS1" or key == "PS2" or key == "N64":
-            g_platform_gcc_strings[key] += "-c -G0 -Os -I include"
+            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += "-c -Os -I include"
+            g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include"
     
     #Set compile button text
     if g_current_project_game_exe:
@@ -3320,10 +3331,17 @@ remove_patch_button.place(x=545, y=494)
 
 #! Compile Tab
 # Create a Button to compile the mod
+selected_optimization_level = tk.StringVar(value="O2")
+optimization_levels = ["O0", "O1", "O2", "Os"]
+optimization_level_combobox = ttk.Combobox(compile_tab, values=optimization_levels, textvariable=selected_optimization_level, font=("Segoe UI", 11))
+optimization_level_combobox.bind("<<ComboboxSelected>>", on_optimization_level_select)
+optimization_level_combobox.pack()
+
 big_font_style = ttk.Style()
 big_font_style.configure("Big.TButton", font=("Segoe UI", 20))
 compile_button = ttk.Button(compile_tab, text=f"Compile Mod", command=Compile, style="Big.TButton")
 compile_button.pack(pady=(10, 50))
+
 
 
 #Temporary Objects to be instantiated later
