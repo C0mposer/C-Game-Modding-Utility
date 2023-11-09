@@ -3105,7 +3105,7 @@ root = tk.Tk()
 root.title("C/C++ Game Modding Utility")
 root.geometry("800x600")
 root.bind("<KeyRelease>", ensure_hex_entries)
-root.iconbitmap("prereq/resources/icon.ico")
+root.iconbitmap("prereq/icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
 
