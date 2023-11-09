@@ -960,3 +960,6 @@ projects/PracticeCodesPort/.compile_scripts/ISO_build.bat
 projects/ZeldaTP/.vscode/c_cpp_properties.json
 projects/ZeldaTP/.vscode/settings.json
 projects/ZeldaTP/.vscode/tasks.json
+call hook.pdn
+prereq/call hook.drawio
+prereq/hook.drawio
