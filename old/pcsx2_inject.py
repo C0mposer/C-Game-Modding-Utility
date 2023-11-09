@@ -1,6 +1,7 @@
 import ctypes
 import os
 import psutil
+from termcolor import colored
 
 # Define constants
 PROCESS_ALL_ACCESS = 0x1F0FFF
@@ -17,11 +18,14 @@ process_name = "pcsx2.exe"
 EE_RAM = 0x20000000
 
 
-# Function to get process ID by name
+# Function to get process ID by a string. It doesn't have to be full, it can just be the start
 def get_pid(process_name):
+    process_name_lower = process_name.lower()
     for proc in psutil.process_iter(attrs=['pid', 'name']):
-        if process_name.lower() in proc.info['name'].lower():
+        #print(proc.info['name'])
+        if proc.info['name'].lower().startswith(process_name_lower):
             return proc.info['pid']
+    print(colored("Could not find PID for proccess starting with " + process_name, "red"))
     return None
 
 # Function to write data to process memory
@@ -39,15 +43,16 @@ def change_memory_protection(handle, address, size, protection):
 
 def InjectIntoPCSX2(project_path, codecaves, hooks):
     # Open a handle to the process
-    mod_file_path = project_path + "/output/final_bins/"
+    mod_file_path = project_path + "/.config/output/final_bins/"
     # List all files in the directory
     bin_files = os.listdir(mod_file_path)
     
     # Get the PID of the target process
     pcsx2_pid = get_pid(process_name)
     if pcsx2_pid is None:
-        print("Could not find PCSX2 Process!")
-        exit(1)
+        exit_message = colored("Could not find PCSX2 1.6.0 Process!", "red")
+        print(exit_message)
+        return "Could not find PCSX2 1.6.0 Process!"
         
     pcsx2_handle = ctypes.windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, pcsx2_pid)
 
@@ -60,23 +65,25 @@ def InjectIntoPCSX2(project_path, codecaves, hooks):
             with open(mod_file_path_included, 'rb') as mod_file:
                 current_mod_file_name =  str(mod_file.name).split("/")[-1].split(".")[0]    #Getting just the filename, because I NEED ITTT lol
                 mod_data[current_mod_file_name] = mod_file.read()
-                print("Reading file", current_mod_file_name)
+                #print("Reading file", current_mod_file_name)
                 #print("current mod_data", mod_data)
         except IOError:
-            print(f"Failed to open or read {mod_file}")
-            exit(1)
+            exit_message = colored(f"Failed to open or read {mod_file}", "red")
+            print(exit_message)
+            return exit_message
         
-    for i, cave in enumerate(codecaves):
+    for cave in codecaves:
         # Write the mod data to the process
         if write_to_process_memory(pcsx2_handle, (EE_RAM + int(cave[1], base=16)), mod_data[cave[0]], len(mod_data[cave[0]])):
-            print(f"Successfully placed custom function code at: {hex(int(cave[1], base=16))}")
-    for i, hook in enumerate(hooks):
+            print(colored(f"Successfully placed custom function code at: {hex(int(cave[1], base=16))}", "yellow"))
+    for hook in hooks:
         if write_to_process_memory(pcsx2_handle, (EE_RAM + int(hook[1], base=16)), mod_data[hook[0]], len(mod_data[hook[0]])):
-            print(f"Successfully placed custom hook code at: {hex(int(hook[1], base=16))}")
+            print(colored(f"Successfully placed custom hook code at: {hex(int(hook[1], base=16))}", "yellow"))
         
 
     # Close the process handle
     ctypes.windll.kernel32.CloseHandle(pcsx2_handle)
+    return "Successfully injected mod into PCSX2!"
 
     
 if __name__ == "__main__":

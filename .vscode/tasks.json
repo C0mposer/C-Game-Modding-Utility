@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Python File",
+            "type": "shell",
+            "command": "py",
+            "args": [
+                "${fileBasename}"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
