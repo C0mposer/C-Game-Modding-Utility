@@ -2025,11 +2025,11 @@ def check_has_picked_exe():
         # Create a "Text Editor" menu and text editor options to it
         other_menu = tk.Menu(menubar)
         menubar.add_cascade(label="Text Editor", menu=other_menu)
-        other_menu.add_command(label="Open VSCode Project", command=SetupVSCodeProject)
+        other_menu.add_command(label="Open Project in VSCode", command=SetupVSCodeProject)
         file_menu.add_separator()
-        other_menu.add_command(label="Open Notepad++ Project", command=SetupNotepadProject)
+        other_menu.add_command(label="Open Project in Sublime", command=SetupSublimeProject)    
         file_menu.add_separator()
-        other_menu.add_command(label="Open Sublime Project", command=SetupSublimeProject)    
+        other_menu.add_command(label="Open Project in Notepad++", command=SetupNotepadProject)
         
         g_shouldShowTabs = True
 
