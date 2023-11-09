@@ -237,10 +237,3 @@ def InjectIntoEmu(emu_info, project_path, codecaves, hooks, patches):
     # Close the process handle
     ctypes.windll.kernel32.CloseHandle(emu_handle)
     return f"Successfully injected mod into {emu_info['name']}!"
-
-    
-if __name__ == "__main__":
-    project_path = "projects/SpyroAHT"
-    code_caves = [('DebugText', '0x0048ADC0', '0x0', ['main.c'])]
-    hooks = [('MainHook', '0x002b30ec', '0', ['main_hook.s'])]
-    InjectIntoEmu(project_path, code_caves, hooks)
