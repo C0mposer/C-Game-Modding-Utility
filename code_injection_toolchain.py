@@ -3097,11 +3097,8 @@ root.bind("<KeyRelease>", ensure_hex_entries)
 root.iconbitmap("prereq/resources/icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
-#themes
-#sv_ttk.set_theme("dark")
 
-#root.tk.call('source', 'prereq/theme/azure.tcl')
-#root.tk.call("set_theme", "dark")
+#Themes
 root.tk.call('source', 'prereq/theme/azure.tcl')
 root.tk.call('source', 'prereq/theme/forest-light.tcl')
 root.tk.call('source', 'prereq/theme/forest-dark.tcl')
