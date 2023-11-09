@@ -3061,13 +3061,13 @@ def load_disk_offset_hooks(event=0):
 
 #! MAIN GUI
 root = tk.Tk()
-root.title("C/C++ Code Injection Toolkit")
+root.title("C/C++ Game Modding Utility")
 root.geometry("800x600")
 root.bind("<KeyRelease>", ensure_hex_entries)
 root.iconbitmap("icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
-sv_ttk.set_theme("dark")
+#sv_ttk.set_theme("dark")
 
 # Create tabs
 tab_control = ttk.Notebook(root)
