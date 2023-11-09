@@ -842,7 +842,7 @@ def PrepareBuildInjectGUIOptions():
             g_selected_emu = tk.StringVar(value="PCSX2 1.6.0")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
             emulators_combobox['values'] = ('PCSX2 1.6.0', 'PCSX2 1.7.5112')
-            emulators_combobox.place(x=598, y=30)
+            emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
             inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePCSX2Inject, font=("jdfa", 11))
@@ -872,7 +872,7 @@ def PrepareBuildInjectGUIOptions():
             g_selected_emu = tk.StringVar(value="Dolphin 5.0-20240")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
             emulators_combobox['values'] = ('Dolphin 5.0-20240', 'Dolphin 5.0-19870')
-            emulators_combobox.place(x=598, y=30)
+            emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
             inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
@@ -895,7 +895,7 @@ def PrepareBuildInjectGUIOptions():
             g_selected_emu = tk.StringVar(value="Dolphin 5.0-20240")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
             emulators_combobox['values'] = ('Dolphin 5.0-20240', 'Dolphin 5.0-19870')
-            emulators_combobox.place(x=598, y=30)
+            emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
             inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
@@ -918,7 +918,7 @@ def PrepareBuildInjectGUIOptions():
             g_selected_emu = tk.StringVar(value="Duckstation 0.1-5936")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
             emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
-            emulators_combobox.place(x=598, y=30)
+            emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
             inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("jdfa", 11))
@@ -944,7 +944,7 @@ def PrepareBuildInjectGUIOptions():
             g_selected_emu = tk.StringVar(value="Duckstation 0.1-5936")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
             emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
-            emulators_combobox.place(x=598, y=30)
+            emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
             inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("fasf", 11))
@@ -2038,16 +2038,16 @@ def check_has_picked_exe():
         file_menu.add_separator()
         other_menu.add_command(label="Open Project in Notepad++", command=SetupNotepadProject)
         
-        # Create a "Themes" menu and theme options to it
-        themes = tk.Menu(menubar)
-        menubar.add_cascade(label="Themes", menu=themes)
-        themes.add_command(label="Forest Dark", command=change_theme_forest_dark)
-        file_menu.add_separator()
-        themes.add_command(label="Azure Dark", command=change_theme_azure_dark)
-        file_menu.add_separator()
-        themes.add_command(label="Forest Light", command=change_theme_forest_light)
-        file_menu.add_separator()
-        themes.add_command(label="Azure Light", command=change_theme_azure_light)
+        # # Create a "Themes" menu and theme options to it
+        # themes = tk.Menu(menubar)
+        # menubar.add_cascade(label="Themes", menu=themes)
+        # themes.add_command(label="Forest Dark", command=change_theme_forest_dark)
+        # file_menu.add_separator()
+        # themes.add_command(label="Azure Dark", command=change_theme_azure_dark)
+        # file_menu.add_separator()
+        # themes.add_command(label="Forest Light", command=change_theme_forest_light)
+        # file_menu.add_separator()
+        # themes.add_command(label="Azure Light", command=change_theme_azure_light)
         
         g_shouldShowTabs = True
 
@@ -3094,7 +3094,7 @@ root = tk.Tk()
 root.title("C/C++ Game Modding Utility")
 root.geometry("800x600")
 root.bind("<KeyRelease>", ensure_hex_entries)
-root.iconbitmap("icon.ico")
+root.iconbitmap("prereq/resources/icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
 #themes
@@ -3175,7 +3175,7 @@ for project in project_folder_names:
     
 # Button to remove selected project
 remove_project_button = tk.Button(main_tab, text='Remove Project', command=remove_project_confirm)
-remove_project_button.place(x=10, y=510)
+remove_project_button.place(x=10, y=502)
 
 #! In-Game Codecaves Tab
 auto_cave_button = tk.Button(codecave_tab, text=f'Automatically Use PS1 Header', command=auto_place_ps1_header, font=("asfasf", 12))
