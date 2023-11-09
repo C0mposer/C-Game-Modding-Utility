@@ -1219,7 +1219,7 @@ def PatchPS2ISO():
     os.chdir(g_current_project_folder)
     
     NEW_ISO_NAME = "Patched Game.iso"
-    IMGBURN_COMMAND = "ImgBurn.exe /MODE BUILD /BUILDMODE IMAGEFILE /SRC \"GameIsoExtract\" /DEST " + NEW_ISO_NAME + " /FILESYSTEM \"ISO9660 + UDF\" /ROOTFOLDER YES /VOLUMELABEL \"Modded Game\" /UDFREVISION 1.50 /start /close /noimagedetails" 
+    IMGBURN_COMMAND = "..\..\prereq\ImgBurn\ImgBurn.exe /MODE BUILD /BUILDMODE IMAGEFILE /SRC \"GameIsoExtract\" /DEST " + NEW_ISO_NAME + " /FILESYSTEM \"ISO9660 + UDF\" /ROOTFOLDER YES /VOLUMELABEL \"Modded Game\" /UDFREVISION 1.50 /start /close /noimagedetails" 
     os.system(IMGBURN_COMMAND)
     shutil.rmtree("GameIsoExtract")
     os.remove("patched_" + g_current_project_game_exe_name)
