@@ -105,13 +105,13 @@ You can also inject your mod into supported emulators to test your mod without r
  - [Dolphin Memory Engine](https://github.com/aldelaro5/Dolphin-memory-engine) for memory searching in Gamecube/Wii games
 - [VSCode](https://github.com/microsoft/vscode) or [Sublime](https://www.sublimetext.com/) text editors, for automatic integration with projects
 ## Supported Emulators
-#### Gamecube
+#### Gamecube Emulators
  - [Dolphin 5.0-19870](https://dolphin-emu.org/download/dev/032c77b462a220016f23c5079e71bb23e0ad2adf/)   
  - [Dolphin 5.0-20240](https://dolphin-emu.org/download/dev/60e3b4c0932ca963c67922cd7deb5d7e90732b92/)  
- #### PS2
+ #### PS2 Emulators
  - [PCSX2 Stable 1.6.0](https://pcsx2.net/)  
  - [PCSX2 Nightly 1.7.5112](https://pcsx2.net/downloads/#:~:text=Links,Download)  
- #### PS1
+ #### PS1 Emulators
  - [Duckstation 0.1 5936](https://github.com/stenzek/duckstation/releases/tag/latest)  
  - [Mednefan 1.31](https://mednafen.github.io/releases/)  
  - [Mednefan 1.29](https://mednafen.github.io/releases/)  
