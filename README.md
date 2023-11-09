@@ -119,10 +119,10 @@ You can also inject your mod into supported emulators to test your mod without r
 
 ## Bundled Tools / Special Thanks
  - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards Gamecube/Wii PPC, as well as utilities for analyzing .dol files
- - [GCR](https://github.com/bsv798/gcrebuilder) for extracting/rebuilding Gamecube games
- - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting/rebuilding PS1 games
-  - [ImgBurn](https://www.imgburn.com/) for rebuilding PS2 games
-  - [7zip](https://github.com/mcmilk/7-Zip) for solving life's greatest mysteries
+ - [GCR](https://github.com/bsv798/gcrebuilder) for extracting/rebuilding Gamecube games. Copyright (c) Sergey Bizin
+ - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting/rebuilding PS1 games. Copyright (c) Lameguy64
+  - [ImgBurn](https://www.imgburn.com/) for rebuilding PS2 games Copyright (c) LIGHTNING UK!
+  - [7zip](https://github.com/mcmilk/7-Zip) for solving life's greatest mysteries Copyright (c) mcmilk
 
 ## Contact
 
