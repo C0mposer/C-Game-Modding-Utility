@@ -10,6 +10,8 @@ It streamlines the process of compiling C/C++ with the intention of being inject
 - Wii Games*
 - N64 Games* *(needs further testing)*
 
+[Click here to see the Wiki](https://github.com/C0mposer/C-Game-Modding-Utility/wiki)
+
 ## Quick Start:
 ***This quick start will get you up and running creating a mod that runs every frame along side a game***
 
