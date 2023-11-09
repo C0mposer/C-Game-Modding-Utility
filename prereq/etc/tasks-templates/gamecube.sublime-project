@@ -1,0 +1,35 @@
+{
+	"folders":
+	[
+		{
+			"path": "PATH",
+			"folder_exclude_patterns": [".notepad++", ".vscode", ".config", ".compile_scripts"],
+
+
+		}
+	],
+	"build_systems":
+    [
+        {
+            "name": "Compile Mod",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "compile.bat"
+        },
+		{
+            "name": "ISO Build",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "build.bat"
+        },
+		{
+            "name": "Inject into Dolphin 50-20240",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "inject_dolphin_50_20240.bat"
+        },
+		{
+            "name": "Inject into Dolphin 50-19870",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "inject_dolphin50_19870.bat"
+        }
+    ]
+}
+

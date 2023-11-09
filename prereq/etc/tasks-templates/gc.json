@@ -1,0 +1,87 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile",
+            "type": "shell",
+            "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Compile",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "icon": {
+                "id": "terminal-powershell",
+                "color": "terminal.ansiCyan"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Compile & Inject into Dolphin 5.0-20240",
+            "type": "shell",
+            "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Inject_Emulator Dolphin_5.0-20240 Gamecube",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "icon": {
+                "id": "arrow-swap",
+                "color": "terminal.ansiYellow"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Compile & Inject into Dolphin 5.0-19870",
+            "type": "shell",
+            "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Inject_Emulator Dolphin_5.0-19870 Gamecube",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "icon": {
+                "id": "arrow-swap",
+                "color": "terminal.ansiYellow"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Compile & Build ISO",
+            "type": "shell",
+            "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Build_ISO",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "icon": {
+                "id": "beaker",
+                "color": "terminal.ansiGreen"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+    }
+    
+    

@@ -1,0 +1,53 @@
+#---------------------------------------------------------------------------------
+# make sure we have bash on OSX
+#---------------------------------------------------------------------------------
+UNAME_S	:=	$(shell uname -s)
+UNAME_R	:=	$(shell uname -r)
+
+ifneq (,$(findstring Darwin,$(UNAME_S)))
+	export SHELL=/bin/bash
+endif
+#---------------------------------------------------------------------------------
+# path to tools
+#---------------------------------------------------------------------------------
+DEVKITPATH=$(shell echo "$(DEVKITPRO)" | sed -e 's/^\([a-zA-Z]\):/\/\1/')
+export PATH	:=	$(DEVKITPATH)/tools/bin:$(DEVKITPATH)/devkitARM/bin:$(PATH)
+
+#---------------------------------------------------------------------------------
+# the prefix on the compiler executables
+#---------------------------------------------------------------------------------
+PREFIX		:=	arm-none-eabi-
+
+export CC	:=	$(PREFIX)gcc
+export CXX	:=	$(PREFIX)g++
+export AS	:=	$(PREFIX)as
+export AR	:=	$(PREFIX)gcc-ar
+export OBJCOPY	:=	$(PREFIX)objcopy
+export STRIP	:=	$(PREFIX)strip
+export NM	:=	$(PREFIX)gcc-nm
+export RANLIB	:=	$(PREFIX)gcc-ranlib
+
+ISVC=$(or $(VCBUILDHELPER_COMMAND),$(MSBUILDEXTENSIONSPATH32),$(MSBUILDEXTENSIONSPATH))
+
+ifneq (,$(ISVC))
+	ERROR_FILTER	:=	2>&1 | sed -e 's/\(.[a-zA-Z]\+\):\([0-9]\+\):/\1(\2):/g'
+endif
+
+#---------------------------------------------------------------------------------
+# allow seeing compiler command lines with make V=1 (similar to autotools' silent)
+#---------------------------------------------------------------------------------
+ifeq ($(V),1)
+    SILENTMSG := @true
+    SILENTCMD :=
+else
+    SILENTMSG := @echo
+    SILENTCMD := @
+endif
+
+#---------------------------------------------------------------------------------
+# canned command sequence for binary data
+#---------------------------------------------------------------------------------
+define bin2o
+	bin2s -a 4 -H `(echo $(<F) | tr . _)`.h $< | $(AS) -o $(<F).o
+endef
+

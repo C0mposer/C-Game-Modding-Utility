@@ -1,0 +1,54 @@
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro)
+endif
+
+include $(DEVKITARM)/base_rules
+
+PORTLIBS	:=	$(PORTLIBS_PATH)/nds $(PORTLIBS_PATH)/armv5te
+
+LIBNDS		:=	$(DEVKITPRO)/libnds
+
+ifeq ($(strip $(GAME_TITLE)),)
+GAME_TITLE	:=	$(notdir $(OUTPUT))
+endif
+
+ifeq ($(strip $(GAME_SUBTITLE1)),)
+GAME_SUBTITLE1	:=	built with devkitARM
+endif
+
+ifeq ($(strip $(GAME_SUBTITLE2)),)
+GAME_SUBTITLE2	:=	http://devkitpro.org
+endif
+
+ifeq ($(strip $(GAME_ICON)),)
+GAME_ICON      :=      $(DEVKITPRO)/libnds/icon.bmp
+endif
+
+ifneq ($(strip $(NITRO_FILES)),)
+_ADDFILES	:=	-d $(NITRO_FILES)
+endif
+
+#---------------------------------------------------------------------------------
+%.nds: %.arm9
+	$(SILENTCMD)ndstool -c $@ -9 $< -b $(GAME_ICON) "$(GAME_TITLE);$(GAME_SUBTITLE1);$(GAME_SUBTITLE2)" $(_ADDFILES)
+	@echo built ... $(notdir $@)
+
+#---------------------------------------------------------------------------------
+%.nds: %.elf
+	$(SILENTCMD)ndstool -c $@ -9 $< -b $(GAME_ICON) "$(GAME_TITLE);$(GAME_SUBTITLE1);$(GAME_SUBTITLE2)" $(_ADDFILES)
+	$(SILENTMSG) built ... $(notdir $@)
+
+#---------------------------------------------------------------------------------
+%.arm9: %.elf
+	$(SILENTCMD)$(OBJCOPY) -O binary $< $@
+	$(SILENTMSG) built ... $(notdir $@)
+
+#---------------------------------------------------------------------------------
+%.arm7: %.elf
+	$(SILENTCMD)$(OBJCOPY) -O binary $< $@
+	$(SILENTMSG) built ... $(notdir $@)
+
+#---------------------------------------------------------------------------------
+%.elf:
+	$(SILENTMSG) linking $(notdir $@)
+	$(SILENTCMD)$(LD)  $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@

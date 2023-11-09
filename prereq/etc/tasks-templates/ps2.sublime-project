@@ -1,0 +1,35 @@
+{
+	"folders":
+	[
+		{
+			"path": "PATH",
+			"folder_exclude_patterns": [".notepad++", ".vscode", ".config", ".compile_scripts"],
+
+
+		}
+	],
+	"build_systems":
+    [
+        {
+            "name": "Compile Mod",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "compile.bat"
+        },
+		{
+            "name": "ISO Build",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "build.bat"
+        },
+		{
+            "name": "Inject into PCSX2 1.6.0",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "inject_pcsx2_1.6.0.bat"
+        },
+		{
+            "name": "Inject into PCSX2 1.7.5112",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "inject_pcsx2_1.7.5112.bat"
+        }
+    ]
+}
+
