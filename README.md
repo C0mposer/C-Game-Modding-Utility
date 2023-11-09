@@ -103,7 +103,7 @@ You can also inject your mod into supported emulators to test your mod without r
  - [Bizhawk](https://github.com/TASEmulators/BizHawk) for memory searching in PS1 games
  - [Cheat Engine](https://github.com/cheat-engine/cheat-engine) for memory searching in PS2 games, and other programs
  - [Dolphin Memory Engine](https://github.com/aldelaro5/Dolphin-memory-engine) for memory searching in Gamecube/Wii games
-- [VSCode](https://github.com/microsoft/vscode) or [Sublime](https://www.sublimetext.com/) text editors, for automatic integration with projects.
+- [VSCode](https://github.com/microsoft/vscode) or [Sublime](https://www.sublimetext.com/) text editors, for automatic integration with projects
 ## Supported Emulators
 #### Gamecube
  - [Dolphin 5.0-19870](https://dolphin-emu.org/download/dev/032c77b462a220016f23c5079e71bb23e0ad2adf/)   
@@ -118,7 +118,7 @@ You can also inject your mod into supported emulators to test your mod without r
  - [Bizhawk 2.6.1](https://tasvideos.org/BizHawk/ReleaseHistory#Bizhawk261)  
 
 ## Bundled Tools / Special Thanks
- - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards Gamecube/Wii PPC, as well as utilities for analyzing .dol files.
+ - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards Gamecube/Wii PPC, as well as utilities for analyzing .dol files
  - [GCR](https://github.com/bsv798/gcrebuilder) for extracting/rebuilding Gamecube games
  - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting/rebuilding PS1 games
   - [ImgBurn](https://www.imgburn.com/) for rebuilding PS2 games
