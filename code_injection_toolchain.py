@@ -108,10 +108,10 @@ def RequestGameBoxartImage():
     except Exception as e:
         print(e)
 
-def ParseBizhawkRamdump():
+def ParseBizhawkRamWatch():
     file_path = g_current_project_ram_watch_full_dir
     if ".wch" in file_path.split("/")[-1].lower():
-        watch_file_path = file_path                # Full Path
+        watch_file_path = file_path                         # Full Path
         watch_file_name = file_path.split("/")[-1]          # Spliting based on /, and getting last index with -1 to get only name of file
         watch_file_ascii = ""
         symbol_data = [{}]
@@ -123,7 +123,7 @@ def ParseBizhawkRamdump():
             for i, symbol in enumerate(watch_file_lines):
                 symbol_info_list = symbol.split("\t")
                 try:
-                    if symbol_info_list[0] != "SystemID GC" and symbol_info_list[0] != "" and symbol_info_list[1] != "S":   # If not a seperator
+                    if symbol_info_list[0] != "SystemID GC" and symbol_info_list[0] != "" and symbol_info_list[1] != "S":   # If not a seperator or first line
                         current_symbol_data = {}
                         current_symbol_data['address'] = "0x80" + symbol_info_list[0] #Grab address without 80 or 00 prefix
                         current_symbol_data['size'] = symbol_info_list[1].replace('d', 'int').replace('w', 'short').replace('b', "char") #Replacing character to represent size with C type
@@ -150,7 +150,8 @@ def ParseBizhawkRamdump():
             with open(f"{g_current_project_folder}/include/bizhawk_symbols.h", "w") as bizhawk_symbols_file:
                 bizhawk_symbols_file.write(bizhawk_symbols_h_string)
 
-def OpenBizhawkRamdump():
+def OpenBizhawkRamWatch():
+    
     global g_current_project_ram_watch_full_dir
     
     if bizhawk_ramwatch_checkbox_state.get() == 1:
@@ -168,13 +169,15 @@ def OpenBizhawkRamdump():
         g_current_project_ram_watch_full_dir = ""
         save_to_config()     
         project_switched()
-#Cheat engine files only get recognized 1 layer down because of XML parsing
+
 def ParseCheatEngineFile():
+    #Cheat engine files only get recognized 1 folder layer down because of my shitty XML parsing lol
+    
     full_xml_data_keys = []
     full_converted_xml_data = ""
     
     file_path = g_current_project_ram_watch_full_dir
-    watch_file_path = file_path                # Full Path
+    watch_file_path = file_path                         # Full Path
     watch_file_name = file_path.split("/")[-1]          # Spliting based on /, and getting last index with -1 to get only name of file
     if ".ct" in file_path.split("/")[-1].lower():
         
@@ -246,7 +249,7 @@ def ParseCheatEngineFile():
         with open(f"{g_current_project_folder}/include/cheat_engine_symbols.h", "w") as cheat_engine_symbols_file:
             cheat_engine_symbols_file.write(full_converted_xml_data_header)
             
-def OpenCheatEngineRamdump():
+def OpenCheatEngineRamWatch():
     global g_current_project_ram_watch_full_dir
     
     if cheat_engine_ramwatch_checkbox_state.get() == 1:
@@ -320,7 +323,6 @@ def SetupVSCodeProject():
         os.chdir(g_current_project_folder)
         
         subprocess.Popen("cmd /c code .")     # Open project in VSCode. cmd /c since this is a pipe
-        
         
         os.chdir(old_dir)
     else:
@@ -450,7 +452,6 @@ def SetupNotepadProject():
             subprocess.Popen(f"cmd /c ..\\..\\{template_dir_baskslash}\open_notepad++_project.bat" + " " + f"\"{full_project_dir}\"")     # Open project in Notepad++. Timeout to regain control after opening? Find a way to fix this later.
         except:
             print(colored("Opened Notepad++ Project", "cyan"))
-        
         
         os.chdir(old_dir)
     else:
@@ -647,7 +648,7 @@ def ParseCSourceForSymbols():
                                 if symbol.split(" ")[0] == "signed" or symbol.split(" ")[0] == "unsigned": #For if signedness specifier, skip one more white space
                                     symbol_name = symbol.split()[2].split("(")[0].split(";")[0]
                                 else:
-                                    symbol_name = symbol.split()[1].split("(")[0].split(";")[0]          #No signedness specifier
+                                    symbol_name = symbol.split()[1].split("(")[0].split(";")[0]  #No signedness specifier
 
                                 symbol_address = symbol.split("//")[1].split()[0]    # Getting rid of //before address and whitespace or \n after address
                                 
@@ -660,11 +661,11 @@ def ParseCSourceForSymbols():
     except Exception as e:
         print(f"ParseCSource: {e}")
 
-#! Compile/Inject Functionality
+#! Compile Function, which calls out to relavent GCC version
 def Compile():  
     if bizhawk_ramwatch_checkbox_state.get() == 1:
         print("Parsing Bizhawk Ramwatch")
-        ParseBizhawkRamdump()
+        ParseBizhawkRamWatch()
     if cheat_engine_ramwatch_checkbox_state.get() == 1:
         print("Parsing Cheat Engine Table")
         ParseCheatEngineFile()
@@ -810,11 +811,11 @@ def PrepareBuildInjectGUIOptions():
     # Build button    
     #N64
     if g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64" or g_current_project_selected_platform == "Wii"):
-        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoExeAndOrISO, style="Medium.TButton") 
+        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
         build_iso_button.pack()  
     #PS1/PS2/GC/Wii    
     elif g_current_project_game_disk != "":
-        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndOrISO, style="Medium.TButton") 
+        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
         build_iso_button.pack()    
     #No ISO, choose one first
     else:
@@ -1052,7 +1053,7 @@ def PreparePS1EmuInject(event=0):
     else:
         messagebox.showerror("Error", "Please select Emulator")
 
-def InjectIntoExeAndOrISO():
+def InjectIntoExeAndRebuildGame():
     #Read exe file first and copy it with prefixed name
     mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
     patches_dir = g_current_project_folder + "/patches/"
@@ -1209,7 +1210,7 @@ def InjectIntoExeAndOrISO():
   
 def FirstSelectISOThenBuild():
     open_ISO_file()
-    InjectIntoExeAndOrISO()
+    InjectIntoExeAndRebuildGame()
                         
 def PatchPS2ISO():
     # Create Iso from Folder
@@ -1260,7 +1261,7 @@ def ExtractPS1Game():
     if file_path_and_name == None:
         print("Improper ISO")
         return
-    file_name = file_path_and_name.split("/")[-1].split(".")[0]
+    
     old_dir = os.getcwd()
     #If extracting with no project
     if g_current_project_folder != "":
@@ -1301,7 +1302,7 @@ def ExtractPS2Game():
     if file_path_and_name == None:
         print("Improper ISO")
         return
-    file_name = file_path_and_name.split("/")[-1].split(".")[0]
+
     old_dir = os.getcwd()
     #If extracting with no project
     if g_current_project_folder != "":
@@ -1343,7 +1344,7 @@ def ExtractGamecubeGame():
     if file_path_and_name == None:
         print("Improper ISO")
         return
-    file_name_ext = file_path_and_name.split("/")[-1]
+
     old_dir = os.getcwd()
     #If extracting with no project
     if g_current_project_folder != "":
@@ -1427,7 +1428,7 @@ def open_ISO_file():
         
         print(f"Selected file: {file_path}")
         if build_iso_button:
-            build_iso_button.config(text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndOrISO)
+            build_iso_button.config(text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame)
         #Save to config     
         save_to_config()
             
@@ -1494,7 +1495,7 @@ def find_ps2_offset():
         #print("objdump section: ")
         #print(objdump_section_0_list)
         print(colored("PS2 offset found", "cyan"))
-        objdump_section_0_len = len(objdump_section_0_list)
+
         if len(objdump_section_0_list) == 7:
             offset = int(objdump_section_0_list[4], base=16) - int(objdump_section_0_list[5], base=16)
         elif len(objdump_section_0_list) == 6:
@@ -2163,13 +2164,13 @@ def project_switched():
     
     # Add Ram watch integration button
     if g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "Gamecube":
-        bizhawk_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Bizhawk Ram Watch", variable=bizhawk_ramwatch_checkbox_state, command=OpenBizhawkRamdump)
+        bizhawk_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Bizhawk Ram Watch", variable=bizhawk_ramwatch_checkbox_state, command=OpenBizhawkRamWatch)
         bizhawk_ramwatch_checkbox.place(x=295, y=420)
         bizhawk_ramwatch_label = tk.Label(main_tab, text=g_current_project_ram_watch_name)
         bizhawk_ramwatch_label.place(x=295, y=446)
         
     if g_current_project_selected_platform == "PS2":
-        cheat_engine_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Cheat Engine Table", variable=cheat_engine_ramwatch_checkbox_state, command=OpenCheatEngineRamdump)
+        cheat_engine_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Cheat Engine Table", variable=cheat_engine_ramwatch_checkbox_state, command=OpenCheatEngineRamWatch)
         cheat_engine_ramwatch_checkbox.place(x=295, y=420)
         bizhawk_ramwatch_label = tk.Label(main_tab, text=g_current_project_ram_watch_name)
         bizhawk_ramwatch_label.place(x=295, y=446)
