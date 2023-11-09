@@ -957,3 +957,6 @@ projects/PracticeCodesPort/.compile_scripts/inject_duckstation.bat
 projects/PracticeCodesPort/.compile_scripts/inject_mednafen_1.29.bat
 projects/PracticeCodesPort/.compile_scripts/inject_mednafen_1.31.bat
 projects/PracticeCodesPort/.compile_scripts/ISO_build.bat
+projects/ZeldaTP/.vscode/c_cpp_properties.json
+projects/ZeldaTP/.vscode/settings.json
+projects/ZeldaTP/.vscode/tasks.json

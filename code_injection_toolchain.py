@@ -2038,6 +2038,17 @@ def check_has_picked_exe():
         file_menu.add_separator()
         other_menu.add_command(label="Open Project in Notepad++", command=SetupNotepadProject)
         
+        # Create a "Themes" menu and theme options to it
+        themes = tk.Menu(menubar)
+        menubar.add_cascade(label="Themes", menu=themes)
+        themes.add_command(label="Forest Dark", command=change_theme_forest_dark)
+        file_menu.add_separator()
+        themes.add_command(label="Azure Dark", command=change_theme_azure_dark)
+        file_menu.add_separator()
+        themes.add_command(label="Forest Light", command=change_theme_forest_light)
+        file_menu.add_separator()
+        themes.add_command(label="Azure Light", command=change_theme_azure_light)
+        
         g_shouldShowTabs = True
 
 def check_has_selected_first_project():
@@ -3069,6 +3080,14 @@ def load_disk_offset_hooks(event=0):
         global_offset_entry.insert(0, selected_hook[4])
         update_codecaves_hooks_patches_config_file()
 
+# def change_theme_forest_dark(event=0):
+#     ttk.Style().theme_use('forest-dark')
+# def change_theme_azure_dark(event=0):
+#     root.tk.call("set_theme", "dark")
+# def change_theme_forest_light(event=0):
+#     ttk.Style().theme_use('forest-light')
+# def change_theme_azure_light(event=0):
+#     root.tk.call("set_theme", "light")
 
 #! MAIN GUI
 root = tk.Tk()
@@ -3078,7 +3097,15 @@ root.bind("<KeyRelease>", ensure_hex_entries)
 root.iconbitmap("icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
+#themes
 #sv_ttk.set_theme("dark")
+
+#root.tk.call('source', 'prereq/theme/azure.tcl')
+#root.tk.call("set_theme", "dark")
+root.tk.call('source', 'prereq/theme/azure.tcl')
+root.tk.call('source', 'prereq/theme/forest-light.tcl')
+root.tk.call('source', 'prereq/theme/forest-dark.tcl')
+ttk.Style().theme_use('forest-dark')
 
 # Create tabs
 tab_control = ttk.Notebook(root)
@@ -3117,7 +3144,7 @@ current_project_feature_mode = tk.StringVar()
 current_project_feature_mode.set("Normal")
 project_feature_combobox = ttk.Combobox(root, textvariable=current_project_feature_mode, values=feature_modes)
 project_feature_combobox.place(x=685, y=550)
-project_feature_combobox.config(width=8)
+project_feature_combobox.config(width=11)
 project_feature_combobox.bind("<<ComboboxSelected>>", on_feature_mode_selected)
 
 project_name_label = ttk.Label(main_tab, text='New Project Name:', font=("Trebuchet MS", 10))
@@ -3147,8 +3174,8 @@ for project in project_folder_names:
     print("Projects Loaded: " + project)
     
 # Button to remove selected project
-remove_project_button = ttk.Button(main_tab, text='Remove Project', command=remove_project_confirm)
-remove_project_button.place(x=10, y=480)
+remove_project_button = tk.Button(main_tab, text='Remove Project', command=remove_project_confirm)
+remove_project_button.place(x=10, y=510)
 
 #! In-Game Codecaves Tab
 auto_cave_button = tk.Button(codecave_tab, text=f'Automatically Use PS1 Header', command=auto_place_ps1_header, font=("asfasf", 12))
@@ -3202,8 +3229,8 @@ codecaves_listbox.bind('<<ListboxSelect>>', select_codecave)
 codecaves_listbox.bind('<KeyPress-Delete>', remove_codecave)
 
 # Button to remove selected codecave
-remove_codecave_button = ttk.Button(codecave_tab, text='Remove Codecave', command=remove_codecave)
-remove_codecave_button.place(x=530, y=494)
+remove_codecave_button = tk.Button(codecave_tab, text='Remove Codecave', command=remove_codecave)
+remove_codecave_button.place(x=545, y=494)
 
 #! Hooks Tab
 auto_hook_button = tk.Button(hooks_tab, text=f'Try to automatically find PS1 hook', command=auto_find_hook_in_ps1_game, font=("asfasf", 12))
@@ -3250,8 +3277,8 @@ hooks_listbox.bind('<<ListboxSelect>>', select_hook)
 hooks_listbox.bind('<KeyPress-Delete>', remove_hook)
 
 # Button to remove selected codecave
-remove_hook_button = ttk.Button(hooks_tab, text='Remove Hook', command=remove_hook)
-remove_hook_button.place(x=530, y=494)
+remove_hook_button = tk.Button(hooks_tab, text='Remove Hook', command=remove_hook)
+remove_hook_button.place(x=545, y=494)
 
 #! Patches Tab
 patch_name_label = ttk.Label(patches_tab, text='Patch Name:')
@@ -3291,8 +3318,8 @@ patches_listbox.bind('<<ListboxSelect>>', select_patch)
 patches_listbox.bind('<KeyPress-Delete>', remove_patch)
 
 # Button to remove selected codecave
-remove_patch_button = ttk.Button(patches_tab, text='Remove Patch', command=remove_patch)
-remove_patch_button.place(x=530, y=494)
+remove_patch_button = tk.Button(patches_tab, text='Remove Patch', command=remove_patch)
+remove_patch_button.place(x=545, y=494)
 
 #! Compile Tab
 # Create a Button to compile the mod
