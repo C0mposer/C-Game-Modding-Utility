@@ -61,6 +61,8 @@ g_asm_files = ""
 g_obj_files = ""
 g_patch_files = []
 
+g_current_project_version = ""
+
 g_selected_emu = None
 
 def MoveToRecycleBin(path):
@@ -840,7 +842,7 @@ def PrepareBuildInjectGUIOptions():
             change_exe_button.place(x=5, y=30)
             
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=620, y=0)
+            inject_emulator_label.place(x=610, y=0)
             
             g_selected_emu = tk.StringVar(value="PCSX2 1.6.0")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
@@ -870,7 +872,7 @@ def PrepareBuildInjectGUIOptions():
             change_exe_button.place(x=5, y=30)
             
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=620, y=0)
+            inject_emulator_label.place(x=610, y=0)
             
             g_selected_emu = tk.StringVar(value="Dolphin 5.0-20240")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
@@ -893,7 +895,7 @@ def PrepareBuildInjectGUIOptions():
             change_exe_button.place(x=5, y=30)
             
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=620, y=0)
+            inject_emulator_label.place(x=610, y=0)
             
             g_selected_emu = tk.StringVar(value="Dolphin 5.0-20240")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
@@ -916,7 +918,7 @@ def PrepareBuildInjectGUIOptions():
             change_exe_button.place(x=5, y=30)
             
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=620, y=0)
+            inject_emulator_label.place(x=610, y=0)
             
             g_selected_emu = tk.StringVar(value="Duckstation 0.1-5936")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
@@ -942,7 +944,7 @@ def PrepareBuildInjectGUIOptions():
             change_exe_button.place(x=5, y=30)
             
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=620, y=0)
+            inject_emulator_label.place(x=610, y=0)
             
             g_selected_emu = tk.StringVar(value="Duckstation 0.1-5936")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
@@ -2336,6 +2338,10 @@ def create_project():
         project_listbox.insert(tk.END, project)
         print("Project Names: " + project)
 
+
+    #Insert Default Version
+    project_versions_listbox.insert(tk.END, "MainVersion")
+
     update_codecaves_hooks_patches_config_file()
     # Show a "Project added" dialog
     messagebox.showinfo("Success", "Project created successfully.")
@@ -3184,6 +3190,26 @@ for project in project_folder_names:
 # Button to remove selected project
 remove_project_button = tk.Button(main_tab, text='Remove Project', command=remove_project_confirm)
 remove_project_button.place(x=10, y=502)
+
+
+# # Create a listbox to display existing project versions
+# project_versions_listbox = tk.Listbox(main_tab, selectmode=tk.SINGLE, height=6, width=20)
+# project_versions_listbox.place(x=640, y=170)
+# project_versions_listbox.bind("<KeyPress-Return>", select_project)
+# project_versions_listbox.bind("<KeyPress-space>", select_project)
+# project_versions_listbox.bind("<Double-Button-1>", select_project)
+
+# # Button to remove selected project
+# project_version_label = ttk.Label(main_tab, text='New Version Name:', font=("Trebuchet MS", 10))
+# project_version_label.place(x=655, y=15)
+# create_version_button = tk.Button(main_tab, text='Add Version', command=remove_project_confirm)
+# create_version_button.place(x=675, y=85)
+# project_version_entry = ttk.Entry(main_tab, validate="key", validatecommand=(validate_no_space_cmd, "%P"))
+# project_version_entry.place(x=642, y=45)
+# select_version_button = tk.Button(main_tab, text='Select Existing Version', command=select_project)
+# select_version_button.place(x=635, y=130)
+# project_version_label = ttk.Label(main_tab, text='Current Selected Version:', font=("Trebuchet MS", 10))
+# project_version_label.place(x=630, y=280)    
 
 #! In-Game Codecaves Tab
 auto_cave_button = tk.Button(codecave_tab, text=f'Automatically Use PS1 Header', command=auto_place_ps1_header, font=("asfasf", 12))
