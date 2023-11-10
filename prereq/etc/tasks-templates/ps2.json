@@ -5,6 +5,9 @@
             "label": "Compile",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Compile",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -25,6 +28,9 @@
             "label": "Compile & Inject into PCSX2 1.6.0",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Inject_Emulator PCSX2_1.6.0 PS2",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -46,6 +52,9 @@
             "label": "Compile & Inject into PCSX2 1.7.5112",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Inject_Emulator PCSX2_1.7.5112 PS2",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -67,6 +76,9 @@
             "label": "Compile & Build ISO",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Build_ISO",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",

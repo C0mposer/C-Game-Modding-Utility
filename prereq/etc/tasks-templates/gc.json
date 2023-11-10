@@ -5,6 +5,9 @@
             "label": "Compile",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Compile",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -25,6 +28,9 @@
             "label": "Compile & Inject into Dolphin 5.0-20240",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Inject_Emulator Dolphin_5.0-20240 Gamecube",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -45,6 +51,9 @@
             "label": "Compile & Inject into Dolphin 5.0-19870",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Inject_Emulator Dolphin_5.0-19870 Gamecube",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -65,6 +74,9 @@
             "label": "Compile & Build ISO",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Build_ISO",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -85,6 +97,9 @@
             "label": "Compile & Build DOL",
             "type": "shell",
             "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Build_EXE",
+            "group": {
+                "kind": "build"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",

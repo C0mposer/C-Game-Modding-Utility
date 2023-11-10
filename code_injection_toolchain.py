@@ -1997,16 +1997,6 @@ def update_linker_script():
                 script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = 0xFFFF\n")
                 
             script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
-            #Code Caves
-            for cave in g_code_caves:
-                script_file.write("." + cave[0])
-                script_file.write(" : \n    {\n")
-                for c_file in cave[3]:
-                    o_file = c_file.split(".")[0] + ".o"
-                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
-                    #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
-                script_file.write("    } > ")
-                script_file.write(f"{cave[0]}\n\n    ")
             #Hooks
             for hook in g_hooks:
                 script_file.write("/* Custom section for our hook code */\n    ")
@@ -2017,6 +2007,16 @@ def update_linker_script():
                     script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
                 script_file.write("    } > ")
                 script_file.write(f"{hook[0]}\n\n    ")
+            #Code Caves
+            for cave in g_code_caves:
+                script_file.write("." + cave[0])
+                script_file.write(" : \n    {\n")
+                for c_file in cave[3]:
+                    o_file = c_file.split(".")[0] + ".o"
+                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n        " + "*(.text)\n")
+                    #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
+                script_file.write("    } > ")
+                script_file.write(f"{cave[0]}\n\n    ")
                 
             script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
     except Exception as e:
