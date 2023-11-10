@@ -484,6 +484,7 @@ def SetupSublimeProject():
         sublime_ascii = ""
         compile_ascii = ""
         build_ascii = ""
+        build_exe_ascii = ""
         inject_ascii = {}
         
         # Get template global bat files
@@ -494,20 +495,29 @@ def SetupSublimeProject():
                 
         with open(f"{template_dir}/ISO_build.bat", "r") as build_file:
             build_ascii = build_file.read()
+                
+        with open(f"{template_dir}/EXE_build.bat", "r") as build_exe_file:
+            build_exe_ascii = build_exe_file.read()
             
         replaced_build_ascii =  SublimeBatTextReplacement(build_ascii)
+        
+        replaced_build_exe_ascii =  SublimeBatTextReplacement(build_exe_ascii)
         
         # Write global bat files
         with open(g_current_project_folder + "/.compile_scripts/compile.bat", "w") as compile_file:
             compile_file.write(replaced_compile_ascii)
             
-        with open(g_current_project_folder + "/.compile_scripts/ISO_build.bat", "w") as build_file:
+        with open(g_current_project_folder + "/.compile_scripts/build_iso.bat", "w") as build_file:
             build_file.write(replaced_build_ascii)
             
 
         #Platform specific options
         if g_current_project_selected_platform == "Gamecube" or g_current_project_selected_platform == "Wii":
             
+            #Build Exe
+            with open(g_current_project_folder + "/.compile_scripts/build_exe.bat", "w") as build_file:
+                build_file.write(replaced_build_ascii)
+                
             # Get template Sublime File
             with open(f"{template_dir}/gamecube.sublime-project", "r") as sublime_file:
                 sublime_ascii = sublime_file.read()

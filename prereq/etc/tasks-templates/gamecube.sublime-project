@@ -21,6 +21,11 @@
             "shell_cmd": "build.bat"
         },
 		{
+            "name": "DOL Build",
+            "working_dir": "${project_path}/../.compile_scripts",
+            "shell_cmd": "build_exe.bat"
+        },
+		{
             "name": "Inject into Dolphin 50-20240",
             "working_dir": "${project_path}/../.compile_scripts",
             "shell_cmd": "inject_dolphin_50_20240.bat"

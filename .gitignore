@@ -1071,3 +1071,9 @@ projects/AHTGCEBBEOLD/include/hashcodes.h
 projects/AHTGCEBBEOLD/include/symbols.h
 projects/AHTGCEBBEOLD/src/main.c
 projects/AHTGCEBBEOLD/src/test.c
+prereq/cmd-compile/cmd_compile_old.exe
+projects/AHTGCEBBEOLD/.compile_scripts/build_exe.bat
+projects/AHTGCEBBEOLD/.compile_scripts/build_iso.bat
+projects/AHTGCEBBEOLD/.vscode/c_cpp_properties.json
+projects/AHTGCEBBEOLD/.vscode/settings.json
+projects/AHTGCEBBEOLD/.vscode/tasks.json

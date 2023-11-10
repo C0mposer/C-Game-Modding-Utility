@@ -80,6 +80,26 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "Compile & Build DOL",
+            "type": "shell",
+            "command": "../../prereq/cmd-compile/cmd_compile.exe REPLACE Build_EXE",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "icon": {
+                "id": "beaker",
+                "color": "terminal.ansiMagenta"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
     }
