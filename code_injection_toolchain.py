@@ -738,7 +738,10 @@ def Compile():
             section_name_index = linker_output.stderr.index(": region")
             end_index = linker_output.stderr.index("collect2.exe")
             section_name = linker_output.stderr[(section_name_index + 2):(end_index-1)]
-            messagebox.showerror("Linking Error", f"Linker failed with {section_name}.")
+            section_overflow_index = section_name.find("overflowed by ")
+            section_size_hex = section_name[section_overflow_index:].split(" ")[2]
+            section_size_hex_int = hex(int(section_size_hex))
+            messagebox.showerror("Linking Error", f"Linker failed with {section_name.split('overflowed')[0]} overflowed by {section_size_hex_int} bytes.")
         os.chdir(main_dir)
         return False
     
@@ -1908,7 +1911,7 @@ def convert_to_gameshark_code(ignore_codecaves=False):
 def auto_place_ps1_header(event=0):
     global g_code_caves
     if g_code_caves == []:
-        g_code_caves.append(("Header", "0x8000B0B8", "0x48", ["main.c"], "0x0"))
+        g_code_caves.append(("Header", "0x8000B0B8", "0x48", ["main.c"], "0x0", "0x10000"))
         codecaves_listbox.insert(tk.END, g_code_caves[-1][0])
         
         update_codecaves_hooks_patches_config_file()    
@@ -1932,10 +1935,13 @@ def run_every_tab_switch(event=0):
         disk_exe_entry.delete(0, tk.END)
         c_files_entry.delete(0, tk.END)
         global_offset_entry.delete(0, tk.END)
+        codecave_size_entry.delete(0, tk.END)
+        
         codecave_name_entry.insert(0, g_code_caves[0][0])
         in_game_memory_entry.insert(0, g_code_caves[0][1])
         disk_exe_entry.insert(0, g_code_caves[0][2])
         c_files_entry.insert(0, ", ".join(g_code_caves[0][3]))
+        codecave_size_entry.insert(0, g_code_caves[0][5])
         try:
             global_offset_entry.config(state="active")
             global_offset_entry.delete(0, tk.END)
@@ -1944,6 +1950,11 @@ def run_every_tab_switch(event=0):
         except:
             pass
             #print("No offset to load, skipping")
+        try:
+            global_offset_entry.insert(0, g_code_caves[0][5])
+        except:
+            pass
+            #print("No size to load, skipping")
         
     if g_hooks != []:
         hook_name_entry.delete(0, tk.END)
@@ -1992,9 +2003,9 @@ def update_linker_script():
         with open(f"{g_current_project_folder}/.config/linker_script.ld", "w+") as script_file:
             script_file.write("INPUT(../../../.config/symbols/symbols.txt)\nINPUT(../../../.config/symbols/function_symbols.txt)\nINPUT(../../../.config/symbols/auto_symbols.txt)\n\nMEMORY\n{\n    /* RAM locations where we'll inject the code for our replacement functions */\n")
             for cave in g_code_caves:
-                script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = 0xFFFF\n")
+                script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = {cave[5]}\n")
             for hook in g_hooks:
-                script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = 0xFFFF\n")
+                script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = {cave[5]}\n")
                 
             script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
             #Hooks
@@ -2023,7 +2034,7 @@ def update_linker_script():
             script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
     except Exception as e:
         print("No project currently loaded")
-        #print(e)
+        print(e)
  
 def on_optimization_level_select(event=0):
     global g_optimization_level
@@ -2524,6 +2535,7 @@ def add_codecave():
     in_game_memory = in_game_memory_entry.get()
     disk_memory = disk_exe_entry.get()
     disk_offset = global_offset_entry.get()
+    cave_size = codecave_size_entry.get()
     
     #Check if name already exists, to only update the codecave, not create a new one
     for i, cave in enumerate(g_code_caves):
@@ -2545,11 +2557,11 @@ def add_codecave():
     
     
     if does_already_exist == False:
-        g_code_caves.append((cave_name, in_game_memory, disk_memory, c_files, disk_offset))
+        g_code_caves.append((cave_name, in_game_memory, disk_memory, c_files, disk_offset, cave_size))
         codecaves_listbox.insert(tk.END, cave_name)
     else:
         print("Codecave already exists, replacing this index: ", index_where_exists)
-        g_code_caves[index_where_exists] = (cave_name, in_game_memory, disk_memory, c_files, disk_offset)
+        g_code_caves[index_where_exists] = (cave_name, in_game_memory, disk_memory, c_files, disk_offset, cave_size)
     
     #Update project_folder for safetey, and then create a config folder if not already existing
     g_current_project_folder = f"projects/" + g_current_project_name   
@@ -2562,6 +2574,7 @@ def add_codecave():
     in_game_memory_entry.delete(0, tk.END)
     disk_exe_entry.delete(0, tk.END)
     c_files_entry.delete(0, tk.END)
+    codecave_size_entry.delete(0, tk.END)
     
     on_platform_select() #Reset Compile Stuff
     update_linker_script()
@@ -2578,6 +2591,7 @@ def remove_codecave(event=0):
         disk_exe_entry.delete(0, tk.END)
         c_files_entry.delete(0, tk.END)
         global_offset_entry.delete(0, tk.END)
+        codecave_size_entry.delete(0, tk.END)
     
     on_platform_select() #Reset Compile Stuff
     update_linker_script()
@@ -2591,6 +2605,7 @@ def select_codecave(event):
         in_game_memory_entry.delete(0, tk.END)
         disk_exe_entry.delete(0, tk.END)
         c_files_entry.delete(0, tk.END)
+        codecave_size_entry.delete(0, tk.END)
 
         codecave_name_entry.insert(0, selected_codecave[0])
         in_game_memory_entry.insert(0, selected_codecave[1])
@@ -2600,6 +2615,8 @@ def select_codecave(event):
         global_offset_entry.delete(0, tk.END)
         global_offset_entry.insert(0, selected_codecave[4])
         global_offset_entry.config(state="disabled")
+        codecave_size_entry.insert(0, selected_codecave[5])
+        
         update_linker_script()
 
 def add_hook():
@@ -3268,6 +3285,13 @@ disk_exe_entry = ttk.Entry(codecave_tab, validatecommand=(validate_no_space_cmd,
 disk_exe_entry.pack(pady=5)
 disk_exe_entry.bind("<FocusIn>", ensure_hex_entries)
 disk_exe_entry.bind("<FocusOut>", ensure_hex_entries)
+
+codecave_size_label = ttk.Label(codecave_tab, text='Codecave Size:',)
+codecave_size_label.pack()
+codecave_size_entry = ttk.Entry(codecave_tab, validatecommand=(validate_no_space_cmd, "%P"))
+codecave_size_entry.pack(pady=5)
+codecave_size_entry.bind("<FocusIn>", ensure_hex_entries)
+codecave_size_entry.bind("<FocusOut>", ensure_hex_entries)
 
 c_files_label = ttk.Label(codecave_tab, text='C Files:')
 c_files_label.pack()
