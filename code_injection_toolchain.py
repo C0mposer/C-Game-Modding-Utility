@@ -657,7 +657,7 @@ def ParseCSourceForSymbols():
                     file_ascii = current_file.read()
                     in_game_text_found_list = file_ascii.split("in_game ")[1:] # Get rid of the 0th index, since it will be the code before in_game is found. Nothing after the : means keep rest of the list
                     if in_game_text_found_list != []:   # If at least 1 string 1 found
-                        if "//CUSTOM_TYPES_H\n" not in in_game_text_found_list[0]:   # Ensure this isn't the define for in_game inside of CUSTOM_TYPES
+                        if "//CUSTOM_TYPES_H" not in in_game_text_found_list[0]:   # Ensure this isn't the define for in_game inside of CUSTOM_TYPES
                             for symbol in in_game_text_found_list:
                                 if symbol.split(" ")[0] == "signed" or symbol.split(" ")[0] == "unsigned": #For if signedness specifier, skip one more white space
                                     symbol_name = symbol.split()[2].split("(")[0].split(";")[0]
@@ -2013,8 +2013,10 @@ def update_linker_script():
                 script_file.write(" : \n    {\n")
                 for c_file in cave[3]:
                     o_file = c_file.split(".")[0] + ".o"
-                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n        " + "*(.text)\n")
+                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
                     #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
+                script_file.write("        *(.text)\n")
+                script_file.write("        *(.branch_lt)\n")
                 script_file.write("    } > ")
                 script_file.write(f"{cave[0]}\n\n    ")
                 
