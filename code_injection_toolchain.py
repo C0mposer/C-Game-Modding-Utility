@@ -781,6 +781,7 @@ def PrepareBuildInjectGUIOptions():
     global inject_emulator_label
     global choose_exe_label
     global build_iso_button
+    global build_exe_button
     global change_exe_button
     global create_ps2_code_button
     global create_cheat_code_label
@@ -800,6 +801,8 @@ def PrepareBuildInjectGUIOptions():
         choose_exe_label.place_forget()
     if build_iso_button:
         build_iso_button.pack_forget()
+    if build_exe_button:
+        build_exe_button.pack_forget()
     if change_exe_button:
         change_exe_button.place_forget()
     if create_ps2_code_button:
@@ -814,17 +817,17 @@ def PrepareBuildInjectGUIOptions():
     small_font_style.configure("Small.TButton", font=("Segoe UI", 14))
         
     # Build button    
-    #N64
-    if g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64" or g_current_project_selected_platform == "Wii"):
-        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
-        build_iso_button.pack()  
     #PS1/PS2/GC/Wii    
-    elif g_current_project_game_disk != "":
+    if g_current_project_game_disk != "":
         build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
-        build_iso_button.pack()    
+        build_iso_button.pack(pady=5)    
+    #N64 & GC/WII Option for just exe
+    if g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64" or g_current_project_selected_platform == "Wii" or g_current_project_selected_platform == "Gamecube"):
+        build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
+        build_exe_button.pack()  
     #No ISO, choose one first
     else:
-        build_iso_button = ttk.Button(compile_tab, text=f"Choose ISO/BIN to Build", command=FirstSelectISOThenBuild, style="Medium.TButton") 
+        build_iso_button = ttk.Button(compile_tab, text=f"Choose ISO/BIN/ROM to Build", command=FirstSelectISOThenBuild, style="Medium.TButton") 
         build_iso_button.pack()
     
     #Update compile tab text/buttons
@@ -874,9 +877,9 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="Dolphin 5.0-20240")
+            g_selected_emu = tk.StringVar(value="Dolphin 5.0-19870")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('Dolphin 5.0-20240', 'Dolphin 5.0-19870')
+            emulators_combobox['values'] = ('Dolphin 5.0-19870', 'Dolphin 5.0-20240')
             emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
@@ -897,9 +900,9 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="Dolphin 5.0-20240")
+            g_selected_emu = tk.StringVar(value="Dolphin 5.0-19870")
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('Dolphin 5.0-20240', 'Dolphin 5.0-19870')
+            emulators_combobox['values'] = ('Dolphin 5.0-19870', 'Dolphin 5.0-20240')
             emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
@@ -1058,7 +1061,10 @@ def PreparePS1EmuInject(event=0):
     else:
         messagebox.showerror("Error", "Please select Emulator")
 
-def InjectIntoExeAndRebuildGame():
+def InjectIntoJustExe(event=0):
+    InjectIntoExeAndRebuildGame(just_exe=True)
+
+def InjectIntoExeAndRebuildGame(just_exe = False):
     #Read exe file first and copy it with prefixed name
     mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
     patches_dir = g_current_project_folder + "/patches/"
@@ -1108,101 +1114,101 @@ def InjectIntoExeAndRebuildGame():
         print(e)
     
             
+    if just_exe == False:
+        #!Extract ISO and patch SLUS for PS2       
+        if g_current_project_selected_platform == "PS2":
+            file_path_and_name = g_current_project_game_disk_full_dir
+            if file_path_and_name == None:
+                print("Improper ISO")
+                return
+            old_dir = os.getcwd()
+            os.chdir(g_current_project_folder)
+            command_line_string = "..\\..\\prereq\\7z\\7z x " + "\"" + file_path_and_name + "\"" + " -o\"GameIsoExtract\""
+            print(command_line_string + "\nExtracting...")
+            did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
+            if did_iso_extract_fail == 1:
+                os.chdir(old_dir)
+                error_msg = "ISO Extraction Failed!"
+                print(error_msg)
+                messagebox.showerror("Error", error_msg)
+                return error_msg
             
-    #!Extract ISO and patch SLUS for PS2       
-    if g_current_project_selected_platform == "PS2":
-        file_path_and_name = g_current_project_game_disk_full_dir
-        if file_path_and_name == None:
-            print("Improper ISO")
-            return
-        old_dir = os.getcwd()
-        os.chdir(g_current_project_folder)
-        command_line_string = "..\\..\\prereq\\7z\\7z x " + "\"" + file_path_and_name + "\"" + " -o\"GameIsoExtract\""
-        print(command_line_string + "\nExtracting...")
-        did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
-        if did_iso_extract_fail == 1:
+            #Remove old exe/slus file in extracted iso folder and copy patched one
+            original_exe_name = "GameIsoExtract/" + g_current_project_game_exe_name
+            try:
+                os.remove(original_exe_name)
+            except:
+                os.chdir(old_dir)
+                error_msg = "ISO Extraction Failed!"
+                print(error_msg)
+                messagebox.showerror("Error", error_msg)
+                return error_msg
+            
+            shutil.copyfile("patched_" + g_current_project_game_exe_name, original_exe_name)
             os.chdir(old_dir)
-            error_msg = "ISO Extraction Failed!"
-            print(error_msg)
-            messagebox.showerror("Error", error_msg)
-            return error_msg
+            print("ISO Extract/Patch Completed!")
+            PatchPS2ISO()
         
-        #Remove old exe/slus file in extracted iso folder and copy patched one
-        original_exe_name = "GameIsoExtract/" + g_current_project_game_exe_name
-        try:
+        #!Extract BIN and patch SCUS for PS1       
+        if g_current_project_selected_platform == "PS1":
+            file_path_and_name = g_current_project_game_disk_full_dir
+            if file_path_and_name == None:
+                print("Improper ISO")
+                return
+            old_dir = os.getcwd()
+            os.chdir(g_current_project_folder)
+            command_line_string = f"..\\..\\prereq\\mkpsxiso\\dumpsxiso.exe \"{file_path_and_name}\" -x .config\\output\\ExtractedBIN -s .config\\output\\psxbuild.xml"
+            print(command_line_string + "\nExtracting...")
+            did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
+            if did_iso_extract_fail == 1:
+                os.chdir(old_dir)
+                error_msg = "ISO Extraction Failed!"
+                print(error_msg)
+                messagebox.showerror("Error", error_msg)
+                return error_msg
+            
+            #Remove old exe/slus file in extracted iso folder and copy patched one
+            original_exe_name = ".config/output/ExtractedBIN/" + g_current_project_game_exe_name
             os.remove(original_exe_name)
-        except:
+            shutil.copyfile("patched_" + g_current_project_game_exe_name, original_exe_name)
             os.chdir(old_dir)
-            error_msg = "ISO Extraction Failed!"
-            print(error_msg)
-            messagebox.showerror("Error", error_msg)
-            return error_msg
-        
-        shutil.copyfile("patched_" + g_current_project_game_exe_name, original_exe_name)
-        os.chdir(old_dir)
-        print("ISO Extract/Patch Completed!")
-        PatchPS2ISO()
-    
-    #!Extract BIN and patch SCUS for PS1       
-    if g_current_project_selected_platform == "PS1":
-        file_path_and_name = g_current_project_game_disk_full_dir
-        if file_path_and_name == None:
-            print("Improper ISO")
-            return
-        old_dir = os.getcwd()
-        os.chdir(g_current_project_folder)
-        command_line_string = f"..\\..\\prereq\\mkpsxiso\\dumpsxiso.exe \"{file_path_and_name}\" -x .config\\output\\ExtractedBIN -s .config\\output\\psxbuild.xml"
-        print(command_line_string + "\nExtracting...")
-        did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
-        if did_iso_extract_fail == 1:
-            os.chdir(old_dir)
-            error_msg = "ISO Extraction Failed!"
-            print(error_msg)
-            messagebox.showerror("Error", error_msg)
-            return error_msg
-        
-        #Remove old exe/slus file in extracted iso folder and copy patched one
-        original_exe_name = ".config/output/ExtractedBIN/" + g_current_project_game_exe_name
-        os.remove(original_exe_name)
-        shutil.copyfile("patched_" + g_current_project_game_exe_name, original_exe_name)
-        os.chdir(old_dir)
-        print("ISO Extract/Patch Completed!")
-        PatchPS1ISO()
+            print("ISO Extract/Patch Completed!")
+            PatchPS1ISO()
 
-    #!Extract ISO and patch Start.dol for Gamecube       
-    if g_current_project_selected_platform == "Gamecube":
-        file_path_and_name = g_current_project_game_disk_full_dir
-        if file_path_and_name == None:
-            print("Improper ISO")
-            return
-        file_name_ext = file_path_and_name.split("/")[-1]
-        old_dir = os.getcwd()
-        os.chdir(g_current_project_folder)
-        try:
-            shutil.copyfile(file_path_and_name, f"Modded_{file_name_ext}")
-        except PermissionError:
-            os.chdir(old_dir)
-            messagebox.showerror("Error", "Game ISO or exe currently in use by another software.")
-        command_line_string = f"..\\..\\prereq\\gcr\\gcr.exe \"Modded_{file_name_ext}\" \"root/&&SystemData/{g_current_project_game_exe_name}\" i {patched_exe_name.split('/')[-1]}"
-        print(command_line_string + "\nExtracting...")
-        did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
-        if did_iso_extract_fail == 1:
-            os.chdir(old_dir)
-            error_msg = "ISO Extraction Failed!"
-            print(error_msg)
-            messagebox.showerror("Error", error_msg)
-            return error_msg
-        
-        os.remove(patched_exe_name.split('/')[-1])
-        os.chdir(old_dir)
+        #!Extract ISO and patch Start.dol for Gamecube       
+        if g_current_project_selected_platform == "Gamecube":
+            file_path_and_name = g_current_project_game_disk_full_dir
+            if file_path_and_name == None:
+                print("Improper ISO")
+                return
+            file_name_ext = file_path_and_name.split("/")[-1]
+            old_dir = os.getcwd()
+            os.chdir(g_current_project_folder)
+            try:
+                shutil.copyfile(file_path_and_name, f"Modded_{file_name_ext}")
+            except PermissionError:
+                os.chdir(old_dir)
+                messagebox.showerror("Error", "Game ISO or exe currently in use by another software.")
+            command_line_string = f"..\\..\\prereq\\gcr\\gcr.exe \"Modded_{file_name_ext}\" \"root/&&SystemData/{g_current_project_game_exe_name}\" i {patched_exe_name.split('/')[-1]}"
+            print(command_line_string + "\nExtracting...")
+            did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
+            if did_iso_extract_fail == 1:
+                os.chdir(old_dir)
+                error_msg = "ISO Extraction Failed!"
+                print(error_msg)
+                messagebox.showerror("Error", error_msg)
+                return error_msg
             
-    if g_current_project_selected_platform == "Wii":
-        print("Wii Extract Pass")
-        pass
-               
-    if g_current_project_selected_platform == "N64":
-        print("N64 Extract Pass")
-        pass
+            os.remove(patched_exe_name.split('/')[-1])
+            os.chdir(old_dir)
+                
+        if g_current_project_selected_platform == "Wii":
+            print("Wii Extract Pass")
+            pass
+                
+        if g_current_project_selected_platform == "N64":
+            print("N64 Extract Pass")
+            pass
               
     #!If genereic executable (n64, wii), skip iso/bin stuff all above          
     open_in_explorer = messagebox.askyesno("Completed Patching", "Successfully created patched game! Would you like to open the directory in file explorer?")
@@ -2086,6 +2092,7 @@ def project_switched():
     global open_exe_button
     global choose_exe_label
     global build_iso_button
+    global build_exe_button
     global g_current_project_game_disk
     global g_current_project_game_disk_full_dir
     global g_current_project_ram_watch_name
@@ -2128,6 +2135,8 @@ def project_switched():
         choose_exe_label.place_forget()
     if build_iso_button:
         build_iso_button.pack_forget()
+    if build_exe_button:
+        build_exe_button.pack_forget()
     if change_exe_button:
         change_exe_button.place_forget()
     if create_ps2_code_button:
@@ -3381,7 +3390,8 @@ open_exe_button = None
 inject_emulator_label = None    
 selected_game_label = None      
 choose_exe_label = None         
-build_iso_button = None         
+build_iso_button = None   
+build_exe_button = None      
 change_exe_button = None
 select_platform_label = None
 create_ps2_code_button = None
