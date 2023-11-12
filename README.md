@@ -15,7 +15,7 @@ It streamlines the process of compiling C/C++ with the intention of being inject
 ## Quick Start:
 ***This  quick start will get you up and running creating a mod that runs every frame along side a game***
 
-#### Creating a Project
+### Creating a Project
 To get started, you'll need to create a project for your game mod.
 Once you have created a project choose your games platform, and ***ISO File***. The tool will ask you to extract the ISO to a folder of your choosing, and will attempt to automatically find the games ***main executable file***.
 ##### Main Executable File
@@ -24,7 +24,7 @@ Once you have created a project choose your games platform, and ***ISO File***. 
 * For Gamecube/Wii games, the executable should be named **Start.dol or main.dol**
 
 Next, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
-#### Code Caves and Hooks
+### Code Caves and Hooks
 At a high level, here is how injecting mod code into a game using this utility works:
 1.  **Code caves:** First things first, we need a free place in the games ram that can be used for the mod code. The easiest way is to look for unused/free sections of the games main executable, that also still happens to get loaded into ram. These free sections are called [code caves.](https://en.wikipedia.org/wiki/Code_cave)  (*These can unused/debug strings, unused functions/code, sometimes a block of 0's, etc*. If you need help finding a code cave, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Finding-a-Code-Cave))
 Once you have found a code cave you fill out its info, and click "**Add/Save Codecave**": 
@@ -50,13 +50,13 @@ j CustomFunction
 
 If you want to change which function gets jumped to by the hook, you can change the **.s** file to jump/branch to any function name in your project. (*Keep this in mind if you rename CustomFunction*)
 
-#### Writing Mods
+### Writing Mods
 Once you have found a codecave to place your mod code, and a hook to jump to it, you are ready to start writing mods for your game! 
 It will have created a folder for your game mod in the **projects/** folder of the utility that you can start editing code in. 
 *(You can automatically integrate your project with VSCode, Sublime, or Notepad++ with the Text Editor tab in the utility.)*
 
 When writing mods for a game, ultimately all we are doing is **changing values in memory**, or **changing the flow of instructions**. So how do we talk with in game memory addresses in our code directly?
-##### Symbols
+#### Symbols
 - **Symbols:** Symbols are in game variables that you want to use, and in game functions you want to call. You can use memory seraching tools similar to Cheat Engine, in combination with debugging emulators and decompilation tools like Ghidra in order to find in game symbols.
 
 Once you have found symbols you want to use in your mod, you can simply use the **in_game** keyword in order to declare them in your C/C++ code for use like so:
@@ -91,7 +91,7 @@ void MainHook(void)
 }
 ```
 
-#### Compiling, Building, & Injecting
+### Compiling, Building, & Injecting
 Once you have written some code, you can compile it with the "**Compile Mod**" button in the utility, or with one of the built in tasks in VSCode/Sublime.
 
 If the compilation is successful, you can then build your mod to an ISO/BIN. You first select the original game ISO/BIN file as a base, then it will create a new ISO/BIN with your mod injected.
