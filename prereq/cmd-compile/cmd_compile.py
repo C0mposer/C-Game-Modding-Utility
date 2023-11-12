@@ -205,12 +205,12 @@ def ParseCSourceForSymbols():
                     file_ascii = current_file.read()
                     in_game_text_found_list = file_ascii.split("in_game ")[1:] # Get rid of the 0th index, since it will be the code before in_game is found. Nothing after the : means keep rest of the list
                     if in_game_text_found_list != []:   # If at least 1 string 1 found
-                        if "//CUSTOM_TYPES_H\n" not in in_game_text_found_list[0]:   # Ensure this isn't the define for in_game inside of CUSTOM_TYPES
+                        if "//CUSTOM_TYPES_H" not in in_game_text_found_list[0]:   # Ensure this isn't the define for in_game inside of CUSTOM_TYPES
                             for symbol in in_game_text_found_list:
                                 if symbol.split(" ")[0] == "signed" or symbol.split(" ")[0] == "unsigned": #For if signedness specifier, skip one more white space
                                     symbol_name = symbol.split()[2].split("(")[0].split(";")[0]
                                 else:
-                                    symbol_name = symbol.split()[1].split("(")[0].split(";")[0]          #No signedness specifier
+                                    symbol_name = symbol.split()[1].split("(")[0].split(";")[0]  #No signedness specifier
 
                                 symbol_address = symbol.split("//")[1].split()[0]    # Getting rid of //before address and whitespace or \n after address
                                 
@@ -223,19 +223,21 @@ def ParseCSourceForSymbols():
     except Exception as e:
         print(f"ParseCSource: {e}")
         
-#! Compile/Inject Functionality
+#! Compile Function, which calls out to relavent GCC version
 def Compile():  
-    #print("Moving to Folder: ", g_project_folder)
+    
     if g_current_project_ram_watch_full_dir != "" and (g_current_project_selected_platform == "PS1") or g_current_project_selected_platform == "Gamecube":
         print("Parsing Bizhawk Ramwatch")
         ParseBizhawkRamdump()
     if g_current_project_ram_watch_full_dir != "" and g_current_project_selected_platform == "PS2":
         print("Parsing Cheat Engine Table")
-        ParseCheatEngineFile()
-        
+        ParseCheatEngineFile()()
+    
+    #print("Moving to Folder: ", g_project_folder)
     main_dir = os.getcwd()
     os.chdir(g_current_project_folder)
     
+    #Parse Ramdump if it exists
     #Add symbols from source that were declared using in_game
     ParseCSourceForSymbols()
     
@@ -248,6 +250,7 @@ def Compile():
     gcc_output = subprocess.run(g_platform_gcc_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if gcc_output.stdout:
         print(gcc_output.stdout)
+        print(gcc_output.stderr)
     if gcc_output.returncode == 1:
         print(colored("Compilation Failed!", "red"))
         print(gcc_output.stderr)
@@ -261,7 +264,12 @@ def Compile():
     print(colored("Starting Link:", "green"))
     link_string = g_platform_linker_strings[g_current_project_selected_platform]
     for file in g_obj_files.split():
-        shutil.move(file, os.getcwd() + "\.config\output\object_files\\" + file) # Move .o files from main dir to output\object_files
+        try:
+            shutil.move(file, os.getcwd() + "\.config\output\object_files\\" + file) # Move .o files from main dir to output\object_files
+        except Exception as e:
+            print(colored(f"{e}", "red"))
+            os.chdir(main_dir)
+            return
     
     project_dir = os.getcwd()
     os.chdir(project_dir + "\.config\output\object_files")
@@ -278,7 +286,10 @@ def Compile():
             section_name_index = linker_output.stderr.index(": region")
             end_index = linker_output.stderr.index("collect2.exe")
             section_name = linker_output.stderr[(section_name_index + 2):(end_index-1)]
-            messagebox.showerror("Linking Error", f"Linker failed with {section_name}.")
+            section_overflow_index = section_name.find("overflowed by ")
+            section_size_hex = section_name[section_overflow_index:].split(" ")[2]
+            section_size_hex_int = hex(int(section_size_hex))
+            messagebox.showerror("Linking Error", f"Linker failed with {section_name.split('overflowed')[0]} overflowed by {section_size_hex_int} bytes.")
         os.chdir(main_dir)
         return False
     
@@ -304,6 +315,7 @@ def Compile():
     global g_isProjectCompiled
     g_isProjectCompiled = True
     PrepareBuildInjectOptions()
+    
     return True
 
 # Change button text for emulator
@@ -858,21 +870,11 @@ def update_linker_script():
         with open(f"{g_current_project_folder}/.config/linker_script.ld", "w+") as script_file:
             script_file.write("INPUT(../../../.config/symbols/symbols.txt)\nINPUT(../../../.config/symbols/function_symbols.txt)\nINPUT(../../../.config/symbols/auto_symbols.txt)\n\nMEMORY\n{\n    /* RAM locations where we'll inject the code for our replacement functions */\n")
             for cave in g_code_caves:
-                script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = 0xFFFF\n")
+                script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = {cave[5]}\n")
             for hook in g_hooks:
-                script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = 0xFFFF\n")
+                script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = {cave[5]}\n")
                 
             script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
-            #Code Caves
-            for cave in g_code_caves:
-                script_file.write("." + cave[0])
-                script_file.write(" : \n    {\n")
-                for c_file in cave[3]:
-                    o_file = c_file.split(".")[0] + ".o"
-                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
-                    #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
-                script_file.write("    } > ")
-                script_file.write(f"{cave[0]}\n\n    ")
             #Hooks
             for hook in g_hooks:
                 script_file.write("/* Custom section for our hook code */\n    ")
@@ -883,11 +885,23 @@ def update_linker_script():
                     script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
                 script_file.write("    } > ")
                 script_file.write(f"{hook[0]}\n\n    ")
+            #Code Caves
+            for cave in g_code_caves:
+                script_file.write("." + cave[0])
+                script_file.write(" : \n    {\n")
+                for c_file in cave[3]:
+                    o_file = c_file.split(".")[0] + ".o"
+                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
+                    #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
+                script_file.write("        *(.text)\n")
+                script_file.write("        *(.branch_lt)\n")
+                script_file.write("    } > ")
+                script_file.write(f"{cave[0]}\n\n    ")
                 
             script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
     except Exception as e:
         print("No project currently loaded")
-        #print(e)
+        print(e)
         
 def update_codecaves_hooks_config_file():
     with open(f"{g_current_project_folder}/.config/codecaves.txt", "w") as codecaves_file:
@@ -908,8 +922,7 @@ def update_codecaves_hooks_config_file():
     
 def check_has_picked_exe():
     pass
-
-
+        
 def project_switched():
     global g_shouldShowTabs
     global g_current_project_game_exe_name
@@ -1126,9 +1139,9 @@ def on_platform_select(event=0):
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS1" or key == "PS2" or key == "N64":
-            g_platform_gcc_strings[key] += "-c -G0 -Os -I include"
+            g_platform_gcc_strings[key] += "-c -G0 -O2 -I include"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += "-c -Os -I include"
+            g_platform_gcc_strings[key] += "-c -O2 -I include"
 
 def on_feature_mode_selected(event=0):
     pass
@@ -1177,7 +1190,7 @@ if sys.argv:
     did_compile = Compile()
 if not did_compile:
     print("Can't inject, failed to compile")
-    exit()
+    sys.exit()
 if command == "Build_ISO":
     print(colored("Starting Build...", "magenta"))
     InjectIntoExeAndRebuildGame()

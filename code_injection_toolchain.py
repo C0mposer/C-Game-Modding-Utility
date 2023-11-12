@@ -14,8 +14,10 @@ from termcolor import colored
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
-import emu_inject
 
+#other files
+import emu_inject
+from ramwatch import *
 
 PROJECTS_FOLDER_PATH = 'projects/'  # Replace with the path to your folder
 
@@ -27,7 +29,6 @@ g_patches = []
 
 g_shouldShowTabs = False
 g_shouldShowPlatforms = False
-g_isProjectCompiled = False
 
 g_current_project_folder = ""
 g_current_project_name = ""
@@ -42,7 +43,7 @@ g_current_project_ram_watch_full_dir = ""
 g_current_project_ram_watch_name = ""
 
 g_current_project_selected_platform = ""
-g_current_project_feature_mode = ""
+g_current_project_feature_mode = "Normal"
 
 g_current_project_disk_offset = ""
 
@@ -61,9 +62,10 @@ g_asm_files = ""
 g_obj_files = ""
 g_patch_files = []
 
-g_current_project_version = ""
-
 g_selected_emu = None
+
+#g_current_project_version = ""
+
 
 def MoveToRecycleBin(path):
     try:
@@ -109,6 +111,7 @@ def RequestGameBoxartImage():
             f = open(g_current_project_folder + '/.config/game.jpg', 'wb') 
             f.write(image_data) 
             f.close() 
+            print(colored("Imported game cover art\n", "cyan"))
     except Exception as e:
         print(e)
 
@@ -758,15 +761,15 @@ def Compile():
         print(colored(f"Extracting {hook[0]} compiled asm hook sections from elf to binary file...", "green"))
     
         
-    print(colored("Compiling, Linking, & Extracting Finished!\n", "yellow"))
+    print(colored("Compiling, Linking, & Extracting Finished!", "yellow"))
     os.chdir(main_dir)
     
     #pcsx2_inject.InjectIntoPCSX2(g_project_folder, code_caves, hooks)
     #InjectIntoExe()
     #BuildPS2ISO()
-    global g_isProjectCompiled
-    g_isProjectCompiled = True
     PrepareBuildInjectGUIOptions()
+    
+    check_memory_map_sizes()
     
     return True
 
@@ -830,19 +833,25 @@ def PrepareBuildInjectGUIOptions():
     small_font_style.configure("Small.TButton", font=("Segoe UI", 14))
         
     # Build button    
-    #PS1/PS2/GC/Wii    
-    if g_current_project_game_disk != "":
+    #PS1/PS2 
+    if g_current_project_game_disk != "" and ((g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "PS2")):
         build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
         build_iso_button.pack(pady=5)    
-    #N64 & GC/WII Option for just exe
-    if g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64" or g_current_project_selected_platform == "Wii" or g_current_project_selected_platform == "Gamecube"):
+    #N64 & GC/WII Option for iso and just exe
+    elif g_current_project_game_disk != "" and ((g_current_project_selected_platform == "Gamecube" or g_current_project_selected_platform == "Wii")):
+        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
+        build_iso_button.pack(pady=5)
+        if g_current_project_feature_mode == "Advanced":
+            build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
+            build_exe_button.pack()    
+    elif g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64"):
         build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
         build_exe_button.pack()  
     #No ISO, choose one first
     else:
         build_iso_button = ttk.Button(compile_tab, text=f"Choose ISO/BIN/ROM to Build", command=FirstSelectISOThenBuild, style="Medium.TButton") 
         build_iso_button.pack()
-    
+     
     #Update compile tab text/buttons
     if g_current_project_game_exe and g_current_project_game_exe_full_dir:
         exe_name = g_current_project_game_exe.split('/')[-1].split("\n")[0]
@@ -1279,15 +1288,20 @@ def PatchPS1ISO():
     
     os.chdir(old_dir)
 
-def ExtractPS1Game():
-    file_path_and_name = open_ISO_file()
+#function to extract ps1 game either through gui, or through auto-find-exe
+def ExtractPS1Game(user_choose=True, file_path=None):
+    if user_choose == True:
+        file_path_and_name = open_ISO_file()
+    else:
+        file_path_and_name = file_path
+        
     if not file_path_and_name:
         return  
     output_path = open_output_folder().replace("/", "\\")  
     if not file_path_and_name or not output_path:
         print("Please choose ISO and output folder!")
         messagebox.showerror("Error", "Please choose output folder!")
-        return
+        return 
         
     if file_path_and_name == None:
         print("Improper ISO")
@@ -1311,16 +1325,25 @@ def ExtractPS1Game():
     
     os.chdir(old_dir)
     
-    print(command_line_string + "\nExtracting Done!")
-    open_in_explorer = messagebox.askyesno("Completed Extracting", "Successfully extracted PS1 BIN! Would you like to open the directory in file explorer?")
-    if open_in_explorer:
-        #Open in file expolorer
-        print("Opening Dir: " + output_path + "\nFinished!")
-        subprocess.Popen(f"explorer \"{output_path}\"", shell=True)
-        return "ISO Extract Complete"
+    if user_choose == True:
+        print(command_line_string + "\nExtracting Done!")
+        open_in_explorer = messagebox.askyesno("Completed Extracting", "Successfully extracted PS1 BIN! Would you like to open the directory in file explorer?")
+        if open_in_explorer:
+            #Open in file expolorer
+            print("Opening Dir: " + output_path + "\nFinished!")
+            subprocess.Popen(f"explorer \"{output_path}\"", shell=True)
+            return "ISO Extract Complete"
+    else:
+        print(command_line_string + "\nExtracting Done!")
+        return output_path
 
-def ExtractPS2Game():
-    file_path_and_name = open_ISO_file()
+#function to extract ps2 game either through gui, or through auto-find-exe
+def ExtractPS2Game(user_choose=True, file_path=None):
+    if user_choose == True:
+        file_path_and_name = open_ISO_file()
+    else:
+        file_path_and_name = file_path
+        
     if not file_path_and_name:
         return  
     output_path = open_output_folder().replace("/", "\\")
@@ -1352,16 +1375,24 @@ def ExtractPS2Game():
     
     os.chdir(old_dir)
     
-    print(command_line_string + "\nExtracting Done!")
-    open_in_explorer = messagebox.askyesno("Completed Extracting", "Successfully extracted PS2 ISO! Would you like to open the directory in file explorer?")
-    if open_in_explorer:
-        #Open in file expolorer
-        print("Opening Dir: " + output_path + "\nFinished!")
-        subprocess.Popen(f"explorer \"{output_path}\"", shell=True)
-        return "ISO Extract Complete"
+    if user_choose:
+        print(command_line_string + "\nExtracting Done!")
+        open_in_explorer = messagebox.askyesno("Completed Extracting", "Successfully extracted PS2 ISO! Would you like to open the directory in file explorer?")
+        if open_in_explorer:
+            #Open in file expolorer
+            print("Opening Dir: " + output_path + "\nFinished!")
+            subprocess.Popen(f"explorer \"{output_path}\"", shell=True)
+            return "ISO Extract Complete"
+    else:
+        print(command_line_string + "\nExtracting Done!")
+        return output_path
 
-def ExtractGamecubeGame():
-    file_path_and_name = open_ISO_file()
+def ExtractGamecubeGame(user_choose=True, file_path=None):
+    if user_choose == True:
+        file_path_and_name = open_ISO_file()
+    else:
+        file_path_and_name = file_path
+        
     if not file_path_and_name:
         return  
     output_path =  open_output_folder()
@@ -1384,6 +1415,7 @@ def ExtractGamecubeGame():
     else:
         command_line_string = f"prereq\\gcr\\gcr.exe \"{file_path_and_name}\" root e \"{output_path}\""
 
+    
     print(command_line_string + "\nExtracting...") 
     did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
     if did_iso_extract_fail == 1:
@@ -1395,13 +1427,60 @@ def ExtractGamecubeGame():
           
     os.chdir(old_dir)
     
-    print(command_line_string + "\nExtracting Done!")
-    open_in_explorer = messagebox.askyesno("Completed Extracting", "Successfully extracted Gamecube ISO! Would you like to open the directory in file explorer?")
-    if open_in_explorer:
-        #Open in file expolorer
-        print("Opening Dir: " + output_path_modified + "\nFinished!")
-        subprocess.Popen(f"explorer \"{output_path_modified}\"", shell=True)
-        return "ISO Extract Complete"
+    if user_choose:
+        print(command_line_string + "\nExtracting Done!")
+        open_in_explorer = messagebox.askyesno("Completed Extracting", "Successfully extracted Gamecube ISO! Would you like to open the directory in file explorer?")
+        if open_in_explorer:
+            #Open in file expolorer
+            print("Opening Dir: " + output_path_modified + "\nFinished!")
+            subprocess.Popen(f"explorer \"{output_path_modified}\"", shell=True)
+            return "ISO Extract Complete"
+    else:
+        print(command_line_string + "\nExtracting Done!")
+        return output_path
+
+def find_ps_exe_file(directory):
+    for filename in os.listdir(directory):
+        if filename.startswith("SCUS"):
+            return directory + "/" + filename
+        if filename.startswith("SCES"):
+            return directory + "/" + filename
+        if filename.startswith("SLUS"):
+            return directory + "/" + filename
+        if filename.startswith("SLES"):
+            return directory + "/" + filename
+    return None
+
+def find_gamecube_exe_file(directory):
+    for filename in os.listdir(directory + "/root\&&systemdata/"):
+        if filename.startswith("Start"):
+            return directory + "/root/&&systemdata/" + filename
+    return None
+
+def auto_find_exe(file_path):
+    project_platform = g_current_project_selected_platform
+    
+    if project_platform == "PS1":
+        output_path = ExtractPS1Game(user_choose=False, file_path=file_path)
+        print(output_path)
+        ps1_exe_file = find_ps_exe_file(output_path)
+        if ps1_exe_file:
+            open_ISO_file(file_path, False)
+            return ps1_exe_file
+    elif project_platform == "PS2":
+        output_path = ExtractPS2Game(user_choose=False, file_path=file_path)
+        print(output_path)
+        ps2_exe_file = find_ps_exe_file(output_path)
+        if ps2_exe_file:
+            open_ISO_file(file_path, False)
+            return ps2_exe_file
+    elif project_platform == "Gamecube":
+        output_path = ExtractGamecubeGame(user_choose=False, file_path=file_path)
+        print(output_path)
+        gamecube_exe_file = find_gamecube_exe_file(output_path)
+        if gamecube_exe_file:
+            open_ISO_file(file_path, False)
+            return gamecube_exe_file
 
 def open_exe_file():
     global g_current_project_game_exe_name
@@ -1411,6 +1490,24 @@ def open_exe_file():
     global g_current_project_game_disk_full_dir
     
     file_path = filedialog.askopenfilename(title="Choose game executable (SCUS, SLUS, etc)")
+    
+    if file_path.split(".")[-1] == "iso" or file_path.split(".")[-1] == "bin" or file_path.split(".")[-1] == "ciso" or file_path.split(".")[-1] == "gcm":
+        if g_current_project_feature_mode == "Normal":
+            should_auto_find_exe = messagebox.askokcancel("Image chosen", f"You have chosen {file_path.split('/')[-1]}. Please choose a folder to extract this image to, And this utility will try to find the main executable file.")
+        if g_current_project_feature_mode == "Advanced":
+            should_auto_find_exe = messagebox.askyesno("Image chosen", "You have chosen an ISO/BIN file instead of the main executable. Would you to automatically extract this image to a folder, and try to find main executable?")
+        if should_auto_find_exe == True:
+            if g_current_project_selected_platform == "Gamecube":
+                file_path = auto_find_exe(file_path)
+            else:
+                file_path = auto_find_exe(file_path)
+            if file_path:
+                messagebox.showinfo("Success", f"Successfully found {file_path.split('/')[-1]} in ISO/BIN")
+            else:
+                messagebox.showerror("Error", "Could not automatically find executable in ISO/BIN")
+        else:
+            messagebox.showinfo("Info", "Please manually extract ISO/BIN, then select proper game exetuable file")
+            return
     if file_path:
         g_current_project_game_exe_full_dir = file_path              # Full Path
         g_current_project_game_exe_name = file_path.split("/")[-1]   # Spliting based on /, and getting last index with -1 to get only name of file
@@ -1448,12 +1545,16 @@ def open_exe_file():
     PrepareBuildInjectGUIOptions()
     project_switched()
 
-def open_ISO_file():
+def open_ISO_file(arg_file_path, user_choice=True):
     global g_current_project_game_disk
     global g_current_project_game_disk_full_dir
     
-    file_path = filedialog.askopenfilename(title="Choose ISO/BIN file")
-    if ".iso" in file_path.split("/")[-1].lower() or ".bin" in file_path.split("/")[-1].lower() or ".ciso" in file_path.split("/")[-1].lower():
+    if user_choice:
+        file_path = filedialog.askopenfilename(title="Choose ISO/BIN file")
+    else:
+        file_path = arg_file_path
+        
+    if ".iso" in file_path.split("/")[-1].lower() or ".bin" in file_path.split("/")[-1].lower() or ".ciso" in file_path.split("/")[-1].lower() or ".gcm" in file_path.split("/")[-1].lower():
         g_current_project_game_disk_full_dir = file_path                # Full Path
         g_current_project_game_disk = file_path.split("/")[-1]          # Spliting based on /, and getting last index with -1 to get only name of file
         
@@ -1480,7 +1581,7 @@ def save_to_config():
                     config_file.write(g_current_project_game_disk_full_dir + "\n")
                 if g_current_project_ram_watch_full_dir != "":
                     config_file.write(g_current_project_ram_watch_full_dir + "\n")
-                print("Project Config saved. Platform is: "  +  g_current_project_selected_platform)
+                print("Project Config saved.")
     #Probably means extracting with no projects selected           
     except FileNotFoundError:
         print("No current project, not saving!")       
@@ -1941,7 +2042,6 @@ def run_every_tab_switch(event=0):
         in_game_memory_entry.insert(0, g_code_caves[0][1])
         disk_exe_entry.insert(0, g_code_caves[0][2])
         c_files_entry.insert(0, ", ".join(g_code_caves[0][3]))
-        codecave_size_entry.insert(0, g_code_caves[0][5])
         try:
             global_offset_entry.config(state="active")
             global_offset_entry.delete(0, tk.END)
@@ -1951,7 +2051,7 @@ def run_every_tab_switch(event=0):
             pass
             #print("No offset to load, skipping")
         try:
-            global_offset_entry.insert(0, g_code_caves[0][5])
+            codecave_size_entry.insert(0, g_code_caves[0][5])
         except:
             pass
             #print("No size to load, skipping")
@@ -1992,6 +2092,27 @@ def run_every_tab_switch(event=0):
             pass
             #print("No offset to load, skipping")
                
+def check_memory_map_sizes():
+    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
+        memory_map_data = memory_map_file.read()
+
+        for cave in g_code_caves:
+            if "." + cave[0] in memory_map_data:
+                cave_section_index = memory_map_data.find("." + cave[0])
+                cave_section_text = memory_map_data[cave_section_index:].split("\n")[0]
+                cave_section_name = cave_section_text.split()[0].split(".")[1]
+                cave_section_current_size = cave_section_text.split()[2]
+                cave_section_address = hex(int(cave_section_text.split()[1], base=16))
+                
+                cave_section_current_size_int = int(cave_section_current_size, base=16)
+                if cave[5]:
+                    cave_section_full_size_int = int(cave[5], base=16)
+                    cave_size_percentage = cave_section_current_size_int / cave_section_full_size_int
+                    
+                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "blue") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes out of ", "blue") + colored(f"{cave[5]}", "yellow") + colored(f" bytes available. ", "blue") + colored(f"{cave_size_percentage:.0%} full.\n", "yellow"))
+                else:
+                   print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "blue") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes.\n", "blue"))
+                   
 def update_linker_script():
     global g_shouldShowTabs
     global g_current_project_game_exe_name
@@ -1999,42 +2120,53 @@ def update_linker_script():
     global g_current_project_game_exe
     global g_current_project_selected_platform
     
-    try:    
-        with open(f"{g_current_project_folder}/.config/linker_script.ld", "w+") as script_file:
-            script_file.write("INPUT(../../../.config/symbols/symbols.txt)\nINPUT(../../../.config/symbols/function_symbols.txt)\nINPUT(../../../.config/symbols/auto_symbols.txt)\n\nMEMORY\n{\n    /* RAM locations where we'll inject the code for our replacement functions */\n")
-            for cave in g_code_caves:
-                script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = {cave[5]}\n")
-            for hook in g_hooks:
-                script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = {cave[5]}\n")
-                
-            script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
-            #Hooks
-            for hook in g_hooks:
-                script_file.write("/* Custom section for our hook code */\n    ")
-                script_file.write("." + hook[0])
-                script_file.write(" : \n    {\n")
-                for asm_file in hook[3]:
-                    o_file = asm_file.split(".")[0] + ".o"
-                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
-                script_file.write("    } > ")
-                script_file.write(f"{hook[0]}\n\n    ")
-            #Code Caves
-            for cave in g_code_caves:
-                script_file.write("." + cave[0])
-                script_file.write(" : \n    {\n")
-                for c_file in cave[3]:
-                    o_file = c_file.split(".")[0] + ".o"
-                    script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
-                    #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
-                script_file.write("        *(.text)\n")
-                script_file.write("        *(.branch_lt)\n")
-                script_file.write("    } > ")
-                script_file.write(f"{cave[0]}\n\n    ")
-                
-            script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
-    except Exception as e:
-        print("No project currently loaded")
-        print(e)
+    
+    if g_current_project_name != "":  
+        try:    
+            with open(f"{g_current_project_folder}/.config/linker_script.ld", "w+") as script_file:
+                script_file.write("INPUT(../../../.config/symbols/symbols.txt)\nINPUT(../../../.config/symbols/function_symbols.txt)\nINPUT(../../../.config/symbols/auto_symbols.txt)\n\nMEMORY\n{\n    /* RAM locations where we'll inject the code for our replacement functions */\n")
+                for cave in g_code_caves:
+                    script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = {cave[5] if cave[5] != '' else '0x100000'}\n") # If a size exists in the code cave, then it places it, If not, it defaults to 0x100000
+                for hook in g_hooks:
+                    script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = 0x100000")
+                    
+                script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
+                #Hooks
+                for hook in g_hooks:
+                    script_file.write("/* Custom section for our hook code */\n    ")
+                    script_file.write("." + hook[0])
+                    script_file.write(" : \n    {\n")
+                    for asm_file in hook[3]:
+                        o_file = asm_file.split(".")[0] + ".o"
+                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
+                    script_file.write("    } > ")
+                    script_file.write(f"{hook[0]}\n\n    ")
+                    
+                amount_of_caves = 0    
+                for cave in g_code_caves:
+                    amount_of_caves += 1
+                #Code Caves
+                for i, cave in enumerate(g_code_caves):
+                    script_file.write("." + cave[0])
+                    script_file.write(" : \n    {\n")
+                    for c_file in cave[3]:
+                        o_file = c_file.split(".")[0] + ".o"
+                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
+                        #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
+                        
+                    #If last cave, place remaining sections
+                    if i == amount_of_caves:
+                        script_file.write("        *(.text)\n")
+                        script_file.write("        *(.branch_lt)\n")
+                        
+                    script_file.write("    } > ")
+                    script_file.write(f"{cave[0]}\n\n    ")
+                    
+                script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
+        except UnboundLocalError as e:
+            print("update_linker_script() could not find codecave size. Ensure you have put a size for your codecave.")
+        except Exception as e:
+            print("update_linker_script() error", e)
  
 def on_optimization_level_select(event=0):
     global g_optimization_level
@@ -2308,8 +2440,6 @@ def create_project():
     
     project_switched()
     print("Currently Selected Project is now: "+ g_current_project_name)
-
-    g_current_project_feature_mode = "Normal"
     
     # Create default project files and directories
     os.makedirs(f"{g_current_project_folder}/.config")
@@ -2372,7 +2502,7 @@ def create_project():
 
 
     #Insert Default Version
-    project_versions_listbox.insert(tk.END, "MainVersion")
+    #project_versions_listbox.insert(tk.END, "MainVersion")
 
     update_codecaves_hooks_patches_config_file()
     # Show a "Project added" dialog
@@ -2521,8 +2651,13 @@ def remove_project():
     g_hooks = []
     g_patches = []
         
-    clear_project_settings()
-    project_switched()
+    if selected_project_name == g_current_project_name:
+        clear_project_settings()
+        #project_switched()
+        tab_control.forget(codecave_tab)
+        tab_control.forget(hooks_tab)
+        tab_control.forget(compile_tab)
+    
    
 def add_codecave():
     global g_current_project_folder
@@ -2551,7 +2686,7 @@ def add_codecave():
         print('No Comma found in C File prompt')
         c_files = c_files_entry.get().split()
 
-    if not cave_name or not in_game_memory or not disk_memory or not c_files:
+    if not cave_name or not in_game_memory or not disk_memory or not c_files or not cave_size:
         messagebox.showerror("Error", "Please fill in all fields.")
         return
     
@@ -2598,26 +2733,29 @@ def remove_codecave(event=0):
     update_codecaves_hooks_patches_config_file()
         
 def select_codecave(event):
-    selected_codecave_index = codecaves_listbox.curselection()
-    if selected_codecave_index:
-        selected_codecave = g_code_caves[selected_codecave_index[0]]
-        codecave_name_entry.delete(0, tk.END)
-        in_game_memory_entry.delete(0, tk.END)
-        disk_exe_entry.delete(0, tk.END)
-        c_files_entry.delete(0, tk.END)
-        codecave_size_entry.delete(0, tk.END)
+    try:
+        selected_codecave_index = codecaves_listbox.curselection()
+        if selected_codecave_index:
+            selected_codecave = g_code_caves[selected_codecave_index[0]]
+            codecave_name_entry.delete(0, tk.END)
+            in_game_memory_entry.delete(0, tk.END)
+            disk_exe_entry.delete(0, tk.END)
+            c_files_entry.delete(0, tk.END)
+            codecave_size_entry.delete(0, tk.END)
 
-        codecave_name_entry.insert(0, selected_codecave[0])
-        in_game_memory_entry.insert(0, selected_codecave[1])
-        disk_exe_entry.insert(0, selected_codecave[2])
-        c_files_entry.insert(0, ", ".join(selected_codecave[3]))
-        global_offset_entry.config(state="active")
-        global_offset_entry.delete(0, tk.END)
-        global_offset_entry.insert(0, selected_codecave[4])
-        global_offset_entry.config(state="disabled")
-        codecave_size_entry.insert(0, selected_codecave[5])
-        
-        update_linker_script()
+            codecave_name_entry.insert(0, selected_codecave[0])
+            in_game_memory_entry.insert(0, selected_codecave[1])
+            disk_exe_entry.insert(0, selected_codecave[2])
+            c_files_entry.insert(0, ", ".join(selected_codecave[3]))
+            global_offset_entry.config(state="active")
+            global_offset_entry.delete(0, tk.END)
+            global_offset_entry.insert(0, selected_codecave[4])
+            global_offset_entry.config(state="disabled")
+            codecave_size_entry.insert(0, selected_codecave[5])
+            
+            update_linker_script()
+    except Exception as e:
+        print("select_codecave() error: ", e)
 
 def add_hook():
     global g_current_project_folder
@@ -2878,6 +3016,7 @@ def on_platform_select(event=0):
         build_iso_button.pack_forget()
     if change_exe_button:
         change_exe_button.place_forget()
+        change_exe_button.pack_forget()
     if open_exe_button:
         open_exe_button.place_forget()
     if create_ps2_code_button:
@@ -2895,14 +3034,23 @@ def on_platform_select(event=0):
         g_current_project_selected_platform = platform_combobox.get()
     #Update Main Buttons
     
-    if g_current_project_selected_platform == "PS1":
+    if g_current_project_selected_platform == "PS1" and g_current_project_feature_mode == "Advanced":
         open_exe_button = tk.Button(main_tab, text="Choose PS1 Executable (SCUS, etc)", command=open_exe_file)
         open_exe_button.place(x=300, y=185)
-    elif g_current_project_selected_platform == "PS2":
+    elif g_current_project_selected_platform == "PS1" and g_current_project_feature_mode == "Normal":
+        open_exe_button = tk.Button(main_tab, text="Choose PS1 .bin file", command=open_exe_file)
+        open_exe_button.place(x=300, y=185)
+    elif g_current_project_selected_platform == "PS2" and g_current_project_feature_mode == "Advanced":
         open_exe_button = tk.Button(main_tab, text="Choose PS2 Executable (SLUS, etc)", command=open_exe_file)
         open_exe_button.place(x=300, y=185)
-    elif g_current_project_selected_platform == "Gamecube":
+    elif g_current_project_selected_platform == "PS2" and g_current_project_feature_mode == "Normal":
+        open_exe_button = tk.Button(main_tab, text="Choose PS2 .iso file", command=open_exe_file)
+        open_exe_button.place(x=300, y=185)
+    elif g_current_project_selected_platform == "Gamecube" and g_current_project_feature_mode == "Advanced":
         open_exe_button = tk.Button(main_tab, text="Choose Gamecube Executable (Start.dol)", command=open_exe_file)
+        open_exe_button.place(x=300, y=185)
+    elif g_current_project_selected_platform == "Gamecube" and g_current_project_feature_mode == "Normal":
+        open_exe_button = tk.Button(main_tab, text="Choose Gamecube .iso .ciso or .gcm file", command=open_exe_file)
         open_exe_button.place(x=300, y=185)
     elif g_current_project_selected_platform == "Wii":
         open_exe_button = tk.Button(main_tab, text="Choose Wii Executable (main.dol)", command=open_exe_file)
@@ -2927,7 +3075,7 @@ def on_platform_select(event=0):
                 if g_current_project_ram_watch_full_dir != "":
                    config_file.write(g_current_project_ram_watch_full_dir + "\n")
                    
-                print("Project Config saved. Platform is: "  +  g_current_project_selected_platform + "\n")
+                print("Project Config saved.\n")
         except:
             print("No config file, new project?")
          
@@ -2977,6 +3125,8 @@ def on_platform_select(event=0):
     #linker_label.config(text=f"Linker string for {g_current_project_selected_platform}:\n{g_platform_linker_strings[g_current_project_selected_platform]}\n", font=("GENIUNE", 8))
 
 def on_feature_mode_selected(event=0):
+    global g_current_project_feature_mode
+    
     
     selected = current_project_feature_mode.get()
     g_current_project_feature_mode = selected
@@ -2986,7 +3136,14 @@ def on_feature_mode_selected(event=0):
         tab_control.add(patches_tab, text='Patches')
     elif g_current_project_feature_mode == "Normal" and g_current_project_name != "":
         if tab_control:
-            tab_control.hide(patches_tab)
+            try:
+                tab_control.hide(patches_tab)
+            except:
+                pass
+    
+    #If project is loaded when user selected mode, then refresh buttons        
+    if g_current_project_name != "":
+        on_platform_select()
 
 def replace_codecave_offset_text(event=0):
     global g_current_project_disk_offset
@@ -3056,6 +3213,9 @@ def toggle_offset_text_state():
         global_offset_entry_hooks.config(state="active")
         global_offset_entry_patches.config(state="active")
         load_disk_offset_hooks()
+        replace_codecave_offset_text()
+        replace_hook_offset_text()
+        replace_patches_offset_text()
         #global_offset_update.config(state="active")
         #disk_exe_entry.delete(0, tk.END)
         #disk_exe_entry_hooks.delete(0, tk.END)
@@ -3082,42 +3242,50 @@ def validate_hex_prefix(P):
     return True   
         
 def ensure_hex_entries(event=0):
-    
-    if len(in_game_memory_entry.get()) >= 2:
-        if in_game_memory_entry.get()[1].lower() != "x":
-            in_game_memory_entry.insert(0, "0x")
-            
-    if len(disk_exe_entry.get()) >= 2:
-        if disk_exe_entry.get()[1].lower() != "x":
-            disk_exe_entry.insert(0, "0x")
-            
-    if len(global_offset_entry.get()) >= 2:
-        if global_offset_entry.get()[1].lower() != "x":
-            global_offset_entry.insert(0, "0x")
+    try:
+        if len(in_game_memory_entry.get()) >= 2:
+            if in_game_memory_entry.get()[1].lower() != "x" and in_game_memory_entry.get()[2].lower() != "x":
+                in_game_memory_entry.insert(0, "0x")
+                
+        if len(disk_exe_entry.get()) >= 2:
+            if disk_exe_entry.get()[1].lower() != "x" and disk_exe_entry.get()[2].lower() != "x":
+                disk_exe_entry.insert(0, "0x")
+                
+        if len(global_offset_entry.get()) >= 2:
+            if global_offset_entry.get()[1].lower() != "x" and global_offset_entry.get()[2].lower() != "x":
+                global_offset_entry.insert(0, "0x")
 
-    if len(in_game_memory_entry_hooks.get()) >= 2:
-        if in_game_memory_entry_hooks.get()[1].lower() != "x":
-            in_game_memory_entry_hooks.insert(0, "0x")
-    
-    if len(disk_exe_entry_hooks.get()) >= 2:
-        if disk_exe_entry_hooks.get()[1].lower() != "x":
-            disk_exe_entry_hooks.insert(0, "0x")
-            
-    if len(global_offset_entry_hooks.get()) >= 2:
-        if global_offset_entry_hooks.get()[1].lower() != "x":
-            global_offset_entry_hooks.insert(0, "0x")
-            
-    if len(in_game_memory_entry_patches.get()) >= 2:
-        if in_game_memory_entry_patches.get()[1].lower() != "x":
-            in_game_memory_entry_patches.insert(0, "0x")
-    
-    if len(disk_exe_entry_patches.get()) >= 2:
-        if disk_exe_entry_patches.get()[1].lower() != "x":
-            disk_exe_entry_patches.insert(0, "0x")
-            
-    if len(global_offset_entry_patches.get()) >= 2:
-        if global_offset_entry_patches.get()[1].lower() != "x":
-            global_offset_entry_patches.insert(0, "0x")
+        if len(in_game_memory_entry_hooks.get()) >= 2:
+            if in_game_memory_entry_hooks.get()[1].lower() != "x" and in_game_memory_entry_hooks.get()[2].lower() != "x":
+                in_game_memory_entry_hooks.insert(0, "0x")
+        
+        if len(disk_exe_entry_hooks.get()) >= 2:
+            if disk_exe_entry_hooks.get()[1].lower() != "x" and disk_exe_entry_hooks.get()[2].lower() != "x":
+                disk_exe_entry_hooks.insert(0, "0x")
+                
+        if len(global_offset_entry_hooks.get()) >= 2:
+            if global_offset_entry_hooks.get()[1].lower() != "x" and global_offset_entry_hooks.get()[2].lower() != "x":
+                global_offset_entry_hooks.insert(0, "0x")
+                
+        if len(in_game_memory_entry_patches.get()) >= 2:
+            if in_game_memory_entry_patches.get()[1].lower() != "x" and in_game_memory_entry_patches.get()[2].lower() != "x":
+                in_game_memory_entry_patches.insert(0, "0x")
+        
+        if len(disk_exe_entry_patches.get()) >= 2:
+            if disk_exe_entry_patches.get()[1].lower() != "x" and disk_exe_entry_patches.get()[2].lower() != "x":
+                disk_exe_entry_patches.insert(0, "0x")
+                
+        if len(global_offset_entry_patches.get()) >= 2:
+            if global_offset_entry_patches.get()[1].lower() != "x" and global_offset_entry_patches.get()[2].lower() != "x":
+                global_offset_entry_patches.insert(0, "0x")
+                
+        if len(codecave_size_entry.get()) >= 2:
+            if codecave_size_entry.get()[1].lower() != "x" and codecave_size_entry.get()[2].lower() != "x":
+                codecave_size_entry.insert(0, "0x")
+    except IndexError as e:
+        pass
+    except Exception as e:
+        print(e)
 
 def load_disk_offset_codecaves(event=0):
     selected_cave_index = codecaves_listbox.curselection()
@@ -3131,10 +3299,20 @@ def load_disk_offset_hooks(event=0):
     selected_hook_index = hooks_listbox.curselection()
     if selected_hook_index:
         selected_hook = g_hooks[selected_hook_index[0]]
-        global_offset_entry.delete(0, tk.END)
-        global_offset_entry.insert(0, selected_hook[4])
+        global_offset_entry_hooks.delete(0, tk.END)
+        global_offset_entry_hooks.insert(0, selected_hook[4])
+        update_codecaves_hooks_patches_config_file()
+        
+def load_disk_offset_patches(event=0):
+    selected_patch_index = patches_listbox.curselection()
+    if selected_patch_index:
+        selected_hook = g_hooks[selected_patch_index[0]]
+        global_offset_entry_patches.delete(0, tk.END)
+        global_offset_entry_patches.insert(0, selected_hook[4])
         update_codecaves_hooks_patches_config_file()
 
+
+#Themes
 # def change_theme_forest_dark(event=0):
 #     ttk.Style().theme_use('forest-dark')
 # def change_theme_azure_dark(event=0):
@@ -3224,6 +3402,7 @@ project_folder_names = [folder for folder in os.listdir(PROJECTS_FOLDER_PATH) if
 for project in project_folder_names:
     project_listbox.insert(0, project)
     print("Projects Loaded: " + project)
+print()
     
 # Button to remove selected project
 remove_project_button = tk.Button(main_tab, text='Remove Project', command=remove_project_confirm)
@@ -3439,5 +3618,6 @@ cheat_engine_ramwatch_checkbox_state = tk.IntVar()
 cheat_engine_ramwatch_checkbox = None
 game_cover_image = None
 game_cover_image_label = None
+
 
 root.mainloop()
