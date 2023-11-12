@@ -1,7 +1,7 @@
 # C/C++ Game Modding Utility
 
 **This utility aims to make writing mods/hacks for games in C/C++ easier.**  
-It streamlines the process of compiling C/C++ with the intention of being injecting into a game, and interacting with its symbols.
+It streamlines the process of compiling C/C++ with the intention of being injected into a game, and interacting with its symbols.
 
 #### This utility currently supports:
 - Playstation 1 Games
