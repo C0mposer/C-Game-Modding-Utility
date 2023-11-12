@@ -1134,3 +1134,7 @@ projects/testt/src/test.c
 projects/AHTGCEBBE/patched_Start.dol
 projects/AHTGCEBBE/patched_Start.dol
 images/b replace ghidra.pdn
+projects/AHTGCEBBE/lol.dol
+projects/AHTGCEBBE/.config/output/final_bins/replacetest.bin
+projects/AHTGCEBBE/.config/output/object_files/replace_hook.o
+projects/AHTGCEBBE/asm/replace_hook.s

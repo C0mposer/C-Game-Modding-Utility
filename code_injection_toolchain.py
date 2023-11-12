@@ -17,7 +17,7 @@ from tkinter import filedialog
 
 #other files
 import emu_inject
-from ramwatch import *
+#from ramwatch import *
 
 PROJECTS_FOLDER_PATH = 'projects/'  # Replace with the path to your folder
 
@@ -368,7 +368,7 @@ def SetupNotepadProject():
         with open(g_current_project_folder + "/.compile_scripts/compile.bat", "w") as compile_file:
             compile_file.write(replaced_compile_ascii)
             
-        with open(g_current_project_folder + "/.compile_scripts/ISO_build.bat", "w") as build_file:
+        with open(g_current_project_folder + "/.compile_scripts/build_iso.bat", "w") as build_file:
             build_file.write(replaced_build_ascii)
             
 
