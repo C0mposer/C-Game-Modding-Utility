@@ -71,8 +71,8 @@ typedef struct Vec3
 in_game short coins; 	 	//0x8080DD84
 in_game short lives; 	 	//0x8080DD86
 in_game int jump_height;	//0x8080DD00
-in_game int current_items[20]; //0x8080DA00
-in_game Vec3 player_position; //0x8080DC00
+in_game int current_items[20];  //0x8080DA00
+in_game Vec3 player_position;   //0x8080DC00
 
 //In Game Functions
 in_game int ReturnCompletionPercentage(void); 	 	//0x800501C0
