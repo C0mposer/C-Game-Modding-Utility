@@ -62,11 +62,17 @@ When writing mods for a game, ultimately all we are doing is **changing values i
 Once you have found symbols you want to use in your mod, you can simply use the **in_game** keyword in order to declare them in your C/C++ code for use like so:
 
 ```c
+typedef struct Vec3
+{
+    int x, y, z;
+}Vec3;
+
 //In Game Variables
 in_game short coins; 	 	//0x8080DD84
 in_game short lives; 	 	//0x8080DD86
 in_game int jump_height;	//0x8080DD00
-in_game int player_position[3]; //0x8080DC00
+in_game int current_items[20]; //0x8080DA00
+in_game Vec3 player_position; //0x8080DC00
 
 //In Game Functions
 in_game int ReturnCompletionPercentage(void); 	 	//0x800501C0
