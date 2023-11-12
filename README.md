@@ -13,11 +13,11 @@ It streamlines the process of compiling C/C++ with the intention of being inject
 [Click here to see the Wiki](https://github.com/C0mposer/C-Game-Modding-Utility/wiki)
 
 ## Quick Start:
-***This quick start will get you up and running creating a mod that runs every frame along side a game***
+***This  quick start will get you up and running creating a mod that runs every frame along side a game***
 
 #### Creating a Project
 To get started, you'll need to create a project for your game mod.
-Once you have created a project choose your games platform, and ***main executable file***. 
+Once you have created a project choose your games platform, and ***ISO File***. The tool will ask you to extract the ISO to a folder of your choosing, and will attempt to automatically find the games ***main executable file***.
 ##### Main Executable File
 * For PS1/PS2 games, the executable should start with **SCUS**, **SCES**, 
 **SLUS**, **SLES**, etc
