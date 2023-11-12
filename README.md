@@ -84,7 +84,7 @@ in_game void DrawText(char* text_string, int x, int y); //0x80048250
 Once you declare the symbols as **in_game** variables/functions with their memory address in a **//** comment, you can use them in your code like any other variable/function:
 ```c
 //Mod Code
-void MainHook(void) 
+void CustomFunction(void) 
 {
     int percentage = ReturnCompletionPercentage();
     if (percentage >= 50)
