@@ -7,7 +7,7 @@ It streamlines the process of compiling C/C++ with the intention of being inject
 - Playstation 1 Games
 - Playstation 2 Games
 - Gamecube Games
-- Wii Games*
+- [Wii Games*](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Wii-Specific-Setup)
 - N64 Games* *(needs further testing)*
 
 [Click here to see the Wiki](https://github.com/C0mposer/C-Game-Modding-Utility/wiki)
