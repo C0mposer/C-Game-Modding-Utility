@@ -1171,3 +1171,6 @@ projects/AHTPS2_Test/include/custom_types.h
 projects/AHTPS2_Test/include/hashcodes.h
 projects/AHTPS2_Test/include/symbols.h
 projects/AHTPS2_Test/src/main.c
+projects/AHTPS2_Test/.vscode/c_cpp_properties.json
+projects/AHTPS2_Test/.vscode/settings.json
+projects/AHTPS2_Test/.vscode/tasks.json
