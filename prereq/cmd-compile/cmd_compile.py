@@ -58,6 +58,38 @@ g_patch_files = []
 
 g_selected_emu = None
 
+def check_memory_map_sizes():
+    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
+        memory_map_data = memory_map_file.read()
+
+        for cave in g_code_caves:
+            if "." + cave[0] in memory_map_data:
+                cave_section_index = memory_map_data.find("." + cave[0])
+                cave_section_text = memory_map_data[cave_section_index:].split("\n")[0]
+                cave_section_name = cave_section_text.split()[0].split(".")[1]
+                cave_section_current_size = ""
+                
+                #!Handle if size and address is on line below section name, or same line
+                #Checking to see if all data on 1 line
+                if len(cave_section_text.split()) >= 2:
+                    cave_section_current_size = cave_section_text.split()[2]
+                    cave_section_address = hex(int(cave_section_text.split()[1], base=16))
+                #If section name is long, it will put the data on the next line, so account for that
+                else:   
+                    cave_section_text_long = memory_map_data[cave_section_index:].split("\n")[1]
+                    cave_section_current_size = cave_section_text_long.split()[1]  
+                    cave_section_address = hex(int(cave_section_text_long.split()[0], base=16))
+                    
+                
+                cave_section_current_size_int = int(cave_section_current_size, base=16)
+                if cave[5]:
+                    cave_section_full_size_int = int(cave[5], base=16)
+                    cave_size_percentage = cave_section_current_size_int / cave_section_full_size_int
+                    
+                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes out of ", "cyan") + colored(f"{cave[5]}", "yellow") + colored(f" bytes available. ", "cyan") + colored(f"{cave_size_percentage:.0%} full.\n", "yellow"))
+                else:
+                   print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes.\n", "cyan"))
+
 def ParseBizhawkRamdump():
     file_path = g_current_project_ram_watch_full_dir
     if ".wch" in file_path.split("/")[-1].lower():
@@ -315,6 +347,8 @@ def Compile():
     global g_isProjectCompiled
     g_isProjectCompiled = True
     PrepareBuildInjectOptions()
+    
+    check_memory_map_sizes()
     
     return True
 

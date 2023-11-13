@@ -63,9 +63,9 @@ g_obj_files = ""
 g_patch_files = []
 
 g_selected_emu = None
-
-#g_current_project_version = ""
-
+community_caves = None
+com_cave_info = None
+add_com_cave_button = None
 
 def MoveToRecycleBin(path):
     try:
@@ -73,6 +73,127 @@ def MoveToRecycleBin(path):
         print(f'Successfully moved {path} to the recycle bin.')
     except Exception as e:
         print(f'Error moving {path} to the recycle bin: {e}')
+        
+##
+def RequestCommunityCodecaves():
+    global g_code_caves
+    global community_caves
+    
+    try:
+        if g_current_project_selected_platform == "Gamecube":
+            url = f'https://raw.githubusercontent.com/C0mposer/C-Game-Modding-Utility/main/community_data/{g_current_project_selected_platform}/{GetGamecubeGameID()}/code_caves/caves.txt' 
+        if g_current_project_selected_platform == "PS2":
+            url = f'https://raw.githubusercontent.com/C0mposer/C-Game-Modding-Utility/main/community_data/{g_current_project_selected_platform}/{GetPS2GameID()}/code_caves/caves.txt' 
+        print(url)
+        codecave_data = requests.get(url).content 
+        if codecave_data == b"404: Not Found":
+            print("No codecave data for current game!")   
+            messagebox.showwarning("None Available", "No community codecaves available")
+        else:  
+            codecave_data_no_header = str(codecave_data.decode())
+            ast_codecave_data = ast.literal_eval(codecave_data_no_header)
+            community_caves = ast_codecave_data
+            print(community_caves)
+            open_community_codecaves_window()
+            run_every_tab_switch()
+    except Exception as e:
+        print(e)
+
+def add_community_codecave():
+    global g_code_caves
+    global community_caves
+    
+    community_codecave_name = community_codecaves_listbox.get(community_codecaves_listbox.curselection())
+    for community_cave in community_caves:
+        if community_cave[0] == community_codecave_name:
+            
+            #Check for naming conflict
+            for cave in g_code_caves:
+                if cave[0] == community_cave[0]:
+                    messagebox.showerror("Error", "Codecave with same name already exists!")
+                    return
+            
+            cave_list = list(community_cave)
+            cave_list.pop(6) # output: [10, 30, 40, 50]
+            
+            cave_tuple = tuple(cave_list)
+            g_code_caves.append(cave_tuple)
+            codecaves_listbox.insert(tk.END, f"{community_cave[0]}")
+    update_codecaves_hooks_patches_config_file()
+    run_every_tab_switch()
+    
+def refresh_community_codecave_info(event=0):
+    global com_cave_info
+    global add_com_cave_button
+    
+    if com_cave_info:
+        com_cave_info.pack_forget()
+    if add_com_cave_button:
+        add_com_cave_button.pack_forget()
+    
+    try:
+        listbox_selection_index = community_codecaves_listbox.curselection()[0]
+    
+        com_cave_info.config(text=f"Size = {community_caves[listbox_selection_index][5]}    Memory Address = {community_caves[listbox_selection_index][1]}    Courtesy: {community_caves[listbox_selection_index][6]}")
+        com_cave_info.pack(pady=5)
+        add_com_cave_button.config(text="Add codecave", command=add_community_codecave)
+        add_com_cave_button.pack()
+    except Exception as e:
+        print(e)
+    
+def open_community_codecaves_window():
+    global community_caves
+    global community_codecaves_listbox
+    global com_cave_info
+    global add_com_cave_button
+    
+    community_codecaves_window = tk.Toplevel(root)
+    community_codecaves_window.title("Community Codecaves")
+    
+    community_codecaves_listbox = tk.Listbox(community_codecaves_window, selectmode=tk.SINGLE, height=15, width=70)
+    for cave in community_caves:
+        community_codecaves_listbox.insert(tk.END, f"{cave[0]}")
+    community_codecaves_listbox.bind("<Double-Button-1>", refresh_community_codecave_info)
+    community_codecaves_listbox.bind("<KeyPress-space>", refresh_community_codecave_info)
+    community_codecaves_listbox.bind("<KeyPress-Return>", refresh_community_codecave_info)
+        
+    label = tk.Label(community_codecaves_window, text="Here are the community codecaves:")
+    label.pack()
+    community_codecaves_listbox.pack()
+    
+    
+    com_cave_info = tk.Label(community_codecaves_window, text=f"Size = {community_caves[0][5]}    Memory Address = {community_caves[0][1]}    Courtesy: Ebbe")
+    com_cave_info.pack(pady=5)
+    add_com_cave_button = tk.Button(community_codecaves_window, text="Add codecave", command=add_community_codecave)
+    add_com_cave_button.pack()
+##
+       
+def auto_place_ps1_header(event=0):
+    global g_code_caves
+    if g_code_caves == []:
+        g_code_caves.append(("Header", "0x8000B0B8", "0x48", ["main.c"], "0x0", "0x10000"))
+        codecaves_listbox.insert(tk.END, g_code_caves[-1][0])
+        
+        update_codecaves_hooks_patches_config_file()    
+        project_switched()
+        run_every_tab_switch()
+        on_platform_select()
+        
+        messagebox.showinfo("Done", "Created Header codecave using main.c as default file. Note: region only 0x800 bytes in size!")       
+       
+       
+##        
+def GetGamecubeGameID():
+    if g_current_project_game_exe_full_dir != "":
+        with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
+            game_id = game_disk.readline()[0:6]
+            game_id_str = game_id.decode()
+            game_id_formatted = game_id_str.upper()
+            return game_id_formatted
+
+def GetPS2GameID():
+    game_exe_formatted = g_current_project_game_exe_name.replace("_", "-").replace(".", "")
+    return game_exe_formatted
 
 def RequestGameBoxartImage():
     try:
@@ -90,14 +211,10 @@ def RequestGameBoxartImage():
                 #print(url)
                 image_data = requests.get(url).content 
             elif g_current_project_selected_platform == "Gamecube":
-                if g_current_project_game_exe_full_dir != "":
-                    with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
-                       game_id = game_disk.read()[0:6]
-                       game_id_str = game_id.decode()
-                       game_id_formatted = game_id_str.upper()
-                       url = f'https://ia601900.us.archive.org/20/items/coversdb-gc/{game_id_formatted}.png'
-                       #print(url) 
-                       image_data = requests.get(url).content 
+                    game_id_formatted = GetGamecubeGameID()
+                    url = f'https://ia601900.us.archive.org/20/items/coversdb-gc/{game_id_formatted}.png'
+                    #print(url) 
+                    image_data = requests.get(url).content 
             elif g_current_project_selected_platform == "Wii":
                 if g_current_project_game_exe_full_dir != "":
                     with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
@@ -115,6 +232,18 @@ def RequestGameBoxartImage():
     except Exception as e:
         print(e)
 
+
+
+    def MoveToRecycleBin(path):
+        try:
+            send2trash.send2trash(path)
+            print(f'Successfully moved {path} to the recycle bin.')
+        except Exception as e:
+            print(f'Error moving {path} to the recycle bin: {e}')
+##
+
+
+##
 def ParseBizhawkRamWatch():
     file_path = g_current_project_ram_watch_full_dir
     if ".wch" in file_path.split("/")[-1].lower():
@@ -257,6 +386,7 @@ def ParseCheatEngineFile():
             cheat_engine_symbols_file.write(full_converted_xml_data_header)
             
 def OpenCheatEngineRamWatch():
+    
     global g_current_project_ram_watch_full_dir
     
     if cheat_engine_ramwatch_checkbox_state.get() == 1:
@@ -274,7 +404,10 @@ def OpenCheatEngineRamWatch():
         g_current_project_ram_watch_full_dir = ""
         save_to_config()
         project_switched()
+##
+       
         
+##        
 def SetupVSCodeProject():
     if g_current_project_folder != "":
         try:
@@ -640,6 +773,9 @@ def SetupSublimeProject():
         os.chdir(old_dir)
     else:
         messagebox.showerror("Error", "Please create/select a project first")
+##
+
+
 
 #! Used to find "in_game" text in the C source/header files
 def ParseCSourceForSymbols():
@@ -677,6 +813,7 @@ def ParseCSourceForSymbols():
                                     #print(symbol_name + " = " + symbol_address + ";" + "\n")
     except Exception as e:
         print(f"ParseCSource: {e}")
+
 
 #! Compile Function, which calls out to relavent GCC version
 def Compile():  
@@ -773,7 +910,8 @@ def Compile():
     
     return True
 
-# Change button text for emulator when new selection made
+
+##
 def ChangeEmulatorText(event=0):
     
     #Update inject button text
@@ -1571,7 +1709,31 @@ def open_ISO_file(arg_file_path, user_choice=True):
            
 def open_output_folder():
     return filedialog.askdirectory(title="Choose output directoy") 
-    
+##
+   
+
+def search_for_debug_text():
+    game_exe_bytes = ""
+    with open(g_current_project_game_exe_full_dir, "rb") as exe_file:
+        game_exe_bytes = exe_file.read()
+        game_exe_ascii = extract_ascii_from_bytes(game_exe_bytes)
+        game_ascii_split = game_exe_ascii.split("?")
+        game_ascii_list = [item for item in game_ascii_split if item is not None and item != ''] #Removing empty elements
+        print(game_ascii_list)
+        
+        #Get biggest string
+        biggest_string_len = 0
+        biggest_string = ""
+        for game_string in game_ascii_list:
+            current_str_len = len(game_string)
+            if current_str_len > biggest_string_len:
+                biggest_string_len = current_str_len
+                biggest_string = game_string
+                with open("testtt.txt", "a") as test:
+                    test.write(biggest_string + "\n\n")
+        
+        print(biggest_string)
+
 def save_to_config():
     try:
         with open(f"{g_current_project_folder}/.config/config.txt", "w+") as config_file:
@@ -1597,28 +1759,8 @@ def extract_ascii_from_bytes(input_bytes):
         ascii_text = ''.join(chr(byte) if 32 <= byte <= 126 else '?' for byte in input_bytes)
         return ascii_text
     
-def search_for_debug_text():
-    game_exe_bytes = ""
-    with open(g_current_project_game_exe_full_dir, "rb") as exe_file:
-        game_exe_bytes = exe_file.read()
-        game_exe_ascii = extract_ascii_from_bytes(game_exe_bytes)
-        game_ascii_split = game_exe_ascii.split("?")
-        game_ascii_list = [item for item in game_ascii_split if item is not None and item != ''] #Removing empty elements
-        print(game_ascii_list)
-        
-        #Get biggest string
-        biggest_string_len = 0
-        biggest_string = ""
-        for game_string in game_ascii_list:
-            current_str_len = len(game_string)
-            if current_str_len > biggest_string_len:
-                biggest_string_len = current_str_len
-                biggest_string = game_string
-                with open("testtt.txt", "a") as test:
-                    test.write(biggest_string + "\n\n")
-        
-        print(biggest_string)
-        
+
+##        
 def find_ps2_offset():
     objdump_output = subprocess.run(f"prereq/PS2ee/bin/ee-objdump \"{g_current_project_game_exe_full_dir}\" -x", shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if "Idx Name" in objdump_output.stdout:
@@ -1844,7 +1986,10 @@ def update_asm_file_auto_wii_hook():
     with open(f"{g_current_project_folder}/asm/main_hook.s", "w") as main_file:
         main_file.write("#Replacing OSSleepThread blr.\nb CustomFunction\n")
         print("Updated ASM File for Gamecube Auto-Hook")
+##
 
+
+##
 def convert_to_ps2rd_code(ignore_codecaves=False):
     mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
     patches_file_path = g_current_project_folder + "/patches/"
@@ -1920,7 +2065,7 @@ def convert_to_ps2rd_code(ignore_codecaves=False):
         for code in value:
             full_code += code + "\n"
     
-    print(colored("PS2RD Code: \n" + full_code, "blue"))
+    print(colored("PS2RD Code: \n" + full_code, "cyan"))
     
     pyperclip.copy(full_code)
     messagebox.askquestion
@@ -2004,24 +2149,170 @@ def convert_to_gameshark_code(ignore_codecaves=False):
         for code in value:
             full_code += code + "\n"
     
-    print(colored("Gameshark Code: \n" + full_code, "blue"))
+    print(colored("Gameshark Code: \n" + full_code, "cyan"))
     
     pyperclip.copy(full_code)
     user_answer = messagebox.showinfo("Done", f"Created Gameshark code and copied to clipboard.")
+##
+
     
-def auto_place_ps1_header(event=0):
-    global g_code_caves
-    if g_code_caves == []:
-        g_code_caves.append(("Header", "0x8000B0B8", "0x48", ["main.c"], "0x0", "0x10000"))
-        codecaves_listbox.insert(tk.END, g_code_caves[-1][0])
+##              
+def check_memory_map_sizes():
+    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
+        memory_map_data = memory_map_file.read()
+
+        for cave in g_code_caves:
+            if "." + cave[0] in memory_map_data:
+                cave_section_index = memory_map_data.find("." + cave[0])
+                cave_section_text = memory_map_data[cave_section_index:].split("\n")[0]
+                cave_section_name = cave_section_text.split()[0].split(".")[1]
+                cave_section_current_size = ""
+                
+                #!Handle if size and address is on line below section name, or same line
+                #Checking to see if all data on 1 line
+                if len(cave_section_text.split()) >= 2:
+                    cave_section_current_size = cave_section_text.split()[2]
+                    cave_section_address = hex(int(cave_section_text.split()[1], base=16))
+                #If section name is long, it will put the data on the next line, so account for that
+                else:   
+                    cave_section_text_long = memory_map_data[cave_section_index:].split("\n")[1]
+                    cave_section_current_size = cave_section_text_long.split()[1]  
+                    cave_section_address = hex(int(cave_section_text_long.split()[0], base=16))
+                    
+                
+                cave_section_current_size_int = int(cave_section_current_size, base=16)
+                if cave[5]:
+                    cave_section_full_size_int = int(cave[5], base=16)
+                    cave_size_percentage = cave_section_current_size_int / cave_section_full_size_int
+                    
+                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes out of ", "cyan") + colored(f"{cave[5]}", "yellow") + colored(f" bytes available. ", "cyan") + colored(f"{cave_size_percentage:.0%} full.\n", "yellow"))
+                else:
+                   print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes.\n", "cyan"))
+                   
+def update_linker_script():
+    global g_shouldShowTabs
+    global g_current_project_game_exe_name
+    global g_current_project_game_exe_full_dir
+    global g_current_project_game_exe
+    global g_current_project_selected_platform
+    
+    
+    if g_current_project_name != "":  
+        try:    
+            with open(f"{g_current_project_folder}/.config/linker_script.ld", "w+") as script_file:
+                script_file.write("INPUT(../../../.config/symbols/symbols.txt)\nINPUT(../../../.config/symbols/function_symbols.txt)\nINPUT(../../../.config/symbols/auto_symbols.txt)\n\nMEMORY\n{\n    /* RAM locations where we'll inject the code for our replacement functions */\n")
+                for cave in g_code_caves:
+                    script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = {cave[5] if cave[5] != '' else '0x100000'}\n") # If a size exists in the code cave, then it places it, If not, it defaults to 0x100000
+                for hook in g_hooks:
+                    script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = 0x100000\n")
+                    
+                script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
+                #Hooks
+                for hook in g_hooks:
+                    script_file.write("/* Custom section for our hook code */\n    ")
+                    script_file.write("." + hook[0])
+                    script_file.write(" : \n    {\n")
+                    for asm_file in hook[3]:
+                        o_file = asm_file.split(".")[0] + ".o"
+                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
+                    script_file.write("    } > ")
+                    script_file.write(f"{hook[0]}\n\n    ")
+                    
+                amount_of_caves = 0    
+                for cave in g_code_caves:
+                    amount_of_caves += 1
+                #Code Caves
+                for i, cave in enumerate(g_code_caves):
+                    script_file.write("." + cave[0])
+                    script_file.write(" : \n    {\n")
+                    for c_file in cave[3]:
+                        o_file = c_file.split(".")[0] + ".o"
+                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
+                        #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
+                        
+                    #If last cave, place remaining sections
+                    if i == amount_of_caves:
+                        script_file.write("        *(.text)\n")
+                        script_file.write("        *(.branch_lt)\n")
+                        
+                    script_file.write("    } > ")
+                    script_file.write(f"{cave[0]}\n\n    ")
+                    
+                script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
+        except UnboundLocalError as e:
+            print("update_linker_script() could not find codecave size. Ensure you have put a size for your codecave.")
+        except Exception as e:
+            print("update_linker_script() error", e)
+ 
+def on_optimization_level_select(event=0):
+    global g_optimization_level
+    
+    g_optimization_level = str(optimization_level_combobox.get())
+    
+    # To Reset Compile Strings
+    on_platform_select()
+
+##
+def check_has_picked_exe():
+    global g_shouldShowTabs
+    global g_shouldShowPlatforms
+    
+    #Only run once for first project selected
+    if g_shouldShowTabs == False and g_current_project_game_exe_full_dir != "":
+        tab_control.add(codecave_tab, text='In-Game Codecaves')
+        tab_control.add(hooks_tab, text='ASM Hooks')
+        tab_control.add(compile_tab, text='Compile')
         
-        update_codecaves_hooks_patches_config_file()    
-        project_switched()
-        run_every_tab_switch()
-        on_platform_select()
+        # Create a "Text Editor" menu and text editor options to it
+        other_menu = tk.Menu(menubar)
+        menubar.add_cascade(label="Text Editor", menu=other_menu)
+        other_menu.add_command(label="Open Project in VSCode", command=SetupVSCodeProject)
+        file_menu.add_separator()
+        other_menu.add_command(label="Open Project in Sublime", command=SetupSublimeProject)    
+        file_menu.add_separator()
+        other_menu.add_command(label="Open Project in Notepad++", command=SetupNotepadProject)
         
-        messagebox.showinfo("Done", "Created Header codecave using main.c as default file. Note: region only 0x800 bytes in size!")
-         
+        # # Create a "Themes" menu and theme options to it
+        # themes = tk.Menu(menubar)
+        # menubar.add_cascade(label="Themes", menu=themes)
+        # themes.add_command(label="Forest Dark", command=change_theme_forest_dark)
+        # file_menu.add_separator()
+        # themes.add_command(label="Azure Dark", command=change_theme_azure_dark)
+        # file_menu.add_separator()
+        # themes.add_command(label="Forest Light", command=change_theme_forest_light)
+        # file_menu.add_separator()
+        # themes.add_command(label="Azure Light", command=change_theme_azure_light)
+        
+        g_shouldShowTabs = True
+
+def check_has_selected_first_project():
+    global g_shouldShowPlatforms
+     
+    if g_shouldShowPlatforms == False:
+        select_platform_label = tk.Label(main_tab, text="Select Project Platform", font=("Segoe UI", 10))
+        select_platform_label.place(x=300, y=68)
+        platform_combobox.place(x=300, y=93)
+        g_shouldShowPlatforms = True
+##        
+ 
+##        
+def update_codecaves_hooks_patches_config_file():
+    with open(f"{g_current_project_folder}/.config/codecaves.txt", "w") as codecaves_file:
+        codecaves_file.write("Codecaves:\n")
+        codecaves_file.write(str(g_code_caves))
+            
+    with open(f"{g_current_project_folder}/.config/hooks.txt", "w") as hook_file:
+        hook_file.write("hooks:\n")
+        hook_file.write(str(g_hooks))
+    try:
+        if g_patches != []:
+            with open(f"{g_current_project_folder}/.config/patches.txt", "w") as patch_file:
+                patch_file.write("patches:\n")
+                patch_file.write(str(g_patches))
+    except Exception as e:
+        #print(f"No binary patches, ignoring.\t {e}")
+        print(e)
+    
 def run_every_tab_switch(event=0):
     global auto_hook_button
     global auto_hook_ps2_button
@@ -2091,148 +2382,6 @@ def run_every_tab_switch(event=0):
         except:
             pass
             #print("No offset to load, skipping")
-               
-def check_memory_map_sizes():
-    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
-        memory_map_data = memory_map_file.read()
-
-        for cave in g_code_caves:
-            if "." + cave[0] in memory_map_data:
-                cave_section_index = memory_map_data.find("." + cave[0])
-                cave_section_text = memory_map_data[cave_section_index:].split("\n")[0]
-                cave_section_name = cave_section_text.split()[0].split(".")[1]
-                cave_section_current_size = cave_section_text.split()[2]
-                cave_section_address = hex(int(cave_section_text.split()[1], base=16))
-                
-                cave_section_current_size_int = int(cave_section_current_size, base=16)
-                if cave[5]:
-                    cave_section_full_size_int = int(cave[5], base=16)
-                    cave_size_percentage = cave_section_current_size_int / cave_section_full_size_int
-                    
-                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "blue") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes out of ", "blue") + colored(f"{cave[5]}", "yellow") + colored(f" bytes available. ", "blue") + colored(f"{cave_size_percentage:.0%} full.\n", "yellow"))
-                else:
-                   print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "blue") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes.\n", "blue"))
-                   
-def update_linker_script():
-    global g_shouldShowTabs
-    global g_current_project_game_exe_name
-    global g_current_project_game_exe_full_dir
-    global g_current_project_game_exe
-    global g_current_project_selected_platform
-    
-    
-    if g_current_project_name != "":  
-        try:    
-            with open(f"{g_current_project_folder}/.config/linker_script.ld", "w+") as script_file:
-                script_file.write("INPUT(../../../.config/symbols/symbols.txt)\nINPUT(../../../.config/symbols/function_symbols.txt)\nINPUT(../../../.config/symbols/auto_symbols.txt)\n\nMEMORY\n{\n    /* RAM locations where we'll inject the code for our replacement functions */\n")
-                for cave in g_code_caves:
-                    script_file.write(f"    {cave[0]} : ORIGIN = {cave[1]}, LENGTH = {cave[5] if cave[5] != '' else '0x100000'}\n") # If a size exists in the code cave, then it places it, If not, it defaults to 0x100000
-                for hook in g_hooks:
-                    script_file.write(f"    {hook[0]} : ORIGIN = {hook[1]}, LENGTH = 0x100000")
-                    
-                script_file.write("}\n\nSECTIONS\n{\n    /* Custom section for compiled code */\n    ")
-                #Hooks
-                for hook in g_hooks:
-                    script_file.write("/* Custom section for our hook code */\n    ")
-                    script_file.write("." + hook[0])
-                    script_file.write(" : \n    {\n")
-                    for asm_file in hook[3]:
-                        o_file = asm_file.split(".")[0] + ".o"
-                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n")
-                    script_file.write("    } > ")
-                    script_file.write(f"{hook[0]}\n\n    ")
-                    
-                amount_of_caves = 0    
-                for cave in g_code_caves:
-                    amount_of_caves += 1
-                #Code Caves
-                for i, cave in enumerate(g_code_caves):
-                    script_file.write("." + cave[0])
-                    script_file.write(" : \n    {\n")
-                    for c_file in cave[3]:
-                        o_file = c_file.split(".")[0] + ".o"
-                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
-                        #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
-                        
-                    #If last cave, place remaining sections
-                    if i == amount_of_caves:
-                        script_file.write("        *(.text)\n")
-                        script_file.write("        *(.branch_lt)\n")
-                        
-                    script_file.write("    } > ")
-                    script_file.write(f"{cave[0]}\n\n    ")
-                    
-                script_file.write("/DISCARD/ :\n    {\n        *(.comment)\n        *(.pdr)\n        *(.mdebug)\n        *(.reginfo)\n        *(.MIPS.abiflags)\n        *(.eh_frame)\n        *(.gnu.attributes)\n    }\n}")
-        except UnboundLocalError as e:
-            print("update_linker_script() could not find codecave size. Ensure you have put a size for your codecave.")
-        except Exception as e:
-            print("update_linker_script() error", e)
- 
-def on_optimization_level_select(event=0):
-    global g_optimization_level
-    
-    g_optimization_level = str(optimization_level_combobox.get())
-    
-    # To Reset Compile Strings
-    on_platform_select()
-        
-def update_codecaves_hooks_patches_config_file():
-    with open(f"{g_current_project_folder}/.config/codecaves.txt", "w") as codecaves_file:
-        codecaves_file.write("Codecaves:\n")
-        codecaves_file.write(str(g_code_caves))
-            
-    with open(f"{g_current_project_folder}/.config/hooks.txt", "w") as hook_file:
-        hook_file.write("hooks:\n")
-        hook_file.write(str(g_hooks))
-    try:
-        if g_patches != []:
-            with open(f"{g_current_project_folder}/.config/patches.txt", "w") as patch_file:
-                patch_file.write("patches:\n")
-                patch_file.write(str(g_patches))
-    except Exception as e:
-        #print(f"No binary patches, ignoring.\t {e}")
-        print(e)
-    
-def check_has_picked_exe():
-    global g_shouldShowTabs
-    global g_shouldShowPlatforms
-    
-    #Only run once for first project selected
-    if g_shouldShowTabs == False and g_current_project_game_exe_full_dir != "":
-        tab_control.add(codecave_tab, text='In-Game Codecaves')
-        tab_control.add(hooks_tab, text='ASM Hooks')
-        tab_control.add(compile_tab, text='Compile')
-        
-        # Create a "Text Editor" menu and text editor options to it
-        other_menu = tk.Menu(menubar)
-        menubar.add_cascade(label="Text Editor", menu=other_menu)
-        other_menu.add_command(label="Open Project in VSCode", command=SetupVSCodeProject)
-        file_menu.add_separator()
-        other_menu.add_command(label="Open Project in Sublime", command=SetupSublimeProject)    
-        file_menu.add_separator()
-        other_menu.add_command(label="Open Project in Notepad++", command=SetupNotepadProject)
-        
-        # # Create a "Themes" menu and theme options to it
-        # themes = tk.Menu(menubar)
-        # menubar.add_cascade(label="Themes", menu=themes)
-        # themes.add_command(label="Forest Dark", command=change_theme_forest_dark)
-        # file_menu.add_separator()
-        # themes.add_command(label="Azure Dark", command=change_theme_azure_dark)
-        # file_menu.add_separator()
-        # themes.add_command(label="Forest Light", command=change_theme_forest_light)
-        # file_menu.add_separator()
-        # themes.add_command(label="Azure Light", command=change_theme_azure_light)
-        
-        g_shouldShowTabs = True
-
-def check_has_selected_first_project():
-    global g_shouldShowPlatforms
-     
-    if g_shouldShowPlatforms == False:
-        select_platform_label = tk.Label(main_tab, text="Select Project Platform", font=("Segoe UI", 10))
-        select_platform_label.place(x=300, y=68)
-        platform_combobox.place(x=300, y=93)
-        g_shouldShowPlatforms = True
 
 def project_switched():
     global g_shouldShowTabs
@@ -2406,7 +2555,10 @@ def project_switched():
     
     check_has_selected_first_project()    
     check_has_picked_exe()
-             
+##
+
+  
+##             
 def create_project():
     global g_current_project_name
     global g_current_project_feature_mode
@@ -2618,8 +2770,7 @@ def remove_project_confirm():
             remove_project()
     else:
         messagebox.showerror("Error", "Must select project to delete")
-    
-#COME BACK TO THIS TO MAKE PROJECT ALWAYS UNSELECT AFTER DELETING    
+       
 def remove_project():
     global g_current_project_folder
     global g_code_caves
@@ -2657,8 +2808,10 @@ def remove_project():
         tab_control.forget(codecave_tab)
         tab_control.forget(hooks_tab)
         tab_control.forget(compile_tab)
-    
+##  
    
+ 
+##    
 def add_codecave():
     global g_current_project_folder
     global g_current_project_name
@@ -2936,6 +3089,8 @@ def select_patch(event):
         patch_files_entry.insert(0, ", ".join(selected_patch[3]))
         update_linker_script()
         update_codecaves_hooks_patches_config_file()
+##
+
    
 def reset_auto_hook_buttons():
     global auto_hook_button    
@@ -2970,7 +3125,17 @@ def reset_auto_hook_buttons():
         if auto_cave_button:
             auto_cave_button.config(text="", command=None, state="disabled", font=("asfasf", 1))
         #print("This is running. Makes no sense")
-                           
+    #check_if_no_caves
+    if g_current_project_selected_platform == "Gamecube":
+        auto_cave_button.config(text=f'Show Community Found Codecaves', command=RequestCommunityCodecaves, font=("asfasf", 12), state="active")
+        auto_cave_button.place(x=2, y=2)  
+    elif len(g_code_caves) != 0 or g_code_caves != []:
+        if auto_cave_button:
+            auto_cave_button.config(text="", command=None, state="disabled", font=("asfasf", 1))
+        #print("This is running. Makes no sense")
+
+
+##                           
 def on_platform_select(event=0):
     global g_current_project_selected_platform
     global g_src_files
@@ -3144,7 +3309,10 @@ def on_feature_mode_selected(event=0):
     #If project is loaded when user selected mode, then refresh buttons        
     if g_current_project_name != "":
         on_platform_select()
+##
 
+
+##
 def replace_codecave_offset_text(event=0):
     global g_current_project_disk_offset
     status = is_global_offset_checkbox_checked.get()
@@ -3212,7 +3380,9 @@ def toggle_offset_text_state():
         global_offset_entry.config(state="active")
         global_offset_entry_hooks.config(state="active")
         global_offset_entry_patches.config(state="active")
+        load_disk_offset_codecaves()
         load_disk_offset_hooks()
+        load_disk_offset_patches()
         replace_codecave_offset_text()
         replace_hook_offset_text()
         replace_patches_offset_text()
@@ -3286,7 +3456,10 @@ def ensure_hex_entries(event=0):
         pass
     except Exception as e:
         print(e)
+##
 
+
+##
 def load_disk_offset_codecaves(event=0):
     selected_cave_index = codecaves_listbox.curselection()
     if selected_cave_index:
@@ -3310,7 +3483,7 @@ def load_disk_offset_patches(event=0):
         global_offset_entry_patches.delete(0, tk.END)
         global_offset_entry_patches.insert(0, selected_hook[4])
         update_codecaves_hooks_patches_config_file()
-
+##
 
 #Themes
 # def change_theme_forest_dark(event=0):
@@ -3330,6 +3503,9 @@ root.bind("<KeyRelease>", ensure_hex_entries)
 root.iconbitmap("prereq/icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
+
+
+
 
 #Themes
 root.tk.call('source', 'prereq/theme/azure.tcl')
@@ -3429,7 +3605,7 @@ remove_project_button.place(x=10, y=502)
 # project_version_label.place(x=630, y=280)    
 
 #! In-Game Codecaves Tab
-auto_cave_button = tk.Button(codecave_tab, text=f'Automatically Use PS1 Header', command=auto_place_ps1_header, font=("asfasf", 12))
+auto_cave_button = tk.Button(codecave_tab, text=f'Automatically Use PS1 Header', font=("asfasf", 12))
 
 codecave_name_label = ttk.Label(codecave_tab, text="Codecave Name:")
 codecave_name_label.pack()
@@ -3618,6 +3794,10 @@ cheat_engine_ramwatch_checkbox_state = tk.IntVar()
 cheat_engine_ramwatch_checkbox = None
 game_cover_image = None
 game_cover_image_label = None
+
+#Other Windows
+community_codecaves_window = None
+community_codecaves_listbox = None
 
 
 root.mainloop()

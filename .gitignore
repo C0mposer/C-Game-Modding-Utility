@@ -1177,3 +1177,5 @@ projects/AHTPS2_Test/.vscode/tasks.json
 projects/AHTGC/main_hook.o
 projects/AHTGC/main.o
 projects/AHTGC/.config/output/object_files/MyMod.map
+projects/AHTGC/.compile_scripts/build_iso.bat
+projects/AHTGC/.config/output/final_bins/FreeSpace1_EBBE.bin
