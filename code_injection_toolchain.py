@@ -82,8 +82,8 @@ def RequestCommunityCodecaves():
     try:
         if g_current_project_selected_platform == "Gamecube":
             url = f'https://raw.githubusercontent.com/C0mposer/C-Game-Modding-Utility/main/community_data/{g_current_project_selected_platform}/{GetGamecubeGameID()}/code_caves/caves.txt' 
-        if g_current_project_selected_platform == "PS2":
-            url = f'https://raw.githubusercontent.com/C0mposer/C-Game-Modding-Utility/main/community_data/{g_current_project_selected_platform}/{GetPS2GameID()}/code_caves/caves.txt' 
+        if g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "PS2":
+            url = f'https://raw.githubusercontent.com/C0mposer/C-Game-Modding-Utility/main/community_data/{g_current_project_selected_platform}/{g_current_project_game_exe_name}/code_caves/caves.txt' 
         print(url)
         codecave_data = requests.get(url).content 
         if codecave_data == b"404: Not Found":
@@ -162,7 +162,7 @@ def open_community_codecaves_window():
     community_codecaves_listbox.pack()
     
     
-    com_cave_info = tk.Label(community_codecaves_window, text=f"Size = {community_caves[0][5]}    Memory Address = {community_caves[0][1]}    Courtesy: Ebbe")
+    com_cave_info = tk.Label(community_codecaves_window, text=f"Size = {community_caves[0][5]}    Memory Address = {community_caves[0][1]}    Courtesy: {community_caves[0][6]}")
     com_cave_info.pack(pady=5)
     add_com_cave_button = tk.Button(community_codecaves_window, text="Add codecave", command=add_community_codecave)
     add_com_cave_button.pack()
@@ -191,7 +191,7 @@ def GetGamecubeGameID():
             game_id_formatted = game_id_str.upper()
             return game_id_formatted
 
-def GetPS2GameID():
+def GetPSGameID():
     game_exe_formatted = g_current_project_game_exe_name.replace("_", "-").replace(".", "")
     return game_exe_formatted
 
@@ -1683,7 +1683,7 @@ def open_exe_file():
     PrepareBuildInjectGUIOptions()
     project_switched()
 
-def open_ISO_file(arg_file_path, user_choice=True):
+def open_ISO_file(arg_file_path="", user_choice=True):
     global g_current_project_game_disk
     global g_current_project_game_disk_full_dir
     
@@ -3096,8 +3096,10 @@ def reset_auto_hook_buttons():
     global auto_hook_button    
     global auto_hook_ps2_button
     global auto_cave_button
+    global community_cave_button
     
     auto_cave_button.place_forget()
+    community_cave_button.place_forget()
 
     #check_if_no_hooks
     if g_hooks == [] and g_current_project_selected_platform == "PS1":
@@ -3119,20 +3121,18 @@ def reset_auto_hook_buttons():
         
     #check_if_no_caves
     if g_code_caves == [] and g_current_project_selected_platform == "PS1":
-        auto_cave_button.config(text=f'Automatically Use PS1 Header', command=auto_place_ps1_header, font=("asfasf", 12), state="active")
-        auto_cave_button.place(x=2, y=2)  
+        auto_cave_button.config(text=f'Use PS1 Header Codecave', command=auto_place_ps1_header, font=("asfasf", 12), state="active")
+        auto_cave_button.place(x=2, y=40)  
     elif len(g_code_caves) != 0 or g_code_caves != []:
         if auto_cave_button:
             auto_cave_button.config(text="", command=None, state="disabled", font=("asfasf", 1))
         #print("This is running. Makes no sense")
     #check_if_no_caves
-    if g_current_project_selected_platform == "Gamecube":
-        auto_cave_button.config(text=f'Show Community Found Codecaves', command=RequestCommunityCodecaves, font=("asfasf", 12), state="active")
-        auto_cave_button.place(x=2, y=2)  
-    elif len(g_code_caves) != 0 or g_code_caves != []:
-        if auto_cave_button:
-            auto_cave_button.config(text="", command=None, state="disabled", font=("asfasf", 1))
-        #print("This is running. Makes no sense")
+
+    #Community Codecaves
+    community_cave_button.config(text=f'Show Community Found Codecaves', command=RequestCommunityCodecaves, font=("asfasf", 12), state="active")
+    community_cave_button.place(x=2, y=2)  
+
 
 
 ##                           
@@ -3606,6 +3606,7 @@ remove_project_button.place(x=10, y=502)
 
 #! In-Game Codecaves Tab
 auto_cave_button = tk.Button(codecave_tab, text=f'Automatically Use PS1 Header', font=("asfasf", 12))
+community_cave_button = tk.Button(codecave_tab, text=f'Show Community Codecaves', font=("asfasf", 12))
 
 codecave_name_label = ttk.Label(codecave_tab, text="Codecave Name:")
 codecave_name_label.pack()
