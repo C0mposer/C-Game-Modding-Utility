@@ -1,2 +1,2 @@
 Codecaves:
-[('FreeSpace1_EBBE', '0x803D8FB0', '0x3d5fb0', ['main.c', 'test.c'], '0x-3000', '0x2010')]
+[('FreeSpace1_EBBE', '0x803D8FB0', '0x3d5fb0', [''], '0x-3000', '0x2010')]
