@@ -1174,3 +1174,6 @@ projects/AHTPS2_Test/src/main.c
 projects/AHTPS2_Test/.vscode/c_cpp_properties.json
 projects/AHTPS2_Test/.vscode/settings.json
 projects/AHTPS2_Test/.vscode/tasks.json
+projects/AHTGC/main_hook.o
+projects/AHTGC/main.o
+projects/AHTGC/.config/output/object_files/MyMod.map
