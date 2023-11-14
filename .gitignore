@@ -1231,3 +1231,10 @@ projects/SonicHeros/asm/main_hook.s
 projects/SonicHeros/include/custom_types.h
 projects/SonicHeros/include/symbols.h
 projects/SonicHeros/src/main.c
+projects/AHTGC_Cutscene/.vscode/c_cpp_properties.json
+projects/AHTGC_Cutscene/.vscode/settings.json
+projects/AHTGC_Cutscene/.vscode/tasks.json
+projects/AHTPS2/.compile_scripts/build_iso.bat
+projects/AHTPS2_Test/main_hook.o
+projects/AHTPS2_Test/.compile_scripts/inject_pcsx2_1.6.0.bat
+projects/AHTPS2_Test/.compile_scripts/inject_pcsx2_1.7.5112.bat

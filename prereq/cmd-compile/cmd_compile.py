@@ -1173,9 +1173,9 @@ def on_platform_select(event=0):
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS1" or key == "PS2" or key == "N64":
-            g_platform_gcc_strings[key] += "-c -G0 -O2 -I include"
+            g_platform_gcc_strings[key] += "-c -G0 -O2 -I include -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += "-c -O2 -I include"
+            g_platform_gcc_strings[key] += "-c -O2 -I include -fdiagnostics-color=always"
 
 def on_feature_mode_selected(event=0):
     pass

@@ -898,7 +898,7 @@ def Compile():
         print(colored(f"Extracting {hook[0]} compiled asm hook sections from elf to binary file...", "green"))
     
         
-    print(colored("Compiling, Linking, & Extracting Finished!", "yellow"))
+    print(colored("Compiling, Linking, & Extracting Finished!\n", "yellow"))
     os.chdir(main_dir)
     
     #pcsx2_inject.InjectIntoPCSX2(g_project_folder, code_caves, hooks)
@@ -3272,10 +3272,12 @@ def on_platform_select(event=0):
         g_platform_gcc_strings[key] += g_src_files + g_asm_files
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
-        if key == "PS1" or key == "PS2" or key == "N64":
+        if key == "PS2":
             g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include"
+        if key == "PS1" or key == "N64":
+            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include"
+            g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include -fdiagnostics-color=always"
     
     #Set compile button text
     if g_current_project_game_exe:
