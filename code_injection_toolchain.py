@@ -2,6 +2,7 @@ import os
 import subprocess
 import shutil
 import time
+import struct
 import ast
 import xml.etree.ElementTree as ET
 import requests 
@@ -53,6 +54,7 @@ g_universal_objcopy_string = "-O binary .config/output/elf_files/MyMod.elf .conf
 g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
 g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
 g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string}
+g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     
 g_optimization_level = "O2"
     
@@ -67,6 +69,29 @@ community_caves = None
 com_cave_info = None
 add_com_cave_button = None
 
+is_zig_project = False
+
+def flip_endianness(data):
+    # Convert data to a list of 4-byte chunks
+    chunks = [data[i:i+4] for i in range(0, len(data), 4)]
+    
+    # Flip endianness for each chunk
+    flipped_chunks = [struct.pack('<I', struct.unpack('>I', chunk)[0]) for chunk in chunks]
+    
+    # Concatenate the flipped chunks
+    flipped_data = b''.join(flipped_chunks)
+    
+    return flipped_data
+
+def flip_file_endianness(file_path):
+    with open(file_path, 'rb') as file:
+        data = file.read()
+    
+    flipped_data = flip_endianness(data)
+    
+    with open(file_path, 'wb') as file:
+        file.write(flipped_data)
+        
 def MoveToRecycleBin(path):
     try:
         send2trash.send2trash(path)
@@ -833,7 +858,12 @@ def Compile():
     #Add symbols from source that were declared using in_game
     ParseCSourceForSymbols()
     
-    #! Compile C/asm files
+    if is_zig_project == False:
+        platform_compile_strings = g_platform_gcc_strings
+    if is_zig_project == True:
+        platform_compile_strings = g_platform_zig_strings
+    
+    #! Compile C/ASM files
     starting_compilation = colored("Starting Compilation:", "green")
     compile_string = colored("Compilation string: " + g_platform_gcc_strings[g_current_project_selected_platform], "green")
     print(starting_compilation)
@@ -844,11 +874,27 @@ def Compile():
         print(gcc_output.stdout)
         print(gcc_output.stderr)
     if gcc_output.returncode == 1:
-        print(colored("Compilation Failed!", "red"))
+        print(colored("Compilation of ASM Failed!", "red"))
         print(gcc_output.stderr)
         
-        os.chdir(main_dir)
         return False
+    
+    #! Compile Zig files
+    if is_zig_project:
+        compile_string = colored("Zig compilation string: " + platform_compile_strings[g_current_project_selected_platform], "green")
+        print(starting_compilation)
+        print(compile_string)
+        
+        gcc_output = subprocess.run(platform_compile_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if gcc_output.stdout:
+            print(gcc_output.stdout)
+            print(gcc_output.stderr)
+        if gcc_output.returncode == 1:
+            print(colored("Compilation Failed!", "red"))
+            print(gcc_output.stderr)
+            
+            os.chdir(main_dir)
+            return False
     
     print(colored("Compilation Finished!", "green"))
         
@@ -909,7 +955,6 @@ def Compile():
     check_memory_map_sizes()
     
     return True
-
 
 ##
 def ChangeEmulatorText(event=0):
@@ -1224,6 +1269,15 @@ def PreparePS1EmuInject(event=0):
 def InjectIntoJustExe(event=0):
     InjectIntoExeAndRebuildGame(just_exe=True)
 
+def FlipOutputBinsEndianness():
+    mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
+    for cave in g_code_caves:
+        input_file = mod_bin_file_path + cave[0] + ".bin"
+        flip_file_endianness(input_file)
+    for hook in g_hooks:
+        input_file = mod_bin_file_path + hook[0] + ".bin"
+        flip_file_endianness(input_file)
+
 def InjectIntoExeAndRebuildGame(just_exe = False):
     #Read exe file first and copy it with prefixed name
     mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
@@ -1239,6 +1293,9 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
             game_exe_file.write(game_exe_file_data)
     except PermissionError:
         messagebox.showerror("Error", "ISO/BIN Currently open in another program.")
+    
+    if g_current_project_selected_platform == "N64":
+        FlipOutputBinsEndianness()
         
     #Patch copied exe
     mod_data = {}    
@@ -2218,19 +2275,21 @@ def update_linker_script():
                     script_file.write("    } > ")
                     script_file.write(f"{hook[0]}\n\n    ")
                     
-                amount_of_caves = 0    
+                #so that it matches i, which is 0 index'd    
+                amount_of_caves = -1
                 for cave in g_code_caves:
                     amount_of_caves += 1
+                
                 #Code Caves
                 for i, cave in enumerate(g_code_caves):
                     script_file.write("." + cave[0])
                     script_file.write(" : \n    {\n")
                     for c_file in cave[3]:
                         o_file = c_file.split(".")[0] + ".o"
-                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n")
+                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n        "  + o_file + "(.scommon)\n")
                         #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
                         
-                    #If last cave, place remaining sections
+                    #!If last cave, place any remaining sections
                     if i == amount_of_caves:
                         script_file.write("        *(.text)\n")
                         script_file.write("        *(.branch_lt)\n")
@@ -2382,6 +2441,9 @@ def run_every_tab_switch(event=0):
         except:
             pass
             #print("No offset to load, skipping")
+            
+    get_src_files()
+    
 
 def project_switched():
     global g_shouldShowTabs
@@ -3135,7 +3197,26 @@ def reset_auto_hook_buttons():
 
 
 
-##                           
+##         
+def get_src_files():
+    global is_zig_project
+    global g_src_files
+    global g_obj_files
+    
+    # Reset
+    g_src_files = ""
+    g_obj_files = ""
+    is_zig_project = False
+    
+    # Get C/C++/Zig files 
+    for code_cave in g_code_caves:
+        for c_file in code_cave[3]:
+            g_src_files += "src/" + c_file + " "
+            g_obj_files += c_file.split(".")[0] + ".o"  + " "
+            
+            if c_file.split(".")[1] == "zig":
+                is_zig_project = True
+                  
 def on_platform_select(event=0):
     global g_current_project_selected_platform
     global g_src_files
@@ -3146,6 +3227,7 @@ def on_platform_select(event=0):
     global g_platform_gcc_strings
     global g_platform_linker_strings
     global g_platform_objcopy_strings
+    global g_platform_zig_strings
     global inject_exe_button
     global inject_emu_button
     global open_exe_button
@@ -3161,6 +3243,7 @@ def on_platform_select(event=0):
     global g_patches
     global g_current_project_ram_watch_full_dir
     global g_current_project_ram_watch_name
+    global is_zig_project
     
     #Hide old build/inject options
     if inject_exe_button:
@@ -3228,7 +3311,7 @@ def on_platform_select(event=0):
     g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
     g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
     g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string} 
-    
+    g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     #Save to config     
     if g_current_project_selected_platform:
         try:
@@ -3244,11 +3327,8 @@ def on_platform_select(event=0):
         except:
             print("No config file, new project?")
          
-    # Get C files 
-    for code_cave in g_code_caves:
-        for c_file in code_cave[3]:
-            g_src_files += "src/" + c_file + " "
-            g_obj_files += c_file.split(".")[0] + ".o"  + " "
+    # Get C/C++/Zig files 
+    get_src_files()
             
     # Get H files 
     header_files = os.listdir(f"{g_current_project_folder}/include/")
@@ -3268,16 +3348,27 @@ def on_platform_select(event=0):
              
     #Update GCC/Linker Strings   
     for key in g_platform_gcc_strings:
-        # Add src files to gcc strings
-        g_platform_gcc_strings[key] += g_src_files + g_asm_files
+        # Only add asm files if zig project. That way GCC only handles the asm files
+        if is_zig_project == True:
+            g_platform_gcc_strings[key] += g_asm_files
+        # If not a zig project, add both src and asm files to the GCC strings
+        else:
+            g_platform_gcc_strings[key] += g_asm_files + g_src_files
+            
+        g_platform_zig_strings[key] += g_asm_files + g_src_files
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS2":
             g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include"
-        if key == "PS1" or key == "N64":
+        if key == "PS1":
             g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -T linker_script2.ld -nostartfiles -ffreestanding -nostdlib"
+        if key == "N64":
+            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -T linker_script2.ld -nostartfiles -ffreestanding -nostdlib"
         if key == "Gamecube" or key == "Wii":
             g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -T linker_script2.ld -nostartfiles -ffreestanding -nostdlib"
     
     #Set compile button text
     if g_current_project_game_exe:
