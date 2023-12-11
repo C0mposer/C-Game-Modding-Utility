@@ -18,7 +18,7 @@
 		{
             "name": "ISO Build",
             "working_dir": "${project_path}/../.compile_scripts",
-            "shell_cmd": "build.bat"
+            "shell_cmd": "build_iso.bat"
         },
 		{
             "name": "DOL Build",
@@ -26,9 +26,9 @@
             "shell_cmd": "build_exe.bat"
         },
 		{
-            "name": "Inject into Dolphin 50-20240",
+            "name": "Inject into Dolphin 50-20347",
             "working_dir": "${project_path}/../.compile_scripts",
-            "shell_cmd": "inject_dolphin_50_20240.bat"
+            "shell_cmd": "inject_dolphin_50_20347.bat"
         },
 		{
             "name": "Inject into Dolphin 50-19870",

@@ -1,7 +1,6 @@
 import os
 import subprocess
 import shutil
-import time
 import struct
 import ast
 import xml.etree.ElementTree as ET
@@ -9,16 +8,15 @@ import requests
 import send2trash
 import pyperclip
 import tkinter as tk
-import sv_ttk
-from PIL import ImageTk, Image
+from PIL import Image
 from termcolor import colored
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
 
-#other files
+#! Other Project Files
 import emu_inject
-#from ramwatch import *
+
 
 PROJECTS_FOLDER_PATH = 'projects/'  # Replace with the path to your folder
 
@@ -47,6 +45,8 @@ g_current_project_selected_platform = ""
 g_current_project_feature_mode = "Normal"
 
 g_current_project_disk_offset = ""
+
+g_current_emu_choice = ""
 
 g_universal_link_string = "-T ../../linker_script.ld -Xlinker -Map=MyMod.map "
 g_universal_objcopy_string = "-O binary .config/output/elf_files/MyMod.elf .config/output/final_bins/"
@@ -98,6 +98,17 @@ def MoveToRecycleBin(path):
         print(f'Successfully moved {path} to the recycle bin.')
     except Exception as e:
         print(f'Error moving {path} to the recycle bin: {e}')
+     
+def find_files_with_extension(directory, extension):
+    files_with_extension = []
+    
+    # Iterate through all files in the directory
+    for filename in os.listdir(directory):
+        # Check if the file ends with the desired extension
+        if filename.endswith(extension):
+            files_with_extension.append(os.path.join(directory, filename))
+
+    return files_with_extension     
         
 ##
 def RequestCommunityCodecaves():
@@ -532,12 +543,12 @@ def SetupNotepadProject():
 
         #Platform specific emu injects
         if g_current_project_selected_platform == "Gamecube" or g_current_project_selected_platform == "Wii":
-            with open(f"{template_dir}/inject_dolphin_50_20240.bat", "r") as inject_file:
+            with open(f"{template_dir}/inject_dolphin_50_20347.bat", "r") as inject_file:
                 inject_ascii["dolphin"] = inject_file.read()
                 
             replaced_ascii = inject_ascii['dolphin'].replace("REPLACE", g_current_project_name).replace("PATH", full_project_dir)
                 
-            with open(g_current_project_folder + "/.compile_scripts/inject_dolphin_50_20240.bat", "w") as task_file:
+            with open(g_current_project_folder + "/.compile_scripts/inject_dolphin_50_20347.bat", "w") as task_file:
                 task_file.write(replaced_ascii)
                 
             with open(f"{template_dir}/inject_dolphin_50_19870.bat", "r") as inject_file:
@@ -677,7 +688,7 @@ def SetupSublimeProject():
             
             #Build Exe
             with open(g_current_project_folder + "/.compile_scripts/build_exe.bat", "w") as build_file:
-                build_file.write(replaced_build_ascii)
+                build_file.write(replaced_build_exe_ascii)
                 
             # Get template Sublime File
             with open(f"{template_dir}/gamecube.sublime-project", "r") as sublime_file:
@@ -699,12 +710,12 @@ def SetupSublimeProject():
                 task_file.write(replaced_ascii)
                 
             #Dolphin 2
-            with open(f"{template_dir}/inject_dolphin_50_20240.bat", "r") as inject_file:
+            with open(f"{template_dir}/inject_dolphin_50_20347.bat", "r") as inject_file:
                 inject_ascii["dolphin"] = inject_file.read()
                 
             replaced_ascii = SublimeBatTextReplacement(inject_ascii['dolphin'])
                 
-            with open(g_current_project_folder + "/.compile_scripts/inject_dolphin_50_20240.bat", "w") as task_file:
+            with open(g_current_project_folder + "/.compile_scripts/inject_dolphin_50_20347.bat", "w") as task_file:
                 task_file.write(replaced_ascii)
                 
         if g_current_project_selected_platform == "PS1":
@@ -874,15 +885,15 @@ def Compile():
         print(gcc_output.stdout)
         print(gcc_output.stderr)
     if gcc_output.returncode == 1:
-        print(colored("Compilation of ASM Failed!", "red"))
+        print(colored("Compilation Failed!", "red"))
         print(gcc_output.stderr)
         
+        os.chdir(main_dir)
         return False
     
     #! Compile Zig files
     if is_zig_project:
         compile_string = colored("Zig compilation string: " + platform_compile_strings[g_current_project_selected_platform], "green")
-        print(starting_compilation)
         print(compile_string)
         
         gcc_output = subprocess.run(platform_compile_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -957,7 +968,8 @@ def Compile():
     return True
 
 ##
-def ChangeEmulatorText(event=0):
+def ChangeEmulatorText(event=0):  
+    global g_current_emu_choice
     
     #Update inject button text
     emu_choice = g_selected_emu.get()
@@ -969,6 +981,8 @@ def ChangeEmulatorText(event=0):
         inject_emu_button.config(text="Inject into " + emu_choice.split()[0], font=("NONE", 12))
     else:
         inject_emu_button.config(text="Inject into " + emu_choice.split()[0], font=("NONE", 11))
+    
+    g_current_emu_choice = emu_choice
     
 def PrepareBuildInjectGUIOptions():
     global inject_exe_button
@@ -1052,7 +1066,7 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="PCSX2 1.6.0")
+            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
             emulators_combobox['values'] = ('PCSX2 1.6.0', 'PCSX2 1.7.5112')
             emulators_combobox.place(x=592, y=30)
@@ -1082,9 +1096,9 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="Dolphin 5.0-19870")
+            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('Dolphin 5.0-19870', 'Dolphin 5.0-20240')
+            emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
             emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
@@ -1105,9 +1119,9 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="Dolphin 5.0-19870")
+            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('Dolphin 5.0-19870', 'Dolphin 5.0-20240')
+            emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
             emulators_combobox.place(x=592, y=30)
             emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
             
@@ -1128,7 +1142,7 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="Duckstation 0.1-5936")
+            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
             emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
             emulators_combobox.place(x=592, y=30)
@@ -1154,7 +1168,7 @@ def PrepareBuildInjectGUIOptions():
             inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
             inject_emulator_label.place(x=610, y=0)
             
-            g_selected_emu = tk.StringVar(value="Duckstation 0.1-5936")
+            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
             emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
             emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
             emulators_combobox.place(x=592, y=30)
@@ -1207,8 +1221,19 @@ def PrepareDolphinInject(event=0):
         'double_ptr': True,
         'ptr': False
         }
+    dolphin_50_20347_info = {
+        'name': 'Dolphin.exe',
+        'base_exe_dll_name': 'Dolphin.exe',
+        'main_ram_offset': 0x11DD220,
+        'base': True,
+        'double_ptr': True,
+        'ptr': False
+        }
     
-    if g_selected_emu.get() == "Dolphin 5.0-20240":
+    if g_selected_emu.get() == "Dolphin 5.0-20347":
+        complete_message = emu_inject.InjectIntoEmu(dolphin_50_20347_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+        messagebox.showinfo("Info", complete_message)
+    elif g_selected_emu.get() == "Dolphin 5.0-20240":
         complete_message = emu_inject.InjectIntoEmu(dolphin_50_20240_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
         messagebox.showinfo("Info", complete_message)
     elif g_selected_emu.get() == "Dolphin 5.0-19870":
@@ -1398,15 +1423,15 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
             if file_path_and_name == None:
                 print("Improper ISO")
                 return
-            file_name_ext = file_path_and_name.split("/")[-1]
+            file_name_and_ext = file_path_and_name.split("/")[-1]
             old_dir = os.getcwd()
             os.chdir(g_current_project_folder)
             try:
-                shutil.copyfile(file_path_and_name, f"Modded_{file_name_ext}")
+                shutil.copyfile(file_path_and_name, f"Modded_{file_name_and_ext}")
             except PermissionError:
                 os.chdir(old_dir)
                 messagebox.showerror("Error", "Game ISO or exe currently in use by another software.")
-            command_line_string = f"..\\..\\prereq\\gcr\\gcr.exe \"Modded_{file_name_ext}\" \"root/&&SystemData/{g_current_project_game_exe_name}\" i {patched_exe_name.split('/')[-1]}"
+            command_line_string = f"..\\..\\prereq\\gcr\\gcr.exe \"Modded_{file_name_and_ext}\" \"root/&&SystemData/Start.dol\" i {patched_exe_name.split('/')[-1]}"
             print(command_line_string + "\nExtracting...")
             did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
             if did_iso_extract_fail == 1:
@@ -1419,13 +1444,14 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
             os.remove(patched_exe_name.split('/')[-1])
             os.chdir(old_dir)
                 
-        if g_current_project_selected_platform == "Wii":
-            print("Wii Extract Pass")
-            pass
-                
-        if g_current_project_selected_platform == "N64":
-            print("N64 Extract Pass")
-            pass
+    if g_current_project_selected_platform == "Wii":
+        print("Wii Extract Pass")
+        pass
+            
+    #Patch N64 Checksum
+    if g_current_project_selected_platform == "N64":
+        replace_n64_crc(patched_exe_name)
+              
               
     #!If genereic executable (n64, wii), skip iso/bin stuff all above          
     open_in_explorer = messagebox.askyesno("Completed Patching", "Successfully created patched game! Would you like to open the directory in file explorer?")
@@ -1718,6 +1744,8 @@ def open_exe_file():
             selected_game_label.place(x=300, y=135)
         else:
             selected_game_label.config(text='Game Executable:\n' + g_current_project_game_exe_name, font=("GENIUNE", 15))
+    if g_current_project_selected_platform == "N64":
+        extract_n64_crc()
    
     #Save to config     
     g_current_project_game_exe = g_current_project_game_exe_full_dir
@@ -2212,6 +2240,18 @@ def convert_to_gameshark_code(ignore_codecaves=False):
     user_answer = messagebox.showinfo("Done", f"Created Gameshark code and copied to clipboard.")
 ##
 
+def extract_n64_crc():
+    crc_string = f"prereq/rn64crc/rn64crc.exe \"{g_current_project_game_exe_full_dir}\" -Extract"
+    subprocess.run(crc_string)
+    crc_file = find_files_with_extension("prereq/rn64crc/", ".BIN")
+    
+    if crc_file:
+        shutil.move(crc_file[0], f"{g_current_project_folder}/.config/")
+    
+def replace_n64_crc(modified_exe):
+    crc_string = f"prereq/rn64crc/rn64crc.exe \"{modified_exe}\" -Update"
+    subprocess.run(crc_string)
+    print("Replaced N64 CRC!")
     
 ##              
 def check_memory_map_sizes():
@@ -2286,7 +2326,7 @@ def update_linker_script():
                     script_file.write(" : \n    {\n")
                     for c_file in cave[3]:
                         o_file = c_file.split(".")[0] + ".o"
-                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n        "  + o_file + "(.scommon)\n")
+                        script_file.write("        " + o_file + "(.text)\n        " + o_file + "(.rodata)\n        " + o_file + "(.rodata*)\n        " + o_file + "(.data)\n        " + o_file + "(.bss)\n        "         + o_file + "(.sdata)\n        " + o_file + "(.sbss)\n        "  + o_file + "(.scommon)\n        "  + o_file + f"(.{o_file}.*)\n")
                         #script_file.write("main.o(.text)\n        *(.rodata)\n        *(.data)\n        *(.bss)\n    } > ")
                         
                     #!If last cave, place any remaining sections
@@ -2364,10 +2404,9 @@ def update_codecaves_hooks_patches_config_file():
         hook_file.write("hooks:\n")
         hook_file.write(str(g_hooks))
     try:
-        if g_patches != []:
-            with open(f"{g_current_project_folder}/.config/patches.txt", "w") as patch_file:
-                patch_file.write("patches:\n")
-                patch_file.write(str(g_patches))
+         with open(f"{g_current_project_folder}/.config/patches.txt", "w") as patch_file:
+            patch_file.write("patches:\n")
+            patch_file.write(str(g_patches))
     except Exception as e:
         #print(f"No binary patches, ignoring.\t {e}")
         print(e)
@@ -2471,6 +2510,7 @@ def project_switched():
     global game_cover_image
     global game_cover_image_label
     global bizhawk_ramwatch_label
+    global g_current_emu_choice
         
     # For every re-selection/creation
     # Clear textbox entries
@@ -2521,6 +2561,8 @@ def project_switched():
         current_project_label.place_forget()
     if bizhawk_ramwatch_label:
         bizhawk_ramwatch_label.place_forget()
+        
+    g_current_emu_choice = ""
 
 
     bizhawk_ramwatch_checkbox_state.set(0)
@@ -3362,13 +3404,13 @@ def on_platform_select(event=0):
             g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include"
         if key == "PS1":
             g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -T linker_script2.ld -nostartfiles -ffreestanding -nostdlib"
+            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
         if key == "N64":
             g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -T linker_script2.ld -nostartfiles -ffreestanding -nostdlib"
+            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
             g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -T linker_script2.ld -nostartfiles -ffreestanding -nostdlib"
+            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
     
     #Set compile button text
     if g_current_project_game_exe:

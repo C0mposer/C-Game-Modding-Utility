@@ -49,6 +49,8 @@ g_universal_objcopy_string = "-O binary .config/output/elf_files/MyMod.elf .conf
 g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
 g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
 g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string}
+g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
+    
     
 g_src_files = ""
 g_header_files = ""
@@ -57,6 +59,26 @@ g_obj_files = ""
 g_patch_files = []
 
 g_selected_emu = None
+is_zig_project = False
+
+def get_src_files():
+    global is_zig_project
+    global g_src_files
+    global g_obj_files
+    
+    # Reset
+    g_src_files = ""
+    g_obj_files = ""
+    is_zig_project = False
+    
+    # Get C/C++/Zig files 
+    for code_cave in g_code_caves:
+        for c_file in code_cave[3]:
+            g_src_files += "src/" + c_file + " "
+            g_obj_files += c_file.split(".")[0] + ".o"  + " "
+            
+            if c_file.split(".")[1] == "zig":
+                is_zig_project = True
 
 def check_memory_map_sizes():
     with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
@@ -273,7 +295,12 @@ def Compile():
     #Add symbols from source that were declared using in_game
     ParseCSourceForSymbols()
     
-    #! Compile C/asm files
+    if is_zig_project == False:
+        platform_compile_strings = g_platform_gcc_strings
+    if is_zig_project == True:
+        platform_compile_strings = g_platform_zig_strings
+    
+    #! Compile C/ASM files
     starting_compilation = colored("Starting Compilation:", "green")
     compile_string = colored("Compilation string: " + g_platform_gcc_strings[g_current_project_selected_platform], "green")
     print(starting_compilation)
@@ -284,11 +311,26 @@ def Compile():
         print(gcc_output.stdout)
         print(gcc_output.stderr)
     if gcc_output.returncode == 1:
-        print(colored("Compilation Failed!", "red"))
+        print(colored("Compilation of ASM Failed!", "red"))
         print(gcc_output.stderr)
         
-        os.chdir(main_dir)
         return False
+    
+    #! Compile Zig files
+    if is_zig_project:
+        compile_string = colored("Zig compilation string: " + platform_compile_strings[g_current_project_selected_platform], "green")
+        print(compile_string)
+        
+        gcc_output = subprocess.run(platform_compile_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if gcc_output.stdout:
+            print(gcc_output.stdout)
+            print(gcc_output.stderr)
+        if gcc_output.returncode == 1:
+            print(colored("Compilation Failed!", "red"))
+            print(gcc_output.stderr)
+            
+            os.chdir(main_dir)
+            return False
     
     print(colored("Compilation Finished!", "green"))
         
@@ -344,9 +386,6 @@ def Compile():
     #pcsx2_inject.InjectIntoPCSX2(g_project_folder, code_caves, hooks)
     #InjectIntoExe()
     #BuildPS2ISO()
-    global g_isProjectCompiled
-    g_isProjectCompiled = True
-    PrepareBuildInjectOptions()
     
     check_memory_map_sizes()
     
@@ -403,8 +442,18 @@ def PrepareDolphinInject(event=0):
         'double_ptr': True,
         'ptr': False
         }
+    dolphin_50_20347_info = {
+        'name': 'Dolphin.exe',
+        'base_exe_dll_name': 'Dolphin.exe',
+        'main_ram_offset': 0x11DD220,
+        'base': True,
+        'double_ptr': True,
+        'ptr': False
+        }
     
-    if g_selected_emu == "Dolphin_5.0-20240":
+    if g_selected_emu == "Dolphin_5.0-20347":
+        complete_message = emu_inject.InjectIntoEmu(dolphin_50_20347_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+    elif g_selected_emu == "Dolphin_5.0-20240":
         complete_message = emu_inject.InjectIntoEmu(dolphin_50_20240_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
         #messagebox.showinfo("Info", complete_message)
     elif g_selected_emu == "Dolphin_5.0-19870":
@@ -590,7 +639,7 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
             except PermissionError:
                 os.chdir(old_dir)
                 messagebox.showerror("Error", "Game ISO or exe currently in use by another software.")
-            command_line_string = f"..\\..\\prereq\\gcr\\gcr.exe \"Modded_{file_name_ext}\" \"root/&&SystemData/{g_current_project_game_exe_name}\" i {patched_exe_name.split('/')[-1]}"
+            command_line_string = f"..\\..\\prereq\\gcr\\gcr.exe \"Modded_{file_name_ext}\" \"root/&&SystemData/Start.dol\" i {patched_exe_name.split('/')[-1]}"
             print(command_line_string + "\nExtracting...")
             did_iso_extract_fail = os.system(command_line_string) #in this context the exe is the iso. Confusing i know but
             if did_iso_extract_fail == 1:
@@ -603,14 +652,14 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
             os.remove(patched_exe_name.split('/')[-1])
             os.chdir(old_dir)
                 
-        if g_current_project_selected_platform == "Wii":
-            print("Wii Extract Pass")
-            pass
-                
-        if g_current_project_selected_platform == "N64":
-            print("N64 Extract Pass")
-            pass
-              
+    if g_current_project_selected_platform == "Wii":
+        print("Wii Extract Pass")
+        pass
+            
+    #Patch N64 Checksum
+    if g_current_project_selected_platform == "N64":
+        replace_n64_crc(patched_exe_name)
+            
     #!If genereic executable (n64, wii), skip iso/bin stuff all above          
     open_in_explorer = messagebox.askyesno("Completed Patching", "Successfully created patched game! Would you like to open the directory in file explorer?")
     if open_in_explorer:
@@ -782,6 +831,11 @@ def ExtractGamecubeGame():
         print("Opening Dir: " + output_path_modified + "\nFinished!")
         subprocess.Popen(f"explorer \"{output_path_modified}\"", shell=True)
         return "ISO Extract Complete"
+
+def replace_n64_crc(modified_exe):
+    crc_string = f"prereq/rn64crc/rn64crc.exe \"{modified_exe}\" -Update"
+    subprocess.run(crc_string)
+    print("Replaced N64 CRC!")
 
 def open_exe_file():
     global g_current_project_game_exe_name
@@ -1134,6 +1188,7 @@ def on_platform_select(event=0):
     global g_platform_gcc_strings
     global g_platform_linker_strings
     global g_platform_objcopy_strings
+    global g_platform_zig_strings
     global g_src_files
     global g_header_files
     global g_asm_files
@@ -1141,10 +1196,7 @@ def on_platform_select(event=0):
     global g_patch_files
     
     # Get C files 
-    for code_cave in g_code_caves:
-        for c_file in code_cave[3]:
-            g_src_files += "src/" + c_file + " "
-            g_obj_files += c_file.split(".")[0] + ".o"  + " "
+    get_src_files()
             
     # Get H files 
     header_files = os.listdir(f"{g_current_project_folder}/include/")
@@ -1165,17 +1217,31 @@ def on_platform_select(event=0):
     g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
     g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
     g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string}
+    g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     
     #Update GCC/Linker Strings   
     for key in g_platform_gcc_strings:
-        # Add src files to gcc strings
-        g_platform_gcc_strings[key] += g_src_files + g_asm_files
+        # Only add asm files if zig project. That way GCC only handles the asm files
+        if is_zig_project == True:
+            g_platform_gcc_strings[key] += g_asm_files
+        # If not a zig project, add both src and asm files to the GCC strings
+        else:
+            g_platform_gcc_strings[key] += g_asm_files + g_src_files
+            
+        g_platform_zig_strings[key] += g_asm_files + g_src_files
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
-        if key == "PS1" or key == "PS2" or key == "N64":
-            g_platform_gcc_strings[key] += "-c -G0 -O2 -I include -fdiagnostics-color=always"
+        if key == "PS2":
+            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include"
+        if key == "PS1":
+            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -O2 -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+        if key == "N64":
+            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -O2 -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += "-c -O2 -I include -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -O2 -I include -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -O2 -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
 
 def on_feature_mode_selected(event=0):
     pass
