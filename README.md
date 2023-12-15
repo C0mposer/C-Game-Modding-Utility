@@ -133,6 +133,7 @@ You can also inject your mod into supported emulators to test your mod without r
  - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting/rebuilding PS1 games. Copyright (c) Lameguy64
   - [ImgBurn](https://www.imgburn.com/) for rebuilding PS2 games Copyright (c) LIGHTNING UK!
   - [7zip](https://github.com/mcmilk/7-Zip) for solving life's greatest mysteries Copyright (c) mcmilk
+  - [Real N64 CRC Tool](https://www.smwcentral.net/?p=section&a=details&id=8799) Copyright (c) RaO
 
 ## Contact
 
