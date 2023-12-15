@@ -1,7 +1,0 @@
-/* This is where you would put your in game global variables you've found from a ram search/reverse engineering */
-game_symbol = 0x80001234;
-GetSpyroMap = 0x80232df0;
-SpinGem = 0x80165628;
-DrawText = 0x8012f72c;
-
-gems = 0x12345678;
