@@ -109,6 +109,7 @@ You can also inject your mod into supported emulators to test your mod without r
  ~ [PS1 Ghidra Plugin](https://github.com/lab313ru/ghidra_psx_ldr)
  ~ [PS2 Ghidra Plugin](https://github.com/chaoticgd/ghidra-emotionengine-reloaded)
  ~ [Gamecube/Wii Ghidra Plugin](https://github.com/Cuyler36/Ghidra-GameCube-Loader)
+ ~ [N64 Ghidra Plugin](https://github.com/zeroKilo/N64LoaderWV)
  - [Bizhawk](https://tasvideos.org/BizHawk/ReleaseHistory#Bizhawk261) for memory searching in PS1 games
  - [Cheat Engine](https://github.com/cheat-engine/cheat-engine) for memory searching in PS2 games, and other programs
  - [Dolphin Memory Engine](https://github.com/aldelaro5/Dolphin-memory-engine) for memory searching in Gamecube/Wii games
