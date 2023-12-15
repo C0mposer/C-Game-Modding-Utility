@@ -1,0 +1,7 @@
+{
+    "files.exclude": {
+        "**/.sublime": true,
+        "**/.compile_scripts": true,
+        "**/.config": true
+    }
+}

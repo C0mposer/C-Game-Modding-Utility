@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "Game Modding",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include/**",
+                "${workspaceFolder}/src/**"
+            ]
+        }
+    ],
+    "version": 4
+}

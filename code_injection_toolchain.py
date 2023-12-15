@@ -837,7 +837,7 @@ def ParseCSourceForSymbols():
                                 if symbol.split(" ")[0] == "signed" or symbol.split(" ")[0] == "unsigned": #For if signedness specifier, skip one more white space
                                     symbol_name = symbol.split()[2].split("(")[0].split(";")[0]
                                 else:
-                                    symbol_name = symbol.split()[1].split("(")[0].split(";")[0]  #No signedness specifier
+                                    symbol_name = symbol.split()[1].split("(")[0].split("[")[0].split(";")[0]  #No signedness specifier
 
                                 symbol_address = symbol.split("//")[1].split()[0]    # Getting rid of //before address and whitespace or \n after address
                                 
@@ -3433,7 +3433,7 @@ def on_feature_mode_selected(event=0):
     print(f"Selected mode: {selected}")
     
     if g_current_project_feature_mode == "Advanced" and g_current_project_name != "":
-        tab_control.add(patches_tab, text='Patches')
+        tab_control.add(patches_tab, text='Binary Patches')
     elif g_current_project_feature_mode == "Normal" and g_current_project_name != "":
         if tab_control:
             try:

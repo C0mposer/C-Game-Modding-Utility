@@ -1,0 +1,2 @@
+/* This is where you would put your in game functions you've found through reverse engineering */
+GameFunction = 0x80005678;

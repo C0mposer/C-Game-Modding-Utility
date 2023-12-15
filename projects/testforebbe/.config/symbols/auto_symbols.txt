@@ -1,0 +1,24 @@
+/* Symbols declared in C code with "in_game" */
+current_buttons = 0x8066AAD0;
+gpPlayer = 0x804CB35C;
+gpPlayerItem = 0x804CB360;
+InGamePrintf = 0x803592a8;
+InGameSPrintf = 0x80259af8;
+Player_ForceModeChange = 0x8005b63c;
+gCreatePickup = 0x800e1b6c;
+gCreateLightGem = 0x8015500c;
+gGameLoop_m_pPanel = 0x8046F374;
+gpGameWnd = 0x804cb3cc;
+gpPanelWnd = 0x804cb3d0;
+gpPanelXWnd = 0x804cb3d4;
+GUI_GameText_Print = 0x80222d58;
+BaseWnd_DebugPrint = 0x80302710;
+XWnd_TextPrint = 0x8012f72c;
+XWnd_SetText = 0x8012f8dc;
+CreateGUI_Item = 0x801a5e14;
+GUI_Item_DrawText = 0x801a9ee8;
+GoToMap = 0x8023e644;
+GetSpyroMap = 0x80232df0;
+gMapList = 0x8046ee54;
+gGameText = 0x80455c1c;
+GetText = 0x8012df2c;
