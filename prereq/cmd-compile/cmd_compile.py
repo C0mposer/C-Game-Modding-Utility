@@ -264,7 +264,7 @@ def ParseCSourceForSymbols():
                                 if symbol.split(" ")[0] == "signed" or symbol.split(" ")[0] == "unsigned": #For if signedness specifier, skip one more white space
                                     symbol_name = symbol.split()[2].split("(")[0].split(";")[0]
                                 else:
-                                    symbol_name = symbol.split()[1].split("(")[0].split("[").split(";")[0]  #No signedness specifier
+                                    symbol_name = symbol.split()[1].split("(")[0].split("[")[0].split(";")[0]  #No signedness specifier
 
                                 symbol_address = symbol.split("//")[1].split()[0]    # Getting rid of //before address and whitespace or \n after address
                                 

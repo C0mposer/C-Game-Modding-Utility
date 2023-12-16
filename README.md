@@ -1,7 +1,7 @@
 # C/C++ Game Modding Utility
 
-**This utility aims to make writing mods/hacks for games in C/C++ easier.**  
-It streamlines the process of compiling C/C++ with the intention of being injected into a game, and interacting with its symbols.
+**This utility aims to make writing mods/hacks for games in C/C++/Zig easier.**  
+It streamlines the process of compiling C/C++/Zig with the intention of being injected into a game, and interacting with its symbols.
 
 #### This utility currently supports:
 - Playstation 1 Games
@@ -13,7 +13,7 @@ It streamlines the process of compiling C/C++ with the intention of being inject
 [Click here to see the Wiki](https://github.com/C0mposer/C-Game-Modding-Utility/wiki)
 
 ## Quick Start:
-***This  quick start will get you up and running creating a mod that runs every frame along side a game***
+***This quick start will get you up and running creating a mod in C that runs every frame along side a game***
 
 ### Creating a Project
 To get started, you'll need to create a project for your game mod.
