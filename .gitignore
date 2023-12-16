@@ -1373,3 +1373,4 @@ projects/ToyStoryn64/main_hook.o
 projects/ToyStoryn64/.config/6102CIC.BIN
 projects/ToyStoryn64/.config/output/final_bins/MainHook.bin
 projects/ZeldaTP/main_hook.o
+projects/testforebbe/.config/linker_script.ld
