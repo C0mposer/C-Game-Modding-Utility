@@ -59,7 +59,7 @@ When writing mods for a game, ultimately all we are doing is **changing values i
 #### Symbols
 - **Symbols:** Symbols are in game variables that you want to use & in game functions you want to call. You can use memory seraching tools similar to Cheat Engine, in combination with debugging emulators and decompilation tools like Ghidra in order to find in game symbols.
 
-Once you have found symbols you want to use in your mod, you can simply use the **in_game** keyword in order to declare them in your C/C++ code for use like so:
+Once you have found symbols you want to use in your mod code, you can simply declare them by using the in_game keyword, which is a shortcut for the extern keyword. *This keyword, combined with a comment specifying the memory address, allows the tool to automatically add the symbol to the linker script*
 
 ```c
 typedef struct Vec3
