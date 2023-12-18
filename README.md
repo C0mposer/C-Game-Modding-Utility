@@ -17,7 +17,7 @@ It streamlines the process of compiling C/C++/Zig with the intention of being in
 
 ### Creating a Project
 To get started, you'll need to create a project for your game mod.
-Once you have created a project choose your games platform, and ***ISO File***. The tool will ask you to extract the ISO to a folder of your choosing, and will attempt to automatically find the games ***main executable file***.
+Once you have created a project choose your games platform, and ***ISO/ROM File***. If it's an ISO, the tool will ask you to extract the ISO to a folder of your choosing, and will attempt to automatically find the games ***main executable file***.
 ##### Main Executable File
 * For PS1/PS2 games, the executable should start with **SCUS**, **SCES**, 
 **SLUS**, **SLES**, etc
