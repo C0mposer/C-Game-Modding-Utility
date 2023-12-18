@@ -79,9 +79,9 @@ in_game int ReturnCompletionPercentage(void); 	 	//0x800501C0
 in_game void DrawText(char* text_string, int x, int y); //0x80048250
 
 ```
-*Note that you MUST put the memory address of the symbol as a // comment next to the declaration. in_game is not a real keyword, just a shortcut i've added to avoid adding symbols manually*
+*Note that you MUST put the memory address of the symbol as a // comment adjacent to the declaration. The in_game keyword simplifies symbol declaration by automatically including them in the linker script based on the adjacent comment.*
 
-Once you declare the symbols as **in_game** variables/functions with their memory address in a **//** comment, you can use them in your code like any other variable/function:
+Once you declare the symbols as **in_game** variables/functions, you can use them in your code like any other variable/function:
 ```c
 //Mod Code
 void CustomFunction(void) 
