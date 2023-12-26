@@ -1,5 +1,6 @@
 import os
 import subprocess
+import platform
 import shutil
 import struct
 import ast
@@ -15,7 +16,9 @@ from tkinter import filedialog
 
 #! Other Project Files
 import utils as Utils
-import emu_inject
+
+if Utils.IsOnWindows():
+    import emu_inject
 
 
 
@@ -43,8 +46,11 @@ g_current_project_ram_watch_full_dir = ""
 g_current_project_ram_watch_name = ""
 
 g_current_project_selected_platform = ""
-g_current_project_feature_mode = "Normal"
 
+if Utils.IsOnWindows():
+    g_current_project_feature_mode = "Normal"
+else:
+    g_current_project_feature_mode = "Advanced"
 g_current_project_disk_offset = ""
 
 g_current_emu_choice = ""
@@ -52,13 +58,20 @@ g_current_emu_choice = ""
 UNIVERSAL_LINK_STRING = "-T ../../linker_script.ld -Xlinker -Map=MyMod.map "
 UNIVERSAL_OBJCOPY_STRING = "-O binary .config/output/elf_files/MyMod.elf .config/output/final_bins/"
 
-g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
-g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
-g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING}
-g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
-    
 g_optimization_level = "O2"
+
+if Utils.IsOnWindows():
+    g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
+    g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
+    g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING}
+    g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
+elif Utils.IsOnLinux():
+    g_platform_gcc_strings = {"PS1": "../../prereq/PS1mips_linux/bin/mipsel-none-elf-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
+    g_platform_linker_strings = {"PS1": "../../../../../prereq/PS1mips_linux/bin/mipsel-none-elf-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
+    g_platform_objcopy_strings = {"PS1": "../../prereq/PS1mips_linux/bin/mipsel-none-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING}
+    g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     
+
 g_src_files = ""
 g_header_files = ""
 g_asm_files = ""
@@ -95,7 +108,7 @@ def RequestCommunityCodecaves():
             open_community_codecaves_window()
             run_every_tab_switch()
     except Exception as e:
-        print(e)
+        print(f"RequestCommunityCodecaves: {e}")
 
 def add_community_codecave():
     global g_code_caves
@@ -137,7 +150,7 @@ def refresh_community_codecave_info(event=0):
         add_com_cave_button.config(text="Add codecave", command=add_community_codecave)
         add_com_cave_button.pack()
     except Exception as e:
-        print(e)
+        print(f"refresh_community_codecave_info: {e}")
     
 def open_community_codecaves_window():
     global community_caves
@@ -168,12 +181,14 @@ def open_community_codecaves_window():
             
 ## Boxart       
 def GetGamecubeGameID():
-    if g_current_project_game_exe_full_dir != "":
+    if g_current_project_game_exe_full_dir != "" and g_current_project_game_disk_full_dir != "":
         with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
             game_id = game_disk.readline()[0:6]
             game_id_str = game_id.decode()
             game_id_formatted = game_id_str.upper()
             return game_id_formatted
+    else:
+        print(colored("No game ISO in project. Cannot get game ID for boxart", "dark_grey"))
 
 def GetPSGameID():
     game_exe_formatted = g_current_project_game_exe_name.replace("_", "-").replace(".", "")
@@ -183,7 +198,7 @@ def RequestGameBoxartImage():
     try:
         image_data = None
         if not os.path.isfile(g_current_project_folder + '/.config/game.jpg'):
-            print(colored("Attempting to download game cover art...", "cyan"))
+            print(colored("Attempting to download game cover art...", "dark_grey"))
             if g_current_project_selected_platform == "PS1":
                 game_exe_formatted = g_current_project_game_exe_name.replace("_", "-").replace(".", "")
                 url = f'https://raw.githubusercontent.com/xlenore/psx-covers/main/covers/default/{game_exe_formatted}.jpg' 
@@ -201,20 +216,26 @@ def RequestGameBoxartImage():
                     image_data = requests.get(url).content 
             elif g_current_project_selected_platform == "Wii":
                 if g_current_project_game_exe_full_dir != "":
-                    with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
-                       game_id = game_disk.read()[0:6]
-                       game_id_str = game_id.decode()
-                       game_id_formatted = game_id_str.upper()
-                       url = f'https://ia803209.us.archive.org/15/items/coversdb-wii/{game_id_formatted}.png'
-                       #print(url) 
-                       image_data = requests.get(url).content 
+                    #! Figure out a proper way to get the game ID from a wii game, since we are currently not using an ISO
+                    pass
+                    # with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
+                    #    game_id = game_disk.read()[0:6]
+                    #    game_id_str = game_id.decode()
+                    #    game_id_formatted = game_id_str.upper()
+                    #    url = f'https://ia803209.us.archive.org/15/items/coversdb-wii/{game_id_formatted}.png'
+                    #    #print(url) 
+                    #    image_data = requests.get(url).content 
             
-            f = open(g_current_project_folder + '/.config/game.jpg', 'wb') 
-            f.write(image_data) 
-            f.close() 
-            print(colored("Imported game cover art\n", "cyan"))
+            game_image_path = g_current_project_folder + '/.config/game.jpg' 
+            if os.path.exists(game_image_path):
+                f = open(g_current_project_folder + '/.config/game.jpg', 'wb') 
+                f.write(image_data) 
+                f.close() 
+                print(colored("Imported game cover art\n", "dark_grey"))
+            else:
+                print(colored("No game boxart available", "dark_grey"))
     except Exception as e:
-        print(e)
+        print(f"RequestGameBoxartImage: {e}")
 ##
 
 
@@ -248,7 +269,7 @@ def ParseBizhawkRamWatch():
                             symbol_data.append(current_symbol_data)
                         
                 except Exception as e:
-                    print(f"{e}\n")
+                    print(f"ParseBizhawkRamWatch: {e}\n")
             #print(symbol_data)
             
             bizhawk_symbols_h_string = f"#ifndef BIZHAWK_SYMBOLS_H\n#define BIZHAWK_SYMBOLS_H\n#include <custom_types.h>\n\n//Variables from {watch_file_name}\n"
@@ -437,7 +458,10 @@ def SetupVSCodeProject():
         old_dir = os.getcwd()
         os.chdir(g_current_project_folder)
         
-        subprocess.Popen("cmd /c code .")     # Open project in VSCode. cmd /c since this is a pipe
+        if Utils.IsOnWindows():
+            subprocess.Popen("cmd /c code .")     # Open project in VSCode. cmd /c since this is a pipe
+        else:
+            subprocess.Popen("code .", shell=True, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
         os.chdir(old_dir)
     else:
@@ -743,7 +767,10 @@ def SetupSublimeProject():
         os.chdir(g_current_project_folder)
         full_project_dir = os.getcwd()
         
-        subprocess.Popen("cmd /c .sublime\\project.sublime-project")     # Open project in Sublime
+        if Utils.IsOnWindows():
+            subprocess.Popen("cmd /c .sublime\\project.sublime-project")     # Open project in Sublime
+        else:
+            subprocess.Popen("subl .sublime/project.sublime-project", shell=True, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
         os.chdir(old_dir)
     else:
@@ -808,6 +835,7 @@ def Compile():
     #Add symbols from source that were declared using in_game
     ParseCSourceForSymbols()
     
+    #Set compile strings from either GCC or Zig
     if is_zig_project == False:
         platform_compile_strings = g_platform_gcc_strings
     if is_zig_project == True:
@@ -819,13 +847,19 @@ def Compile():
     print(starting_compilation)
     print(compile_string)
     
-    gcc_output = subprocess.run(g_platform_gcc_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if gcc_output.stdout:
-        print(gcc_output.stdout)
-        print(gcc_output.stderr)
+    if Utils.IsOnWindows():    
+        gcc_output = subprocess.run(g_platform_gcc_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        gcc_stdout_text = gcc_output.stdout
+        gcc_stderr_text = gcc_output.stderr
+    elif Utils.IsOnLinux():   
+        gcc_output = subprocess.Popen(g_platform_gcc_strings[g_current_project_selected_platform], shell=True, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        gcc_stdout_text = gcc_output.stdout.read()
+        gcc_stderr_text = gcc_output.stderr.read()
+    if gcc_stdout_text:
+        print(gcc_stdout_text)
     if gcc_output.returncode == 1:
         print(colored("Compilation Failed!", "red"))
-        print(gcc_output.stderr)
+        print(gcc_stderr_text)
         
         os.chdir(main_dir)
         return False
@@ -851,29 +885,46 @@ def Compile():
     #! Link .o files
     print(colored("Starting Link:", "green"))
     link_string = g_platform_linker_strings[g_current_project_selected_platform]
+    
+    # Move .o files
     for file in g_obj_files.split():
         try:
-            shutil.move(file, os.getcwd() + "\.config\output\object_files\\" + file) # Move .o files from main dir to output\object_files
+            if Utils.IsOnWindows():    
+                shutil.move(file, os.getcwd() + "\.config\output\object_files\\" + file) # Move .o files from main dir to output\object_files
+            else:
+                shutil.move(file, os.getcwd() + "/.config/output/object_files/" + file) # Move .o files from main dir to output\object_files
         except Exception as e:
-            print(colored(f"{e}", "red"))
+            print(colored(f"Compile: {e}", "red"))
             os.chdir(main_dir)
             return
     
     project_dir = os.getcwd()
-    os.chdir(project_dir + "\.config\output\object_files")
+    if Utils.IsOnWindows():    
+        os.chdir(project_dir + "\.config\output\object_files")
+    else:
+        os.chdir(project_dir + "/.config/output/object_files")
+        
     print(colored("Link String: " + link_string, "green"))
-    linker_output = subprocess.run(link_string, shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # Run the link string
-    if linker_output.stdout:
-        print(linker_output.stdout)
+    if Utils.IsOnWindows():    
+        linker_output = subprocess.run(link_string, shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        linker_stdout_text = linker_output.stdout
+        linker_stderr_text = linker_output.stderr
+    elif Utils.IsOnLinux():   
+        linker_output = subprocess.Popen(link_string, shell=True, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        linker_stdout_text = linker_output.stdout.read()
+        linker_stderr_text = linker_output.stderr.read()
+       
+    if linker_stdout_text:
+        print(linker_stdout_text)
     if linker_output.returncode == 1:
         print(colored("Linking Failed!", "red"))
-        print(linker_output.stderr)
-        if "overlaps section" in linker_output.stderr:
+        print(linker_stderr_text)
+        if "overlaps section" in linker_stderr_text:
             messagebox.showerror("Linking Error", "Linker failed with \"overlapping sections\" error. Ensure codecaves or hooks do not share addresses, or occupy very similar regions.")
-        if "will not fit in region" in linker_output.stderr:
-            section_name_index = linker_output.stderr.index(": region")
-            end_index = linker_output.stderr.index("collect2.exe")
-            section_name = linker_output.stderr[(section_name_index + 2):(end_index-1)]
+        if "will not fit in region" in linker_stderr_text:
+            section_name_index = linker_stderr_text.index(": region")
+            end_index = linker_stderr_text.index("collect2.exe")
+            section_name = linker_stderr_text[(section_name_index + 2):(end_index-1)]
             section_overflow_index = section_name.find("overflowed by ")
             section_size_hex = section_name[section_overflow_index:].split(" ")[2]
             section_size_hex_int = hex(int(section_size_hex))
@@ -881,7 +932,11 @@ def Compile():
         os.chdir(main_dir)
         return False
     
-    os.system("move MyMod.map ../memory_map > nul ")                     #The nul below is just to get rid of the ugly output
+    if Utils.IsOnWindows():
+        os.system("move MyMod.map ../memory_map > nul ")  #The nul below is just to get rid of the ugly output
+    else:
+        os.system("mv MyMod.map ../memory_map")
+        
     os.chdir(project_dir)
     print(colored("Linking Finished!", "green"))
     
@@ -935,7 +990,7 @@ def PrepareBuildInjectGUIOptions():
     global build_iso_button
     global build_exe_button
     global change_exe_button
-    global create_ps2_code_button
+    global create_cheat_code_button
     global create_cheat_code_label
     global bizhawk_ramwatch_checkbox
     global bizhawk_ramwatch_checkbox_state
@@ -957,8 +1012,8 @@ def PrepareBuildInjectGUIOptions():
         build_exe_button.pack_forget()
     if change_exe_button:
         change_exe_button.place_forget()
-    if create_ps2_code_button:
-        create_ps2_code_button.place_forget()
+    if create_cheat_code_button:
+        create_cheat_code_button.place_forget()
     if create_cheat_code_label:
         create_cheat_code_label.place_forget()
         
@@ -968,267 +1023,381 @@ def PrepareBuildInjectGUIOptions():
     small_font_style = ttk.Style()
     small_font_style.configure("Small.TButton", font=("Segoe UI", 14))
         
-    # Build button    
-    #PS1/PS2 
-    if g_current_project_game_disk != "" and ((g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "PS2")):
-        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
-        build_iso_button.pack(pady=5)    
-    #N64 & GC/WII Option for iso and just exe
-    elif g_current_project_game_disk != "" and ((g_current_project_selected_platform == "Gamecube" or g_current_project_selected_platform == "Wii")):
-        build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
-        build_iso_button.pack(pady=5)
-        if g_current_project_feature_mode == "Advanced":
+    #! UI For Winodws  
+    if Utils.IsOnWindows():
+        #PS1/PS2 
+        if g_current_project_game_disk != "" and ((g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "PS2")):
+            build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
+            build_iso_button.pack(pady=5)    
+        #N64 & GC/WII Option for iso and just exe
+        elif g_current_project_game_disk != "" and ((g_current_project_selected_platform == "Gamecube" or g_current_project_selected_platform == "Wii")):
+            build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame, style="Medium.TButton") 
+            build_iso_button.pack(pady=5)
+            if g_current_project_feature_mode == "Advanced":
+                build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
+                build_exe_button.pack()    
+        elif g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64"):
+            build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
+            build_exe_button.pack()  
+        #No ISO, choose one first
+        else:
+            build_iso_button = ttk.Button(compile_tab, text=f"Choose ISO/BIN/ROM to Build", command=FirstSelectISOThenBuild, style="Medium.TButton") 
+            build_iso_button.pack()
+        
+        #Update compile tab text/buttons
+        if g_current_project_game_exe and g_current_project_game_exe_full_dir:
+            exe_name = g_current_project_game_exe.split('/')[-1].split("\n")[0]
+            if g_current_project_selected_platform == "PS2":
+                
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base PS2 ISO:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base PS2 ISO:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose PS2 ISO file", command=open_ISO_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                inject_emulator_label.place(x=610, y=0)
+                
+                g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
+                emulators_combobox['values'] = ('PCSX2 1.6.0', 'PCSX2 1.7.5112')
+                emulators_combobox.place(x=592, y=30)
+                emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                
+                inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePCSX2Inject, font=("jdfa", 11))
+                inject_emu_button.place(x=652, y=65)
+                
+                create_cheat_code_label = tk.Label(compile_tab, text="Create PS2RD/CheatDevicePS2 Code:", font=("jdfa", 14))
+                create_cheat_code_label.place(x=454, y=290)
+                
+                create_cheat_code_button = tk.Button(compile_tab, text=f"Create PS2RD Code", command=convert_to_ps2rd_code, font=("jdfa", 11))
+                create_cheat_code_button.place(x=646, y=320)
+                
+            if g_current_project_selected_platform == "Gamecube":
+                # Create a button choose the game ISO
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base Gamecube ISO:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base Gamecube ISO:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose Gamecube ISO file", command=open_ISO_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                inject_emulator_label.place(x=610, y=0)
+                
+                g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
+                emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
+                emulators_combobox.place(x=592, y=30)
+                emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                
+                inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
+                inject_emu_button.place(x=652, y=65)
+                
+            if g_current_project_selected_platform == "Wii":
+                # Create a button choose the game ISO
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base Wii .dol:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base Wii .dol:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose Wii DOL file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                inject_emulator_label.place(x=610, y=0)
+                
+                g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
+                emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
+                emulators_combobox.place(x=592, y=30)
+                emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                
+                inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
+                inject_emu_button.place(x=652, y=65)
+            
+            elif g_current_project_selected_platform == "PS1":   
+                # Create a button choose the game ISO
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base PS1 BIN:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base PS1 BIN:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose PS1 BIN file", command=open_ISO_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                inject_emulator_label.place(x=610, y=0)
+                
+                g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
+                emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
+                emulators_combobox.place(x=592, y=30)
+                emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                
+                inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("jdfa", 11))
+                inject_emu_button.place(x=652, y=65)
+                
+                create_cheat_code_label = tk.Label(compile_tab, text="Create Duckstation Cheat Code:", font=("jdfa", 14))
+                create_cheat_code_label.place(x=520, y=290)
+                
+                create_cheat_code_button = tk.Button(compile_tab, text=f"Create Duckstation Code", command=convert_to_gameshark_code, font=("jdfa", 11))
+                create_cheat_code_button.place(x=615, y=320)
+                
+            elif g_current_project_selected_platform == "N64":
+
+                choose_exe_label = tk.Label(compile_tab, text=f"Choose Base N64 ROM:", font=("jdfa", 15))
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose N64 ROM file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                inject_emulator_label.place(x=610, y=0)
+                
+                g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
+                emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
+                emulators_combobox.place(x=592, y=30)
+                emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                
+                inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("fasf", 11))
+                inject_emu_button.place(x=652, y=65)      
+                
+    #! UI For Linux 
+    if Utils.IsOnLinux():
+        #PS1/PS2 
+        if g_current_project_game_exe != "" and ((g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "PS2")):
+            build_iso_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
+            build_iso_button.pack(pady=5)    
+        #N64 & GC/WII Option for iso and just exe
+        elif g_current_project_game_exe != "" and ((g_current_project_selected_platform == "Gamecube" or g_current_project_selected_platform == "Wii")):
             build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
             build_exe_button.pack()    
-    elif g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64"):
-        build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
-        build_exe_button.pack()  
-    #No ISO, choose one first
-    else:
-        build_iso_button = ttk.Button(compile_tab, text=f"Choose ISO/BIN/ROM to Build", command=FirstSelectISOThenBuild, style="Medium.TButton") 
-        build_iso_button.pack()
-     
-    #Update compile tab text/buttons
-    if g_current_project_game_exe and g_current_project_game_exe_full_dir:
-        exe_name = g_current_project_game_exe.split('/')[-1].split("\n")[0]
-        if g_current_project_selected_platform == "PS2":
-            
-            if g_current_project_game_disk_full_dir == "":
-                choose_exe_label = tk.Label(compile_tab, text=f"Choose Base PS2 ISO:", font=("jdfa", 15))
-            if g_current_project_game_disk_full_dir != "": 
-                choose_exe_label = tk.Label(compile_tab, text=f"Change Base PS2 ISO:", font=("jdfa", 15)) 
-            choose_exe_label.place(x=0, y=0)
-            
-            change_exe_button = tk.Button(compile_tab, text=f"Choose PS2 ISO file", command=open_ISO_file, font=("jdfa", 12))
-            change_exe_button.place(x=5, y=30)
-            
-            inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=610, y=0)
-            
-            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
-            emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('PCSX2 1.6.0', 'PCSX2 1.7.5112')
-            emulators_combobox.place(x=592, y=30)
-            emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
-            
-            inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePCSX2Inject, font=("jdfa", 11))
-            inject_emu_button.place(x=652, y=65)
-            
-            
-            create_cheat_code_label = tk.Label(compile_tab, text="Create PS2RD/CheatDevicePS2 Code:", font=("jdfa", 14))
-            create_cheat_code_label.place(x=454, y=290)
-            
-            create_ps2_code_button = tk.Button(compile_tab, text=f"Create PS2RD Code", command=convert_to_ps2rd_code, font=("jdfa", 11))
-            create_ps2_code_button.place(x=646, y=320)
-            
-        if g_current_project_selected_platform == "Gamecube":
-            # Create a button choose the game ISO
-            if g_current_project_game_disk_full_dir == "":
-                choose_exe_label = tk.Label(compile_tab, text=f"Choose Base Gamecube ISO:", font=("jdfa", 15))
-            if g_current_project_game_disk_full_dir != "": 
-                choose_exe_label = tk.Label(compile_tab, text=f"Change Base Gamecube ISO:", font=("jdfa", 15)) 
-            choose_exe_label.place(x=0, y=0)
-            
-            change_exe_button = tk.Button(compile_tab, text=f"Choose Gamecube ISO file", command=open_ISO_file, font=("jdfa", 12))
-            change_exe_button.place(x=5, y=30)
-            
-            inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=610, y=0)
-            
-            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
-            emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
-            emulators_combobox.place(x=592, y=30)
-            emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
-            
-            inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
-            inject_emu_button.place(x=652, y=65)
-            
-        if g_current_project_selected_platform == "Wii":
-            # Create a button choose the game ISO
-            if g_current_project_game_disk_full_dir == "":
-                choose_exe_label = tk.Label(compile_tab, text=f"Choose Base Wii .dol:", font=("jdfa", 15))
-            if g_current_project_game_disk_full_dir != "": 
-                choose_exe_label = tk.Label(compile_tab, text=f"Change Base Wii .dol:", font=("jdfa", 15)) 
-            choose_exe_label.place(x=0, y=0)
-            
-            change_exe_button = tk.Button(compile_tab, text=f"Choose Wii DOL file", command=open_exe_file, font=("jdfa", 12))
-            change_exe_button.place(x=5, y=30)
-            
-            inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=610, y=0)
-            
-            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
-            emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
-            emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
-            emulators_combobox.place(x=592, y=30)
-            emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
-            
-            inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
-            inject_emu_button.place(x=652, y=65)
-            
-        elif g_current_project_selected_platform == "PS1":   
-            # Create a button choose the game ISO
-            if g_current_project_game_disk_full_dir == "":
-                choose_exe_label = tk.Label(compile_tab, text=f"Choose Base PS1 BIN:", font=("jdfa", 15))
-            if g_current_project_game_disk_full_dir != "": 
-                choose_exe_label = tk.Label(compile_tab, text=f"Change Base PS1 BIN:", font=("jdfa", 15)) 
-            choose_exe_label.place(x=0, y=0)
-            
-            change_exe_button = tk.Button(compile_tab, text=f"Choose PS1 BIN file", command=open_ISO_file, font=("jdfa", 12))
-            change_exe_button.place(x=5, y=30)
-            
-            inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=610, y=0)
-            
-            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
-            emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
-            emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
-            emulators_combobox.place(x=592, y=30)
-            emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
-            
-            inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("jdfa", 11))
-            inject_emu_button.place(x=652, y=65)
-            
-            create_cheat_code_label = tk.Label(compile_tab, text="Create Duckstation Cheat Code:", font=("jdfa", 14))
-            create_cheat_code_label.place(x=520, y=290)
-            
-            create_ps2_code_button = tk.Button(compile_tab, text=f"Create Duckstation Code", command=convert_to_gameshark_code, font=("jdfa", 11))
-            create_ps2_code_button.place(x=615, y=320)
-            
-        elif g_current_project_selected_platform == "N64":
+        elif g_current_project_game_exe != "" and (g_current_project_selected_platform == "N64"):
+            build_exe_button = ttk.Button(compile_tab, text=f"Build Patched Copy of {g_current_project_game_exe_name}", command=InjectIntoJustExe, style="Medium.TButton") 
+            build_exe_button.pack()  
+        #No EXE, choose one first
+        else:
+            build_exe_button = ttk.Button(compile_tab, text=f"Choose EXE to Build", command=open_exe_file, style="Medium.TButton") 
+            build_exe_button.pack()
+        
+        #Update compile tab text/buttons
+        if g_current_project_game_exe and g_current_project_game_exe_full_dir:
+            exe_name = g_current_project_game_exe.split('/')[-1].split("\n")[0]
+            if g_current_project_selected_platform == "PS2":
+                
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base PS2 EXE:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base PS2 EXE:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose PS2 EXE file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                create_cheat_code_label = tk.Label(compile_tab, text="Create PS2RD/CheatDevicePS2 Code:", font=("jdfa", 14))
+                create_cheat_code_label.place(x=454, y=290)
+                
+                create_cheat_code_button = tk.Button(compile_tab, text=f"Create PS2RD Code", command=convert_to_ps2rd_code, font=("jdfa", 11))
+                create_cheat_code_button.place(x=646, y=320)
+                
+            if g_current_project_selected_platform == "Gamecube":
+                # Create a button choose the game ISO
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base Gamecube EXE:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base Gamecube EXE:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose Gamecube EXE file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                
+            if g_current_project_selected_platform == "Wii":
+                # Create a button choose the game ISO
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base Wii .dol:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base Wii .dol:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose Wii DOL file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                if Utils.IsOnWindows():
+                    inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                    inject_emulator_label.place(x=610, y=0)
+                    
+                    g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                    emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("sfa", 11))
+                    emulators_combobox['values'] = ('Dolphin 5.0-20347', 'Dolphin 5.0-19870')
+                    emulators_combobox.place(x=592, y=30)
+                    emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                    
+                    inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PrepareDolphinInject, font=("jdfa", 11))
+                    inject_emu_button.place(x=652, y=65)
+                
+            elif g_current_project_selected_platform == "PS1":   
+                # Create a button choose the game ISO
+                if g_current_project_game_disk_full_dir == "":
+                    choose_exe_label = tk.Label(compile_tab, text=f"Choose Base PS1 EXE:", font=("jdfa", 15))
+                if g_current_project_game_disk_full_dir != "": 
+                    choose_exe_label = tk.Label(compile_tab, text=f"Change Base PS1 EXE:", font=("jdfa", 15)) 
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose PS1 EXE file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                create_cheat_code_label = tk.Label(compile_tab, text="Create Duckstation Cheat Code:", font=("jdfa", 14))
+                create_cheat_code_label.place(x=505, y=290)
+                
+                create_cheat_code_button = tk.Button(compile_tab, text=f"Create Duckstation Code", command=convert_to_gameshark_code, font=("jdfa", 11))
+                create_cheat_code_button.place(x=600, y=320)
+                
+            elif g_current_project_selected_platform == "N64":
 
-            choose_exe_label = tk.Label(compile_tab, text=f"Choose Base N64 ROM:", font=("jdfa", 15))
-            choose_exe_label.place(x=0, y=0)
-            
-            change_exe_button = tk.Button(compile_tab, text=f"Choose N64 ROM file", command=open_exe_file, font=("jdfa", 12))
-            change_exe_button.place(x=5, y=30)
-            
-            inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
-            inject_emulator_label.place(x=610, y=0)
-            
-            g_selected_emu = tk.StringVar(value=g_current_emu_choice)
-            emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
-            emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
-            emulators_combobox.place(x=592, y=30)
-            emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
-            
-            inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("fasf", 11))
-            inject_emu_button.place(x=652, y=65)           
+                choose_exe_label = tk.Label(compile_tab, text=f"Choose Base N64 ROM:", font=("jdfa", 15))
+                choose_exe_label.place(x=0, y=0)
+                
+                change_exe_button = tk.Button(compile_tab, text=f"Choose N64 ROM file", command=open_exe_file, font=("jdfa", 12))
+                change_exe_button.place(x=5, y=30)
+                
+                inject_emulator_label = tk.Label(compile_tab, text="Inject into emulator:", font=("jdfa", 15))
+                inject_emulator_label.place(x=610, y=0)
+                
+                g_selected_emu = tk.StringVar(value=g_current_emu_choice)
+                emulators_combobox = ttk.Combobox(compile_tab, textvariable=g_selected_emu, font=("fasf", 11))
+                emulators_combobox['values'] = ('Duckstation 0.1-5936', 'Mednafen 1.29', 'Mednafen 1.31', 'Bizhawk 2.6.1')
+                emulators_combobox.place(x=592, y=30)
+                emulators_combobox.bind("<<ComboboxSelected>>", ChangeEmulatorText)
+                
+                inject_emu_button = tk.Button(compile_tab, text=f"Inject into Emulator", command=PreparePS1EmuInject, font=("fasf", 11))
+                inject_emu_button.place(x=652, y=65)                
 
-def PreparePCSX2Inject(event=0):
+#Emulator Injection Options only for Windows
+if Utils.IsOnWindows():
     
-    pcsx2_160_info = {
-        'name': 'pcsx2',
-        'address': 0x20000000,
-        'ptr': False,
-        'double_ptr': False,
-        'base': False
+    def PreparePCSX2Inject(event=0):
+        
+        pcsx2_160_info = {
+            'name': 'pcsx2',
+            'address': 0x20000000,
+            'ptr': False,
+            'double_ptr': False,
+            'base': False
+            }
+        pcsx2_175112_info = {
+            'name': 'pcsx2',
+            'base_exe_dll_name': 'pcsx2.exe',
+            'main_ram_offset': 0x30B6BB0,
+            'ptr': True,
+            'double_ptr': False,
+            'base': True
+            }
+            
+        if g_selected_emu.get() == "PCSX2 1.6.0":
+            complete_message = emu_inject.InjectIntoEmu(pcsx2_160_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        elif g_selected_emu.get() == "PCSX2 1.7.5112":
+            complete_message = emu_inject.InjectIntoEmu(pcsx2_175112_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        else:
+            messagebox.showerror("Error", "Please select an emulator")
+        
+    def PrepareDolphinInject(event=0):
+        dolphin_50_19870_info = {
+            'name': 'Dolphin.exe',
+            'base_exe_dll_name': 'Dolphin.exe',
+            'main_ram_offset': 0x1189050,
+            'base': True,
+            'double_ptr': True,
+            'ptr': False
+            }
+        dolphin_50_20240_info = {
+            'name': 'Dolphin.exe',
+            'base_exe_dll_name': 'Dolphin.exe',
+            'main_ram_offset': 0x11D41B0,
+            'base': True,
+            'double_ptr': True,
+            'ptr': False
+            }
+        dolphin_50_20347_info = {
+            'name': 'Dolphin.exe',
+            'base_exe_dll_name': 'Dolphin.exe',
+            'main_ram_offset': 0x11DD220,
+            'base': True,
+            'double_ptr': True,
+            'ptr': False
+            }
+        
+        if g_selected_emu.get() == "Dolphin 5.0-20347":
+            complete_message = emu_inject.InjectIntoEmu(dolphin_50_20347_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        elif g_selected_emu.get() == "Dolphin 5.0-20240":
+            complete_message = emu_inject.InjectIntoEmu(dolphin_50_20240_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        elif g_selected_emu.get() == "Dolphin 5.0-19870":
+            complete_message = emu_inject.InjectIntoEmu(dolphin_50_19870_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        else:
+            messagebox.showerror("Error", "Please select an emulator")
+        
+    def PreparePS1EmuInject(event=0):
+        global g_selected_emu
+        
+        duckstation_info = {
+            'name': 'duckstation',
+            'base_exe_dll_name': 'duckstation-qt-x64-ReleaseLTCG.exe',
+            'main_ram_offset': 0x87E6B0,
+            'ptr': True,
+            'double_ptr': False,
+            'base': True,
+            }
+        bizhawk_info = {
+            'name': 'EmuHawk',
+            'base_exe_dll_name': 'octoshock.dll',
+            'main_ram_offset': 0x310f80,
+            'ptr': False,
+            'double_ptr': False,
+            'base': True
+            }
+        mednafen_129_info = {
+            'name': 'mednafen',
+            'address': 0x2003E80,
+            'base': False,
+            'ptr': False,
+            'double_ptr': False
         }
-    pcsx2_175112_info = {
-        'name': 'pcsx2',
-        'base_exe_dll_name': 'pcsx2.exe',
-        'main_ram_offset': 0x30B6BB0,
-        'ptr': True,
-        'double_ptr': False,
-        'base': True
+        mednafen_131_info = {
+            'name': 'mednafen',
+            'address': 0x2034E80,
+            'base': False,
+            'ptr': False,
+            'double_ptr': False
         }
         
-    if g_selected_emu.get() == "PCSX2 1.6.0":
-        complete_message = emu_inject.InjectIntoEmu(pcsx2_160_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    elif g_selected_emu.get() == "PCSX2 1.7.5112":
-        complete_message = emu_inject.InjectIntoEmu(pcsx2_175112_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    else:
-        messagebox.showerror("Error", "Please select an emulator")
-    
-def PrepareDolphinInject(event=0):
-    dolphin_50_19870_info = {
-        'name': 'Dolphin.exe',
-        'base_exe_dll_name': 'Dolphin.exe',
-        'main_ram_offset': 0x1189050,
-        'base': True,
-        'double_ptr': True,
-        'ptr': False
-        }
-    dolphin_50_20240_info = {
-        'name': 'Dolphin.exe',
-        'base_exe_dll_name': 'Dolphin.exe',
-        'main_ram_offset': 0x11D41B0,
-        'base': True,
-        'double_ptr': True,
-        'ptr': False
-        }
-    dolphin_50_20347_info = {
-        'name': 'Dolphin.exe',
-        'base_exe_dll_name': 'Dolphin.exe',
-        'main_ram_offset': 0x11DD220,
-        'base': True,
-        'double_ptr': True,
-        'ptr': False
-        }
-    
-    if g_selected_emu.get() == "Dolphin 5.0-20347":
-        complete_message = emu_inject.InjectIntoEmu(dolphin_50_20347_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    elif g_selected_emu.get() == "Dolphin 5.0-20240":
-        complete_message = emu_inject.InjectIntoEmu(dolphin_50_20240_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    elif g_selected_emu.get() == "Dolphin 5.0-19870":
-        complete_message = emu_inject.InjectIntoEmu(dolphin_50_19870_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    else:
-        messagebox.showerror("Error", "Please select an emulator")
-    
-def PreparePS1EmuInject(event=0):
-    global g_selected_emu
-    
-    duckstation_info = {
-        'name': 'duckstation',
-        'base_exe_dll_name': 'duckstation-qt-x64-ReleaseLTCG.exe',
-        'main_ram_offset': 0x87E6B0,
-        'ptr': True,
-        'double_ptr': False,
-        'base': True,
-        }
-    bizhawk_info = {
-        'name': 'EmuHawk',
-        'base_exe_dll_name': 'octoshock.dll',
-        'main_ram_offset': 0x310f80,
-        'ptr': False,
-        'double_ptr': False,
-        'base': True
-        }
-    mednafen_129_info = {
-        'name': 'mednafen',
-        'address': 0x2003E80,
-        'base': False,
-        'ptr': False,
-        'double_ptr': False
-    }
-    mednafen_131_info = {
-        'name': 'mednafen',
-        'address': 0x2034E80,
-        'base': False,
-        'ptr': False,
-        'double_ptr': False
-    }
-    
-    if g_selected_emu.get() == "Duckstation 0.1-5936":
-        complete_message = emu_inject.InjectIntoEmu(duckstation_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    elif g_selected_emu.get() == "Mednafen 1.29":
-        complete_message = emu_inject.InjectIntoEmu(mednafen_129_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    elif g_selected_emu.get() == "Mednafen 1.31":
-        complete_message = emu_inject.InjectIntoEmu(mednafen_131_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    elif g_selected_emu.get() == "Bizhawk 2.6.1":
-        complete_message = emu_inject.InjectIntoEmu(bizhawk_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
-        messagebox.showinfo("Info", complete_message)
-    else:
-        messagebox.showerror("Error", "Please select Emulator")
+        if g_selected_emu.get() == "Duckstation 0.1-5936":
+            complete_message = emu_inject.InjectIntoEmu(duckstation_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        elif g_selected_emu.get() == "Mednafen 1.29":
+            complete_message = emu_inject.InjectIntoEmu(mednafen_129_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        elif g_selected_emu.get() == "Mednafen 1.31":
+            complete_message = emu_inject.InjectIntoEmu(mednafen_131_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        elif g_selected_emu.get() == "Bizhawk 2.6.1":
+            complete_message = emu_inject.InjectIntoEmu(bizhawk_info, g_current_project_folder, g_code_caves, g_hooks, g_patches)
+            messagebox.showinfo("Info", complete_message)
+        else:
+            messagebox.showerror("Error", "Please select Emulator")
 
 def InjectIntoJustExe(event=0):
     InjectIntoExeAndRebuildGame(just_exe=True)
@@ -1292,7 +1461,7 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
                     game_exe_file.write(mod_data[patch[0]])
     except Exception as e:
         #print("No patches found, ignoring {e}")
-        print(e)
+        print(f"InjectIntoExeAndRebuildGame {e}")
     
             
     if just_exe == False:
@@ -1393,13 +1562,17 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
               
               
     #!If genereic executable (n64, wii), skip iso/bin stuff all above          
-    open_in_explorer = messagebox.askyesno("Completed Patching", "Successfully created patched game! Would you like to open the directory in file explorer?")
-    if open_in_explorer:
-        #Open in file expolorer
-        patched_directory = os.getcwd() + "\\" + patched_exe_name.replace('/', '\\').removesuffix("patched_" + g_current_project_game_exe_name)
-        print("Opening Dir: " + patched_directory + "\nFinished!")
-        subprocess.Popen("explorer " + patched_directory, shell=True)
-        return "Build Complete!"
+    if Utils.IsOnWindows():
+        open_in_explorer = messagebox.askyesno("Completed Patching", "Successfully created patched game! Would you like to open the directory in file explorer?")
+        if open_in_explorer:
+            #Open in file expolorer
+            patched_directory = os.getcwd() + "\\" + patched_exe_name.replace('/', '\\').removesuffix("patched_" + g_current_project_game_exe_name)
+            print("Opening Dir: " + patched_directory + "\nFinished!")
+            subprocess.Popen("explorer " + patched_directory, shell=True)
+            return "Build Complete!"
+    else:
+        messagebox.showinfo("Completed Patching", f"Successfully created patched {g_current_project_game_exe_name} in project directory")
+        
   
 def FirstSelectISOThenBuild():
     open_ISO_file()
@@ -2045,7 +2218,7 @@ def convert_to_ps2rd_code(ignore_codecaves=False):
                     chunks[patch[0]].append("20" + hex(int(patch[1].removeprefix("0x"), base=16) + i).removeprefix("0x") + " " + current_chunk_little_endian)
     except Exception as e:
         #print("No binary patches found, ignoring. {e}")
-        print(e)
+        print(f"convert_to_ps2rd_code: {e}")
             
     #print(chunks)
     
@@ -2152,8 +2325,11 @@ def convert_to_gameshark_code(ignore_codecaves=False):
     
     print(colored("Gameshark Code: \n" + full_code, "cyan"))
     
-    pyperclip.copy(full_code)
-    user_answer = messagebox.showinfo("Done", f"Created Gameshark code and copied to clipboard.")
+    if Utils.IsOnWindows():
+        pyperclip.copy(full_code)
+        user_answer = messagebox.showinfo("Done", f"Created Gameshark code and copied to clipboard.")
+    else:
+        user_answer = messagebox.showinfo("Done", f"Created Gameshark code. It is visable in the terminal")    
 ##
 
 ## N64 CRC
@@ -2233,7 +2409,11 @@ def update_linker_script():
     
 # Checks the amount of bytes each .section takes up, to relay codecave size info    
 def check_memory_map_sizes():
-    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
+    if Utils.IsOnWindows():
+        path = f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map"
+    else:
+        path = f"projects/{g_current_project_name}/.config/output/memory_map/MyMod.map"
+    with open(path) as memory_map_file:
         memory_map_data = memory_map_file.read()
 
         for cave in g_code_caves:
@@ -2332,7 +2512,7 @@ def update_codecaves_hooks_patches_config_file():
             patch_file.write(str(g_patches))
     except Exception as e:
         #print(f"No binary patches, ignoring.\t {e}")
-        print(e)
+        print(f"update_codecaves_hooks_patches_config_file {e}")
     
 def run_every_tab_switch(event=0):
     global auto_hook_button
@@ -2405,7 +2585,7 @@ def run_every_tab_switch(event=0):
             pass
             #print("No offset to load, skipping")
             
-    get_src_files()
+    get_src_and_obj_files()
     
 def project_switched():
     global g_shouldShowTabs
@@ -2470,8 +2650,8 @@ def project_switched():
         build_exe_button.pack_forget()
     if change_exe_button:
         change_exe_button.place_forget()
-    if create_ps2_code_button:
-        create_ps2_code_button.place_forget()
+    if create_cheat_code_button:
+        create_cheat_code_button.place_forget()
     if create_cheat_code_label:
         create_cheat_code_label.place_forget()
     if bizhawk_ramwatch_checkbox:
@@ -2532,18 +2712,19 @@ def project_switched():
     current_project_label = ttk.Label(main_tab, text='Current Project:\n' + g_current_project_name + "", font=("GENIUNE", 20))
     current_project_label.place(x=300, y=5)
     
-    # Add Ram watch integration button
-    if g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "Gamecube":
-        bizhawk_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Bizhawk Ram Watch", variable=bizhawk_ramwatch_checkbox_state, command=OpenBizhawkRamWatch)
-        bizhawk_ramwatch_checkbox.place(x=295, y=420)
-        bizhawk_ramwatch_label = tk.Label(main_tab, text=g_current_project_ram_watch_name)
-        bizhawk_ramwatch_label.place(x=295, y=446)
-        
-    if g_current_project_selected_platform == "PS2":
-        cheat_engine_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Cheat Engine Table", variable=cheat_engine_ramwatch_checkbox_state, command=OpenCheatEngineRamWatch)
-        cheat_engine_ramwatch_checkbox.place(x=295, y=420)
-        bizhawk_ramwatch_label = tk.Label(main_tab, text=g_current_project_ram_watch_name)
-        bizhawk_ramwatch_label.place(x=295, y=446)
+    # Add Ram watch integration button on windows
+    if Utils.IsOnWindows():
+        if g_current_project_selected_platform == "PS1" or g_current_project_selected_platform == "Gamecube":
+            bizhawk_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Bizhawk Ram Watch", variable=bizhawk_ramwatch_checkbox_state, command=OpenBizhawkRamWatch)
+            bizhawk_ramwatch_checkbox.place(x=295, y=420)
+            bizhawk_ramwatch_label = tk.Label(main_tab, text=g_current_project_ram_watch_name)
+            bizhawk_ramwatch_label.place(x=295, y=446)
+            
+        if g_current_project_selected_platform == "PS2":
+            cheat_engine_ramwatch_checkbox = ttk.Checkbutton(main_tab, text="Automatically Integrate Cheat Engine Table", variable=cheat_engine_ramwatch_checkbox_state, command=OpenCheatEngineRamWatch)
+            cheat_engine_ramwatch_checkbox.place(x=295, y=420)
+            bizhawk_ramwatch_label = tk.Label(main_tab, text=g_current_project_ram_watch_name)
+            bizhawk_ramwatch_label.place(x=295, y=446)
         
     if g_current_project_game_exe_full_dir != "":
         RequestGameBoxartImage()
@@ -2561,7 +2742,7 @@ def project_switched():
     
     # Couldn't get boxart
     except Exception as e:
-        print({e})
+        print(f"project_switched: {e}")
         
     
     if platform_combobox:
@@ -2614,7 +2795,7 @@ def create_project():
     try:
         os.makedirs(g_current_project_folder)
     except Exception as e:
-        print(e)
+        print(f"create_project: {e}")
         messagebox.showerror("Error", "Invalid Project Name")
         return
     
@@ -2759,7 +2940,7 @@ def select_project(event=0):
                 i += i
     except Exception as e:
         #print("No binary patches, ignoring")
-        print(e)
+        print(f"select_project: {e}")
             
             
             
@@ -3158,20 +3339,31 @@ def setup_auto_hook_buttons():
     #check_if_no_caves
 
     #Community Codecaves
-    community_cave_button.config(text=f'Show Community Found Codecaves', command=RequestCommunityCodecaves, font=("asfasf", 12), state="active")
+    if Utils.IsOnWindows():
+        custom_font = ("asfasf", 12) 
+    else:
+        custom_font = ("asfasf", 10)
+    community_cave_button.config(text=f'Show Community Found Codecaves', command=RequestCommunityCodecaves, font=custom_font, state="active")
     community_cave_button.place(x=2, y=2)  
 
 
 # Gets the src files in all of the code caves    
-def get_src_files():
+def get_src_and_obj_files():
     global is_zig_project
     global g_src_files
     global g_obj_files
+    global g_asm_files
     
     # Reset
     g_src_files = ""
     g_obj_files = ""
     is_zig_project = False
+    
+        #Get ASM Files        
+    for hook in g_hooks:
+        for asm_file in hook[3]:
+            g_asm_files += "asm/" + asm_file + " "
+            g_obj_files += asm_file.split(".")[0] + ".o"  + " "
     
     # Get C/C++/Zig files 
     for code_cave in g_code_caves:
@@ -3206,7 +3398,7 @@ def on_platform_select(event=0):
     global g_current_project_game_disk_full_dir
     global auto_hook_button
     global auto_hook_ps2_button
-    global create_ps2_code_button
+    global create_cheat_code_button
     global g_patches
     global g_current_project_ram_watch_full_dir
     global g_current_project_ram_watch_name
@@ -3234,8 +3426,8 @@ def on_platform_select(event=0):
         change_exe_button.pack_forget()
     if open_exe_button:
         open_exe_button.place_forget()
-    if create_ps2_code_button:
-        create_ps2_code_button.place_forget()
+    if create_cheat_code_button:
+        create_cheat_code_button.place_forget()
     if create_cheat_code_label:
         create_cheat_code_label.place_forget()
 
@@ -3275,10 +3467,16 @@ def on_platform_select(event=0):
         open_exe_button.place(x=300, y=185)
     
     #Reset
-    g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
-    g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
-    g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING} 
-    g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
+    if Utils.IsOnWindows():
+        g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
+        g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
+        g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING}
+        g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
+    elif Utils.IsOnLinux():
+        g_platform_gcc_strings = {"PS1": "../../prereq/PS1mips_linux/bin/mipsel-none-elf-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
+        g_platform_linker_strings = {"PS1": "../../../../../prereq/PS1mips_linux/bin/mipsel-none-elf-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
+        g_platform_objcopy_strings = {"PS1": "../../prereq/PS1mips_linux/bin/mipsel-none-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING}
+        g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     #Save to config     
     if g_current_project_selected_platform:
         try:
@@ -3294,19 +3492,13 @@ def on_platform_select(event=0):
         except:
             print("No config file, new project?")
          
-    # Get C/C++/Zig files 
-    get_src_files()
+    # Get C/C++/Zig & asm files 
+    get_src_and_obj_files()
             
     # Get H files 
     header_files = os.listdir(f"{g_current_project_folder}/include/")
     for h_file in header_files:
             g_header_files += "include/" + h_file + " "
-    
-    #Get ASM Files        
-    for hook in g_hooks:
-        for asm_file in hook[3]:
-            g_asm_files += "asm/" + asm_file + " "
-            g_obj_files += asm_file.split(".")[0] + ".o"  + " "
                
     #Get Patch Files        
     for patch in g_patches:
@@ -3508,7 +3700,7 @@ def ensure_hex_entries(event=0):
     except IndexError as e:
         pass
     except Exception as e:
-        print(e)
+        print(f"ensure_hex_entries: {e}")
 ##
 
 
@@ -3551,11 +3743,15 @@ def load_disk_offset_patches(event=0):
 #! MAIN GUI
 root = tk.Tk()
 root.title("C/C++ Game Modding Utility")
-root.geometry("800x600")
+if Utils.IsOnWindows():
+    root.geometry("800x600")
+else:
+    root.geometry("820x620")
 root.bind("<KeyRelease>", ensure_hex_entries)
-root.iconbitmap("prereq/icon.ico")
 root.resizable(False, False)
 validate_no_space_cmd = root.register(validate_no_space)
+if Utils.IsOnWindows():
+    root.iconbitmap("prereq/icon.ico")
 
 
 
@@ -3588,23 +3784,30 @@ root.config(menu=menubar)
 
 # Create a "Extract" menu and add items to it
 file_menu = tk.Menu(menubar)
-menubar.add_cascade(label="Extract", menu=file_menu)
-file_menu.add_command(label="Extract PS1 .bin file to folder", command=ExtractPS1Game)
-file_menu.add_command(label="Extract PS2 .iso file to folder", command=ExtractPS2Game)
-file_menu.add_command(label="Extract Gamecube .iso or .c.iso file to folder", command=ExtractGamecubeGame)
-file_menu.add_command(label="Exit", command=root.quit)
+if Utils.IsOnWindows():
+    menubar.add_cascade(label="Extract", menu=file_menu)
+    file_menu.add_command(label="Extract PS1 .bin file to folder", command=ExtractPS1Game)
+    file_menu.add_command(label="Extract PS2 .iso file to folder", command=ExtractPS2Game)
+    file_menu.add_command(label="Extract Gamecube .iso or .c.iso file to folder", command=ExtractGamecubeGame)
+    file_menu.add_command(label="Exit", command=root.quit)
 
 #! Main Tab
 current_project_label = None
 
 #Feature Mode Combobox
-feature_modes = ["Normal", "Advanced"]
 current_project_feature_mode = tk.StringVar()
-current_project_feature_mode.set("Normal")
-project_feature_combobox = ttk.Combobox(root, textvariable=current_project_feature_mode, values=feature_modes)
-project_feature_combobox.place(x=685, y=550)
-project_feature_combobox.config(width=11)
-project_feature_combobox.bind("<<ComboboxSelected>>", on_feature_mode_selected)
+
+if Utils.IsOnWindows():
+    feature_modes = ["Normal", "Advanced"]
+    current_project_feature_mode.set("Normal")
+    project_feature_combobox = ttk.Combobox(root, textvariable=current_project_feature_mode, values=feature_modes)
+    project_feature_combobox.place(x=685, y=550)
+    project_feature_combobox.config(width=11)
+    project_feature_combobox.bind("<<ComboboxSelected>>", on_feature_mode_selected)
+else:
+    feature_modes = ["Advanced"]
+    current_project_feature_mode.set("Advanced")
+    
 
 project_name_label = ttk.Label(main_tab, text='New Project Name:', font=("Trebuchet MS", 10))
 project_name_label.place(x=10, y=10)
@@ -3613,7 +3816,10 @@ project_name_entry.place(x=10, y=30)
 create_project_button = tk.Button(main_tab, text='Create New Project', command=create_project)
 select_project_button = tk.Button(main_tab, text='Select Existing Project', command=select_project)
 create_project_button.place(x=10, y=70)
-select_project_button.place(x=10, y=118)
+if Utils.IsOnWindows():
+    select_project_button.place(x=10, y=118)
+else:
+    select_project_button.place(x=10, y=110)
 
 platform_values = ["PS1", "PS2", "Gamecube", "Wii", "N64", "Other"]
 platform_combobox = ttk.Combobox(main_tab, values=platform_values, font=("Segoe UI", 11))
@@ -3635,8 +3841,10 @@ print()
     
 # Button to remove selected project
 remove_project_button = tk.Button(main_tab, text='Remove Project', command=remove_project_confirm)
-remove_project_button.place(x=10, y=502)
-
+if Utils.IsOnWindows():
+    remove_project_button.place(x=10, y=502)
+else:
+    remove_project_button.place(x=10, y=520)
 
 # # Create a listbox to display existing project versions
 # project_versions_listbox = tk.Listbox(main_tab, selectmode=tk.SINGLE, height=6, width=20)
@@ -3718,7 +3926,10 @@ codecaves_listbox.bind('<KeyPress-Delete>', remove_codecave)
 
 # Button to remove selected codecave
 remove_codecave_button = tk.Button(codecave_tab, text='Remove Codecave', command=remove_codecave)
-remove_codecave_button.place(x=545, y=494)
+if Utils.IsOnWindows():
+    remove_codecave_button.place(x=545, y=494)
+else:
+    remove_codecave_button.place(x=570, y=530)
 
 #! Hooks Tab
 auto_hook_button = tk.Button(hooks_tab, text=f'Try to automatically find PS1 hook', command=auto_find_hook_in_ps1_game, font=("asfasf", 12))
@@ -3766,7 +3977,10 @@ hooks_listbox.bind('<KeyPress-Delete>', remove_hook)
 
 # Button to remove selected codecave
 remove_hook_button = tk.Button(hooks_tab, text='Remove Hook', command=remove_hook)
-remove_hook_button.place(x=545, y=494)
+if Utils.IsOnWindows():
+    remove_hook_button.place(x=545, y=494)
+else:
+    remove_hook_button.place(x=570, y=530)
 
 #! Patches Tab
 patch_name_label = ttk.Label(patches_tab, text='Patch Name:')
@@ -3839,7 +4053,7 @@ build_iso_button = None
 build_exe_button = None      
 change_exe_button = None
 select_platform_label = None
-create_ps2_code_button = None
+create_cheat_code_button = None
 create_cheat_code_label = None
 bizhawk_ramwatch_checkbox_state = tk.IntVar()
 bizhawk_ramwatch_checkbox = None

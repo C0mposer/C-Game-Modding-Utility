@@ -1,6 +1,8 @@
 import struct
 import send2trash
 from tkinter import filedialog
+import platform
+import os
 
 ### Module of little utility functions used throughout the project
 
@@ -45,3 +47,10 @@ def find_files_with_extension(directory, extension):
 
 def open_output_directory():
     return filedialog.askdirectory(title="Choose output directory") 
+
+def IsOnWindows():
+    if platform.platform().startswith("Windows"):
+        return True    
+def IsOnLinux():
+    if platform.platform().startswith("Linux"):
+        return True    
