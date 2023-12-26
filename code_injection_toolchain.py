@@ -890,7 +890,7 @@ def Compile():
     for file in g_obj_files.split():
         try:
             if Utils.IsOnWindows():    
-                shutil.move(file, os.getcwd() + "\.config\output\object_files\\" + file) # Move .o files from main dir to output\object_files
+                shutil.move(file, os.getcwd() + "\\.config\\output\\object_files\\" + file) # Move .o files from main dir to output\object_files
             else:
                 shutil.move(file, os.getcwd() + "/.config/output/object_files/" + file) # Move .o files from main dir to output\object_files
         except Exception as e:
