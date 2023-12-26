@@ -789,6 +789,49 @@ def ExtractPS2Game():
         subprocess.Popen(f"explorer \"{output_path}\"", shell=True)
         return "ISO Extract Complete"
 
+def PatchPS2ISO():
+    # Create Iso from Folder
+    global g_current_project_folder
+    old_dir = os.getcwd()
+    os.chdir(g_current_project_folder)
+    
+    NEW_ISO_NAME = "Patched Game.iso"
+    IMGBURN_COMMAND = "..\..\prereq\ImgBurn\ImgBurn.exe /MODE BUILD /BUILDMODE IMAGEFILE /SRC \"GameIsoExtract\" /DEST " + NEW_ISO_NAME + " /FILESYSTEM \"ISO9660 + UDF\" /ROOTFOLDER YES /VOLUMELABEL \"Modded Game\" /UDFREVISION 1.50 /start /close /noimagedetails" 
+    os.system(IMGBURN_COMMAND)
+    shutil.rmtree("GameIsoExtract")
+    os.remove("patched_" + g_current_project_game_exe_name)
+    os.chdir(old_dir)
+    
+def PatchPS1ISO():
+    # Create Iso from Folder
+    global g_current_project_folder
+    old_dir = os.getcwd()
+    os.chdir(g_current_project_folder)
+
+    mkpsx_command = f"..\\..\\prereq\\mkpsxiso\\mkpsxiso.exe .config\\output\\psxbuild.xml"
+    os.system(mkpsx_command)
+    
+    os.remove("patched_" + g_current_project_game_exe_name)
+    try:
+        os.rename("mkpsxiso.bin", "ModdedGame.bin")
+    
+    #If File exists
+    except FileExistsError:
+        try:
+            os.remove("ModdedGame.bin")
+            os.rename("mkpsxiso.bin", "ModdedGame.bin")
+        #If file in use
+        except PermissionError:
+            messagebox.showerror("Error", "File is currently in use, cannot replace.")
+            os.chdir(old_dir)
+    try:
+        os.rename("mkpsxiso.cue", "ModdedGame.cue")
+    except FileExistsError:
+        os.remove("ModdedGame.cue")
+        os.rename("mkpsxiso.cue", "ModdedGame.cue")
+    
+    os.chdir(old_dir)
+
 def ExtractGamecubeGame():
     file_path_and_name = open_ISO_file()
     if not file_path_and_name:
@@ -1232,16 +1275,16 @@ def on_platform_select(event=0):
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS2":
-            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include"
+            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include fno-builtin -fdiagnostics-color=always"
         if key == "PS1":
-            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -G0 -O2 -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include -msoft-float -fno-builtin -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -O2 -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
         if key == "N64":
-            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -G0 -O2 -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -G0 -O2 -I include -fno-builtin -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -O2 -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += f"-c -O2 -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -O2 -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -O2 -I include -fdiagnostics-color=always -fno-builtin"
+            g_platform_zig_strings[key] += f"-c -O2 -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
 
 def on_feature_mode_selected(event=0):
     pass

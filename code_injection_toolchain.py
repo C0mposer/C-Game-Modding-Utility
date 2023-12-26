@@ -5,7 +5,6 @@ import struct
 import ast
 import xml.etree.ElementTree as ET
 import requests 
-import send2trash
 import pyperclip
 import tkinter as tk
 from PIL import Image
@@ -15,19 +14,21 @@ from tkinter import messagebox
 from tkinter import filedialog
 
 #! Other Project Files
+import utils as Utils
 import emu_inject
+
 
 
 PROJECTS_FOLDER_PATH = 'projects/'  # Replace with the path to your folder
 
 #! Globals
+g_shouldShowTabs = False
+g_shouldShowPlatforms = False
+
 g_projects = []
 g_code_caves = []
 g_hooks = []
 g_patches = []
-
-g_shouldShowTabs = False
-g_shouldShowPlatforms = False
 
 g_current_project_folder = ""
 g_current_project_name = ""
@@ -48,12 +49,12 @@ g_current_project_disk_offset = ""
 
 g_current_emu_choice = ""
 
-g_universal_link_string = "-T ../../linker_script.ld -Xlinker -Map=MyMod.map "
-g_universal_objcopy_string = "-O binary .config/output/elf_files/MyMod.elf .config/output/final_bins/"
+UNIVERSAL_LINK_STRING = "-T ../../linker_script.ld -Xlinker -Map=MyMod.map "
+UNIVERSAL_OBJCOPY_STRING = "-O binary .config/output/elf_files/MyMod.elf .config/output/final_bins/"
 
 g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
-g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
-g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string}
+g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
+g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING}
 g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     
 g_optimization_level = "O2"
@@ -70,47 +71,8 @@ com_cave_info = None
 add_com_cave_button = None
 
 is_zig_project = False
-
-def flip_endianness(data):
-    # Convert data to a list of 4-byte chunks
-    chunks = [data[i:i+4] for i in range(0, len(data), 4)]
-    
-    # Flip endianness for each chunk
-    flipped_chunks = [struct.pack('<I', struct.unpack('>I', chunk)[0]) for chunk in chunks]
-    
-    # Concatenate the flipped chunks
-    flipped_data = b''.join(flipped_chunks)
-    
-    return flipped_data
-
-def flip_file_endianness(file_path):
-    with open(file_path, 'rb') as file:
-        data = file.read()
-    
-    flipped_data = flip_endianness(data)
-    
-    with open(file_path, 'wb') as file:
-        file.write(flipped_data)
-        
-def MoveToRecycleBin(path):
-    try:
-        send2trash.send2trash(path)
-        print(f'Successfully moved {path} to the recycle bin.')
-    except Exception as e:
-        print(f'Error moving {path} to the recycle bin: {e}')
-     
-def find_files_with_extension(directory, extension):
-    files_with_extension = []
-    
-    # Iterate through all files in the directory
-    for filename in os.listdir(directory):
-        # Check if the file ends with the desired extension
-        if filename.endswith(extension):
-            files_with_extension.append(os.path.join(directory, filename))
-
-    return files_with_extension     
-        
-##
+               
+## Community Codecaves
 def RequestCommunityCodecaves():
     global g_code_caves
     global community_caves
@@ -203,22 +165,8 @@ def open_community_codecaves_window():
     add_com_cave_button = tk.Button(community_codecaves_window, text="Add codecave", command=add_community_codecave)
     add_com_cave_button.pack()
 ##
-       
-def auto_place_ps1_header(event=0):
-    global g_code_caves
-    if g_code_caves == []:
-        g_code_caves.append(("Header", "0x8000B0B8", "0x48", ["main.c"], "0x0", "0x10000"))
-        codecaves_listbox.insert(tk.END, g_code_caves[-1][0])
-        
-        update_codecaves_hooks_patches_config_file()    
-        project_switched()
-        run_every_tab_switch()
-        on_platform_select()
-        
-        messagebox.showinfo("Done", "Created Header codecave using main.c as default file. Note: region only 0x800 bytes in size!")       
-       
-       
-##        
+            
+## Boxart       
 def GetGamecubeGameID():
     if g_current_project_game_exe_full_dir != "":
         with open(g_current_project_game_disk_full_dir, "rb") as game_disk:
@@ -267,19 +215,10 @@ def RequestGameBoxartImage():
             print(colored("Imported game cover art\n", "cyan"))
     except Exception as e:
         print(e)
-
-
-
-    def MoveToRecycleBin(path):
-        try:
-            send2trash.send2trash(path)
-            print(f'Successfully moved {path} to the recycle bin.')
-        except Exception as e:
-            print(f'Error moving {path} to the recycle bin: {e}')
 ##
 
 
-##
+## Ram Watch
 def ParseBizhawkRamWatch():
     file_path = g_current_project_ram_watch_full_dir
     if ".wch" in file_path.split("/")[-1].lower():
@@ -443,7 +382,7 @@ def OpenCheatEngineRamWatch():
 ##
        
         
-##        
+## Text Editor Integration
 def SetupVSCodeProject():
     if g_current_project_folder != "":
         try:
@@ -813,7 +752,7 @@ def SetupSublimeProject():
 
 
 
-#! Used to find "in_game" text in the C source/header files
+#! Used to find "in_game" text in the C source/header files, and parse the symbol info
 def ParseCSourceForSymbols():
     
     #Writing to auto_symbols file with comment, since linker will complain if no text
@@ -967,8 +906,8 @@ def Compile():
     
     return True
 
-##
-def ChangeEmulatorText(event=0):  
+## 
+def ChangeEmulatorText(event=0):    
     global g_current_emu_choice
     
     #Update inject button text
@@ -1298,10 +1237,10 @@ def FlipOutputBinsEndianness():
     mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
     for cave in g_code_caves:
         input_file = mod_bin_file_path + cave[0] + ".bin"
-        flip_file_endianness(input_file)
+        Utils.flip_file_endianness(input_file)
     for hook in g_hooks:
         input_file = mod_bin_file_path + hook[0] + ".bin"
-        flip_file_endianness(input_file)
+        Utils.flip_file_endianness(input_file)
 
 def InjectIntoExeAndRebuildGame(just_exe = False):
     #Read exe file first and copy it with prefixed name
@@ -1518,7 +1457,7 @@ def ExtractPS1Game(user_choose=True, file_path=None):
         
     if not file_path_and_name:
         return  
-    output_path = open_output_folder().replace("/", "\\")  
+    output_path = Utils.open_output_directory().replace("/", "\\")  
     if not file_path_and_name or not output_path:
         print("Please choose ISO and output folder!")
         messagebox.showerror("Error", "Please choose output folder!")
@@ -1567,7 +1506,7 @@ def ExtractPS2Game(user_choose=True, file_path=None):
         
     if not file_path_and_name:
         return  
-    output_path = open_output_folder().replace("/", "\\")
+    output_path = Utils.open_output_directory().replace("/", "\\")
     
     if not file_path_and_name or not output_path:
         print("Please choose ISO and output folder!")
@@ -1616,7 +1555,7 @@ def ExtractGamecubeGame(user_choose=True, file_path=None):
         
     if not file_path_and_name:
         return  
-    output_path =  open_output_folder()
+    output_path = Utils.open_output_directory()
     output_path_modified = output_path.replace("/", "\\")
     
     if not file_path_and_name or not output_path:
@@ -1791,33 +1730,8 @@ def open_ISO_file(arg_file_path="", user_choice=True):
     else:
         messagebox.showerror("Error", "Please choose proper game iso/bin")
         return None   
-           
-def open_output_folder():
-    return filedialog.askdirectory(title="Choose output directoy") 
 ##
    
-
-def search_for_debug_text():
-    game_exe_bytes = ""
-    with open(g_current_project_game_exe_full_dir, "rb") as exe_file:
-        game_exe_bytes = exe_file.read()
-        game_exe_ascii = extract_ascii_from_bytes(game_exe_bytes)
-        game_ascii_split = game_exe_ascii.split("?")
-        game_ascii_list = [item for item in game_ascii_split if item is not None and item != ''] #Removing empty elements
-        print(game_ascii_list)
-        
-        #Get biggest string
-        biggest_string_len = 0
-        biggest_string = ""
-        for game_string in game_ascii_list:
-            current_str_len = len(game_string)
-            if current_str_len > biggest_string_len:
-                biggest_string_len = current_str_len
-                biggest_string = game_string
-                with open("testtt.txt", "a") as test:
-                    test.write(biggest_string + "\n\n")
-        
-        print(biggest_string)
 
 def save_to_config():
     try:
@@ -1833,19 +1747,8 @@ def save_to_config():
     except FileNotFoundError:
         print("No current project, not saving!")       
     
-def extract_ascii_from_bytes(input_bytes):
-    try:
-        # Attempt to decode the bytes as ASCII
-        ascii_text = input_bytes.decode('ascii')
-        return ascii_text
-    except UnicodeDecodeError:
-        # Handle the case where non-ASCII characters are present
-        # Replace non-ascii characters with a question mark
-        ascii_text = ''.join(chr(byte) if 32 <= byte <= 126 else '?' for byte in input_bytes)
-        return ascii_text
-    
 
-##        
+## Auto Hook     
 def find_ps2_offset():
     objdump_output = subprocess.run(f"prereq/PS2ee/bin/ee-objdump \"{g_current_project_game_exe_full_dir}\" -x", shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if "Idx Name" in objdump_output.stdout:
@@ -1870,7 +1773,7 @@ def find_ps2_offset():
         print(colored("Couldn't find offset", "red"))
         return False
     
-def find_gamecube_offset():
+def find_gamecube_wii_offset():
     objdump_output = subprocess.run(f"prereq/doltool/doltool -i \"{g_current_project_game_exe_full_dir}\"", shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if "Text Section  1" in objdump_output.stdout:
         doltool_section_1 = objdump_output.stdout.split("Text Section  1:")[1]
@@ -2001,7 +1904,7 @@ def auto_find_hook_in_gamecube_game(event=0):
         gc_VIWaitForRetrace_opcodes =             b'\x93\xe1\x00\x44\x89\x03\x00\x2c\xa0\x03\x00\x0e\x55\x1f\x28\x34\xa1\x03\x00\x16\x7c\x1f\x01\xd6\x81\x63\x00\x20\x81\x43\x00\x30\xa1\x83\x00\x0a\x55\x08\x08\x34\x7c\x08\x02\x14\x7c\x0a\x02\x14\x2c\x0b\x00\x00\x90\x04\x00\x00'
         game_exe_bytes = game_exe.read()
         
-        offset = find_gamecube_offset()
+        offset = find_gamecube_wii_offset()
         if offset == False:
             print("Failed to get offset!")
             return
@@ -2029,7 +1932,7 @@ def auto_find_hook_in_wii_game(event=0):
         wii_osSleepThread_opcodes =             b'\x90\xa4\x02\xe0\x80\x65\x02\xe4\x90\x85\x02\xe4\x2c\x03\x00\x00\x90\x64\x02\xe4'
         game_exe_bytes = game_exe.read()
         
-        offset = find_gamecube_offset()
+        offset = find_gamecube_wii_offset()
         if offset == False:
             print("Failed to get offset!")
             return
@@ -2071,10 +1974,23 @@ def update_asm_file_auto_wii_hook():
     with open(f"{g_current_project_folder}/asm/main_hook.s", "w") as main_file:
         main_file.write("#Replacing OSSleepThread blr.\nb CustomFunction\n")
         print("Updated ASM File for Gamecube Auto-Hook")
+
+def auto_place_ps1_header(event=0):
+    global g_code_caves
+    if g_code_caves == []:
+        g_code_caves.append(("Header", "0x8000B0B8", "0x48", ["main.c"], "0x0", "0x800"))
+        codecaves_listbox.insert(tk.END, g_code_caves[-1][0])
+        
+        update_codecaves_hooks_patches_config_file()    
+        project_switched()
+        run_every_tab_switch()
+        on_platform_select()
+        
+        messagebox.showinfo("Done", "Created Header codecave using main.c as default file. Note: region only 0x800 bytes in size!")       
 ##
 
 
-##
+## Cheat Device Codes
 def convert_to_ps2rd_code(ignore_codecaves=False):
     mod_bin_file_path = g_current_project_folder + "/.config/output/final_bins/"
     patches_file_path = g_current_project_folder + "/patches/"
@@ -2240,10 +2156,11 @@ def convert_to_gameshark_code(ignore_codecaves=False):
     user_answer = messagebox.showinfo("Done", f"Created Gameshark code and copied to clipboard.")
 ##
 
+## N64 CRC
 def extract_n64_crc():
     crc_string = f"prereq/rn64crc/rn64crc.exe \"{g_current_project_game_exe_full_dir}\" -Extract"
     subprocess.run(crc_string)
-    crc_file = find_files_with_extension("prereq/rn64crc/", ".BIN")
+    crc_file = Utils.find_files_with_extension("prereq/rn64crc/", ".BIN")
     
     if crc_file:
         shutil.move(crc_file[0], f"{g_current_project_folder}/.config/")
@@ -2252,40 +2169,11 @@ def replace_n64_crc(modified_exe):
     crc_string = f"prereq/rn64crc/rn64crc.exe \"{modified_exe}\" -Update"
     subprocess.run(crc_string)
     print("Replaced N64 CRC!")
+##    
     
-##              
-def check_memory_map_sizes():
-    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
-        memory_map_data = memory_map_file.read()
+## Linker, and Optimization Level  
 
-        for cave in g_code_caves:
-            if "." + cave[0] in memory_map_data:
-                cave_section_index = memory_map_data.find("." + cave[0])
-                cave_section_text = memory_map_data[cave_section_index:].split("\n")[0]
-                cave_section_name = cave_section_text.split()[0].split(".")[1]
-                cave_section_current_size = ""
-                
-                #!Handle if size and address is on line below section name, or same line
-                #Checking to see if all data on 1 line
-                if len(cave_section_text.split()) >= 2:
-                    cave_section_current_size = cave_section_text.split()[2]
-                    cave_section_address = hex(int(cave_section_text.split()[1], base=16))
-                #If section name is long, it will put the data on the next line, so account for that
-                else:   
-                    cave_section_text_long = memory_map_data[cave_section_index:].split("\n")[1]
-                    cave_section_current_size = cave_section_text_long.split()[1]  
-                    cave_section_address = hex(int(cave_section_text_long.split()[0], base=16))
-                    
-                
-                cave_section_current_size_int = int(cave_section_current_size, base=16)
-                if cave[5]:
-                    cave_section_full_size_int = int(cave[5], base=16)
-                    cave_size_percentage = cave_section_current_size_int / cave_section_full_size_int
-                    
-                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes out of ", "cyan") + colored(f"{cave[5]}", "yellow") + colored(f" bytes available. ", "cyan") + colored(f"{cave_size_percentage:.0%} full.\n", "yellow"))
-                else:
-                   print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes.\n", "cyan"))
-                   
+# Creates/Updates the linker script with relavent info    
 def update_linker_script():
     global g_shouldShowTabs
     global g_current_project_game_exe_name
@@ -2331,7 +2219,7 @@ def update_linker_script():
                         
                     #!If last cave, place any remaining sections
                     if i == amount_of_caves:
-                        script_file.write("        *(.text)\n")
+                        script_file.write("        *(.text) /* Last section, place any potential remaining code sections */\n")
                         script_file.write("        *(.branch_lt)\n")
                         
                     script_file.write("    } > ")
@@ -2342,21 +2230,56 @@ def update_linker_script():
             print("update_linker_script() could not find codecave size. Ensure you have put a size for your codecave.")
         except Exception as e:
             print("update_linker_script() error", e)
- 
+    
+# Checks the amount of bytes each .section takes up, to relay codecave size info    
+def check_memory_map_sizes():
+    with open(f"projects\{g_current_project_name}\.config\output\memory_map\MyMod.map") as memory_map_file:
+        memory_map_data = memory_map_file.read()
+
+        for cave in g_code_caves:
+            if "." + cave[0] in memory_map_data:
+                cave_section_index = memory_map_data.find("." + cave[0])
+                cave_section_text = memory_map_data[cave_section_index:].split("\n")[0]
+                cave_section_name = cave_section_text.split()[0].split(".")[1]
+                cave_section_current_size = ""
+                
+                #!Handle if size and address is on line below section name, or same line
+                #Checking to see if all data on 1 line
+                if len(cave_section_text.split()) >= 2:
+                    cave_section_current_size = cave_section_text.split()[2]
+                    cave_section_address = hex(int(cave_section_text.split()[1], base=16))
+                #If section name is long, it will put the data on the next line, so account for that
+                else:   
+                    cave_section_text_long = memory_map_data[cave_section_index:].split("\n")[1]
+                    cave_section_current_size = cave_section_text_long.split()[1]  
+                    cave_section_address = hex(int(cave_section_text_long.split()[0], base=16))
+                    
+                
+                cave_section_current_size_int = int(cave_section_current_size, base=16)
+                if cave[5]:
+                    cave_section_full_size_int = int(cave[5], base=16)
+                    cave_size_percentage = cave_section_current_size_int / cave_section_full_size_int
+                    
+                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes out of ", "cyan") + colored(f"{cave[5]}", "yellow") + colored(f" bytes available. ", "cyan") + colored(f"{cave_size_percentage:.0%} full.\n", "yellow"))
+                else:
+                    print(colored(f"Codecave {cave_section_name} starting at address {cave_section_address}, is currently taking up ", "cyan") + colored(f"{cave_section_current_size}", "yellow") + colored(" bytes.\n", "cyan"))
+                   
 def on_optimization_level_select(event=0):
     global g_optimization_level
     
+    # Set optimization level to combobox value
     g_optimization_level = str(optimization_level_combobox.get())
     
     # To Reset Compile Strings
     on_platform_select()
-
 ##
+
+## Project state (Picked first project, picked exe)
 def check_has_picked_exe():
     global g_shouldShowTabs
     global g_shouldShowPlatforms
     
-    #Only run once for first project selected
+    # Create main menus for editing project info
     if g_shouldShowTabs == False and g_current_project_game_exe_full_dir != "":
         tab_control.add(codecave_tab, text='In-Game Codecaves')
         tab_control.add(hooks_tab, text='ASM Hooks')
@@ -2384,7 +2307,7 @@ def check_has_picked_exe():
         
         g_shouldShowTabs = True
 
-def check_has_selected_first_project():
+def check_has_selected_project():
     global g_shouldShowPlatforms
      
     if g_shouldShowPlatforms == False:
@@ -2394,7 +2317,7 @@ def check_has_selected_first_project():
         g_shouldShowPlatforms = True
 ##        
  
-##        
+## Update/Save     
 def update_codecaves_hooks_patches_config_file():
     with open(f"{g_current_project_folder}/.config/codecaves.txt", "w") as codecaves_file:
         codecaves_file.write("Codecaves:\n")
@@ -2415,7 +2338,8 @@ def run_every_tab_switch(event=0):
     global auto_hook_button
     global auto_hook_ps2_button
     global auto_cave_button
-    reset_auto_hook_buttons()
+    
+    setup_auto_hook_buttons()
     update_linker_script()
         
     #Fill with first cave and hook upon switching    
@@ -2483,7 +2407,6 @@ def run_every_tab_switch(event=0):
             
     get_src_files()
     
-
 def project_switched():
     global g_shouldShowTabs
     global g_current_project_game_exe_name
@@ -2524,6 +2447,8 @@ def project_switched():
     asm_files_entry.delete(0, tk.END)
     patch_files_entry.delete(0, tk.END)
     
+    g_current_emu_choice = ""
+    
     #Hide build/inject options
     if inject_exe_button:
         inject_exe_button.place_forget()
@@ -2562,9 +2487,6 @@ def project_switched():
     if bizhawk_ramwatch_label:
         bizhawk_ramwatch_label.place_forget()
         
-    g_current_emu_choice = ""
-
-
     bizhawk_ramwatch_checkbox_state.set(0)
     cheat_engine_ramwatch_checkbox_state.set(0)
         
@@ -2636,6 +2558,8 @@ def project_switched():
             game_cover_image = tk.PhotoImage(file=g_current_project_folder + '/.config/game.png')
             game_cover_image_label = tk.Label(main_tab, text="test", image=game_cover_image)
             game_cover_image_label.place(x=300, y=215)
+    
+    # Couldn't get boxart
     except Exception as e:
         print({e})
         
@@ -2657,12 +2581,12 @@ def project_switched():
         if cheat_engine_ramwatch_checkbox:
             cheat_engine_ramwatch_checkbox_state.set(0)
     
-    check_has_selected_first_project()    
+    check_has_selected_project()    
     check_has_picked_exe()
 ##
 
   
-##             
+## Projects          
 def create_project():
     global g_current_project_name
     global g_current_project_feature_mode
@@ -2889,7 +2813,7 @@ def remove_project():
     project_dir_to_delete = "projects/" + selected_project_name
 
     try:
-        MoveToRecycleBin(project_dir_to_delete)
+        Utils.MoveToRecycleBin(project_dir_to_delete)
         messagebox.showinfo("Success", f"Directory '{project_dir_to_delete}' and its contents have been moved to the recycle bin.")
         print(f"Directory '{project_dir_to_delete}' and its contents have been moved to the recycle bin.")
     except FileNotFoundError:
@@ -2915,7 +2839,7 @@ def remove_project():
 ##  
    
  
-##    
+## Codecaves, hooks, and patches
 def add_codecave():
     global g_current_project_folder
     global g_current_project_name
@@ -3196,7 +3120,7 @@ def select_patch(event):
 ##
 
    
-def reset_auto_hook_buttons():
+def setup_auto_hook_buttons():
     global auto_hook_button    
     global auto_hook_ps2_button
     global auto_cave_button
@@ -3238,8 +3162,7 @@ def reset_auto_hook_buttons():
     community_cave_button.place(x=2, y=2)  
 
 
-
-##         
+# Gets the src files in all of the code caves    
 def get_src_files():
     global is_zig_project
     global g_src_files
@@ -3256,9 +3179,11 @@ def get_src_files():
             g_src_files += "src/" + c_file + " "
             g_obj_files += c_file.split(".")[0] + ".o"  + " "
             
+            # If any files are zig files, set the project as a zig project. Will compile all files with zig compiler if so
             if c_file.split(".")[1] == "zig":
                 is_zig_project = True
-                  
+                
+## More Updates                  
 def on_platform_select(event=0):
     global g_current_project_selected_platform
     global g_src_files
@@ -3351,8 +3276,8 @@ def on_platform_select(event=0):
     
     #Reset
     g_platform_gcc_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-gcc ", "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-gcc ", "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc ", "N64": "..\\..\\prereq\\N64mips/bin\\mips64-elf-gcc "}
-    g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + g_universal_link_string, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + g_universal_link_string, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + g_universal_link_string, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + g_universal_link_string}
-    g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + g_universal_objcopy_string, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + g_universal_objcopy_string, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + g_universal_objcopy_string, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + g_universal_objcopy_string} 
+    g_platform_linker_strings = {"PS1": "..\\..\\..\\..\\..\\prereq\\PS1mips\\bin\\mips-gcc " + UNIVERSAL_LINK_STRING, "PS2": "..\\..\\..\\..\\..\\prereq\\PS2ee\\bin\\ee-gcc " + UNIVERSAL_LINK_STRING, "Gamecube": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "Wii": "..\\..\\..\\..\\..\\prereq\\devkitPPC\\bin\\ppc-gcc " + UNIVERSAL_LINK_STRING, "N64": "..\\..\\..\\..\\..\\prereq\\N64mips\\bin\\mips64-elf-gcc " + UNIVERSAL_LINK_STRING}
+    g_platform_objcopy_strings = {"PS1": "..\\..\\prereq\\PS1mips\\bin\\mips-objcopy " + UNIVERSAL_OBJCOPY_STRING, "PS2": "..\\..\\prereq\\PS2ee\\bin\\ee-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Gamecube": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "Wii": "..\\..\\prereq\\devkitPPC\\bin\\ppc-objcopy " + UNIVERSAL_OBJCOPY_STRING, "N64": "..\\..\\prereq\\N64mips\\bin\\mips64-elf-objcopy " + UNIVERSAL_OBJCOPY_STRING} 
     g_platform_zig_strings = {"PS1": "zig cc ", "PS2": "zig cc ", "Gamecube": "zig cc ", "Wii": "zig cc ", "N64": "zig cc "}
     #Save to config     
     if g_current_project_selected_platform:
@@ -3401,16 +3326,16 @@ def on_platform_select(event=0):
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS2":
-            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include"
+            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fno-builtin -fdiagnostics-color=always"
         if key == "PS1":
-            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fno-builtin -msoft-float -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
         if key == "N64":
-            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -G0 -{g_optimization_level} -I include -fno-builtin -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
-            g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include -fdiagnostics-color=always"
-            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fdiagnostics-color=always"
+            g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include -fdiagnostics-color=always -fno-builtin"
+            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
     
     #Set compile button text
     if g_current_project_game_exe:
@@ -3418,7 +3343,7 @@ def on_platform_select(event=0):
     if inject_exe_button and g_current_project_game_exe:
         inject_exe_button.config(text=f"Create new patched {name_of_exe} copy")
                    
-    reset_auto_hook_buttons()
+    setup_auto_hook_buttons()
         
     #Set gcc/linker text
     #gcc_label.config(text=f"GCC String for {g_current_project_selected_platform}:\n{g_platform_gcc_strings[g_current_project_selected_platform]}\n")
@@ -3447,7 +3372,7 @@ def on_feature_mode_selected(event=0):
 ##
 
 
-##
+## Ensuring 0x prefix. There is surely a better way to do this than I currently am
 def replace_codecave_offset_text(event=0):
     global g_current_project_disk_offset
     status = is_global_offset_checkbox_checked.get()
@@ -3538,13 +3463,6 @@ def validate_no_space(P):
     if " " in P:
         return False
     return True          
-   
-def validate_hex_prefix(P):
-    # Function to enforce a specific prefix
-    prefix = "0x"  # Replace with your desired prefix
-    if P != "" and not P.startswith(prefix):
-        return False
-    return True   
         
 def ensure_hex_entries(event=0):
     try:

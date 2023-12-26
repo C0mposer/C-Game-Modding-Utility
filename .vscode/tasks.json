@@ -9,6 +9,27 @@
                 "${fileBasename}"
             ],
             "problemMatcher": []
+        },
+        {
+            "label": "Build main",
+            "type": "shell",
+            "command": "Pyinstaller",
+            "args": [
+                "code_injection_toolchain.py",
+                "--onefile"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build cmdcompile",
+            "type": "shell",
+            "command": "Pyinstaller",
+            "args": [
+                "prereq/cmd-compile/cmd_compile.py",
+                "--icon=prereq/icon.ico",
+                "--onefile"
+            ],
+            "problemMatcher": []
         }
     ]
 }
