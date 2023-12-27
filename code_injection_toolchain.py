@@ -227,13 +227,13 @@ def RequestGameBoxartImage():
                     #    image_data = requests.get(url).content 
             
             game_image_path = g_current_project_folder + '/.config/game.jpg' 
-            if os.path.exists(game_image_path):
+            
+            # If game boxart doesn't already exist
+            if not os.path.exists(game_image_path):
                 f = open(g_current_project_folder + '/.config/game.jpg', 'wb') 
                 f.write(image_data) 
                 f.close() 
                 print(colored("Imported game cover art\n", "dark_grey"))
-            else:
-                print(colored("No game boxart available", "dark_grey"))
     except Exception as e:
         print(f"RequestGameBoxartImage: {e}")
 ##
