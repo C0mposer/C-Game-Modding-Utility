@@ -34,7 +34,7 @@ Once you have found a code cave you fill out its info, and click "**Add/Save Cod
 ![codecaves](images/codecaves.png)
 a. Give the code cave a name  
 b. Fill out the address in RAM  
-c. Fill out the equivalent address in main executable (or enter an offset)  
+c. Fill out the equivalent address in the main executable (or enter an offset)  
 d. Fill out the size of the code cave  
 e. Choose .c/.cpp files in your projects *src/* dir you'd like to be compiled into the codecave area  
 (*main.c is used by default. For multiple files, seperate by comma or space*)  
