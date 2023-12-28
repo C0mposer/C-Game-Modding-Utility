@@ -16,22 +16,25 @@ It streamlines the process of compiling C/C++/Zig with the intention of being in
 ***This quick start will get you up and running creating a mod in C that runs every frame along side a game***
 
 ### Creating a Project
-To get started, you'll need to create a project for your game mod.
-Once you have created a project choose your games platform, and ***ISO/ROM File***. If it's an ISO, the tool will ask you to extract the ISO to a folder of your choosing, and will attempt to automatically find the games ***main executable file***.
+1. Create a project for your game mod in the utility.
+2. Choose your games console/platform
+3. Choose your games ***ISO/ROM File***. If it's an ISO, the tool will ask you to extract the ISO to a folder of your choosing, and will attempt to automatically find the games ***main executable file***.
 ##### Main Executable File
 * For PS1/PS2 games, the executable should start with **SCUS**, **SCES**, 
 **SLUS**, **SLES**, etc
 * For Gamecube/Wii games, the executable should be named **Start.dol or main.dol**
 
 Next, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
+
 ### Code Caves and Hooks
 At a high level, here is how injecting mod code into a game using this utility works:
-1.  **Code caves:** First things first, we need a free place in the games ram that can be used for the mod code. The easiest way is to look for unused/free sections of the games main executable, that also still happens to get loaded into ram. These free sections are called [code caves.](https://en.wikipedia.org/wiki/Code_cave)  (*These can unused/debug strings, unused functions/code, sometimes a block of 0's, etc*. If you need help finding a code cave, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Code-Caves))
+1.  **Code caves:** We need a free place in the games ram that can be used to store our mod code. The easiest way is to look for unused/free sections of the games main executable, that also still happens to get loaded into ram.   
+These free sections are called [code caves.](https://en.wikipedia.org/wiki/Code_cave)  (*These can unused/debug strings, unused functions/code, sometimes a block of 0's, etc*. If you need help finding a code cave, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Code-Caves))  
 Once you have found a code cave you fill out its info, and click "**Add/Save Codecave**": 
 ![codecaves](images/codecaves.png)
 a. Give the code cave a name  
 b. Fill out the address in RAM  
-c. Fill out the equivalent address in main executable (or enter offset)  
+c. Fill out the equivalent address in main executable (or enter an offset)  
 d. Fill out the size of the code cave  
 e. Choose .c/.cpp files in your projects *src/* dir you'd like to be compiled into the codecave area  
 (*main.c is used by default. For multiple files, seperate by comma or space*)  
