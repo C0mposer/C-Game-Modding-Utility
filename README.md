@@ -44,7 +44,8 @@ Here is a very basic visualization of the concept:
 As seen here, we are simply redirecting the games instruction flow to jump to our custom code in the code cave, and then jumping right back to where it planned to go initially.
 
 By default, the automatic hook uses ***asm/main_hook.s*** as the asm file that jumps/branches to the codecave. By default, main_hook.s jumps/branches to **CustomFunction** in the main.c file
-```asm
+```py
+# main_hook.s
 j CustomFunction
 ```
 
@@ -62,6 +63,7 @@ When writing mods for a game, ultimately all we are doing is **changing values i
 Once you have found symbols you want to use in your mod code, you can simply declare them by using the in_game keyword, which is a shortcut for the extern keyword. *This keyword, combined with a comment specifying the memory address, allows the tool to automatically add the symbol to the linker script*
 
 ```c
+// symbols.h
 typedef struct Vec3
 {
     int x, y, z;
@@ -83,6 +85,8 @@ in_game void DrawText(char* text_string, int x, int y); //0x80048250
 
 Once you declare the symbols as **in_game** variables/functions, you can use them in your code like any other variable/function:
 ```c
+#include <symbols.h>
+
 //Mod Code
 void CustomFunction(void) 
 {
