@@ -43,7 +43,7 @@ e. Choose .c/.cpp files in your projects *src/* dir you'd like to be compiled in
   
 #### Hooks
 A [hook](https://en.wikipedia.org/wiki/Hooking#:~:text=Function%20hooking%20is%20implemented%20by,injected%20code) is a function in the original game, that we will redirect to our custom code. The most simple and useful type of hook for a mod is a function in the original game that gets ran every frame. Our custom code runs whenever the hooked function runs. So if our hook runs every frame, so will our custom code!  
-(This utility attempts to automatically find every-frame hooks for most platforms. It however isn't perfect, so if you need help manually finding a hook, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Finding-A-Hook#finding-an-every-frame-hook))
+(This utility attempts to automatically find every-frame hooks for most platforms. It however isn't perfect, so if you need help manually finding a hook, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Hooks))
 
 Here is a very basic visualization of the concept:
 ![Hook](images/hooks.png)
