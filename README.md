@@ -22,7 +22,10 @@ It streamlines the process of compiling C/C++/Zig with the intention of being in
 ##### Main Executable File
 * For PS1/PS2 games, the executable should start with **SCUS**, **SCES**, 
 **SLUS**, **SLES**, etc
-* For Gamecube/Wii games, the executable should be named **Start.dol or main.dol**
+* For Gamecube/Wii games, the executable should be named **Start.dol or main.dol**  
+
+![Project Preview](https://github.com/C0mposer/C-Game-Modding-Utility/assets/78276528/23a364ab-7ca6-4d6d-8d7c-f324fcb8d83b)
+
 
 Next, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
 
