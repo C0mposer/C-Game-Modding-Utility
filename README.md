@@ -1,7 +1,13 @@
 # C/C++ Game Modding Utility
 
-**This utility aims to make writing mods/hacks for games in C/C++/Zig easier.**  
-It streamlines the process of compiling C/C++/Zig with the intention of being injected into a game, and interacting with its symbols.
+**This GUI utility aims to make writing mods for games in C/C++ easier.**   
+  
+It streamlines the process of
+- Compiling & linking mod code
+- Interacting with in game memory addresses in mod code
+- Injecting compiled mod into game executable
+- Injecting into [supported emulators](https://github.com/C0mposer/C-Game-Modding-Utility?tab=readme-ov-file#supported-emulators) for quick testing of mod
+- Rebuilding game ISO
 
 #### This utility currently supports:
 - Playstation 1 Games
