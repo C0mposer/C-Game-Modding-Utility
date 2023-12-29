@@ -38,11 +38,14 @@ Here is an example project:
 After doing the basic project setup, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
 
 ### Code Caves and Hooks
-At a high level, here is how injecting mod code into a game using this utility works:
+At a high level, here is how injecting compiled mod code into a game using this utility works:
 
 #### Code Caves
 We need a free place in the games ram that can be used to store our mod code. The easiest way is to look for unused/free sections of the games main executable, that also still happens to get loaded into ram.   
-These free sections are called [code caves.](https://en.wikipedia.org/wiki/Code_cave)  (*These can unused/debug strings, unused functions/code, sometimes a block of 0's, etc*. If you need help finding a code cave, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Code-Caves))  
+These free sections are called [code caves.](https://en.wikipedia.org/wiki/Code_cave)  (*These can unused/debug strings, unused functions/code, sometimes a block of 0's, etc*.  
+Here is an example codecave in a Wii game:
+![Alt text](https://github.com/C0mposer/C-Game-Modding-Utility/raw/main/images/Codecave%202.png?raw=true)
+
 Once you have found a code cave you fill out its info, and click "**Add/Save Codecave**": 
 ![codecaves](images/codecaves.png)
 a. Give the code cave a name  
@@ -52,6 +55,7 @@ d. Fill out the size of the code cave
 e. Choose .c/.cpp files in your projects *src/* dir you'd like to be compiled into the codecave area  
 (*main.c is used by default. For multiple files, seperate by comma or space*)  
   
+*If you need more help finding a code cave, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Code-Caves)*
 #### Hooks
 A [hook](https://en.wikipedia.org/wiki/Hooking#:~:text=Function%20hooking%20is%20implemented%20by,injected%20code) is a function in the original game, that we will redirect to our custom code. The most simple and useful type of hook for a mod is a function in the original game that gets ran every frame. Our custom code runs whenever the hooked function runs. So if our hook runs every frame, so will our custom code!  
 (This utility attempts to automatically find every-frame hooks for most platforms. It however isn't perfect, so if you need help manually finding a hook, [see here](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Hooks))
