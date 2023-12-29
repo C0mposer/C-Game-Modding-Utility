@@ -30,12 +30,12 @@ It streamlines the process of
 **SLUS**, **SLES**, etc
 * For Gamecube/Wii games, the executable should be named **Start.dol or main.dol**  
 
+Here is an example project:  
 ![Project Preview](https://github.com/C0mposer/C-Game-Modding-Utility/assets/78276528/23a364ab-7ca6-4d6d-8d7c-f324fcb8d83b)
 
 
-Here is an example project:  
 
-Next, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
+After doing the basic project setup, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
 
 ### Code Caves and Hooks
 At a high level, here is how injecting mod code into a game using this utility works:
