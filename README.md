@@ -30,6 +30,8 @@ It streamlines the process of
 **SLUS**, **SLES**, etc
 * For Gamecube/Wii games, the executable should be named **Start.dol or main.dol**
 
+Here is an example project:
+
 Next, you'll need to find a ***code cave(s)*** to place your mod code, and a ***hook*** to jump to it.
 
 ### Code Caves and Hooks
