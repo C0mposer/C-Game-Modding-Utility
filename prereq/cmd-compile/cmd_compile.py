@@ -23,8 +23,6 @@ g_hooks = []
 g_patches = []
 
 g_shouldShowTabs = False
-g_shouldShowPlatforms = False
-g_isProjectCompiled = False
 
 g_current_project_folder = ""
 g_current_project_name = ""
@@ -39,7 +37,6 @@ g_current_project_ram_watch_full_dir = ""
 g_current_project_ram_watch_name = ""
 
 g_current_project_selected_platform = ""
-g_current_project_feature_mode = ""
 
 g_current_project_disk_offset = ""
 
@@ -233,13 +230,6 @@ def ParseCheatEngineFile():
             cheat_engine_symbols_file.write(full_converted_xml_data_header)
             
 
-def move_to_recycle_bin(path):
-    try:
-        send2trash.send2trash(path)
-        print(f'Successfully moved {path} to the recycle bin.')
-    except Exception as e:
-        print(f'Error moving {path} to the recycle bin: {e}')
-
 #! Used to find "in_game" text in the C source/header files
 def ParseCSourceForSymbols():
     
@@ -390,13 +380,6 @@ def Compile():
     check_memory_map_sizes()
     
     return True
-
-# Change button text for emulator
-def on_emulator_select(event=0):
-    pass
-       
-def PrepareBuildInjectOptions():
-    pass
 
 def PreparePCSX2Inject(event=0):
     
@@ -668,9 +651,6 @@ def InjectIntoExeAndRebuildGame(just_exe = False):
         print("Opening Dir: " + patched_directory + "\nFinished!")
         subprocess.Popen("explorer " + patched_directory, shell=True)
         return "Build Complete!"
-  
-def FirstSelectionIsoBuild():
-    pass
                         
 def BuildPS2ISO():
     # Create Iso from Folder
@@ -884,7 +864,6 @@ def open_exe_file():
     global g_current_project_game_exe_name
     global g_current_project_game_exe_full_dir
     global g_current_project_game_exe
-    global selected_game_label
     global g_current_project_game_disk
     global g_current_project_game_disk_full_dir
     
@@ -894,16 +873,8 @@ def open_exe_file():
         g_current_project_game_exe_name = file_path.split("/")[-1]   # Spliting based on /, and getting last index with -1 to get only name of file
         print(f"Selected file: {file_path}")
     else:
-        messagebox.showerror("Error", "Please select proper game exetuable file")
         return
-    #else:
-        #messagebox.showerror("Error", "Please choose proper game executable")
-    if g_current_project_game_exe_name:
-        if selected_game_label == None:
-            selected_game_label = ttk.Label(main_tab, text='Game Executable:\n' + g_current_project_game_exe_name, font=("GENIUNE", 15))
-            selected_game_label.place(x=600, y=5)
-        else:
-            selected_game_label.config(text='Game Executable:\n' + g_current_project_game_exe_name, font=("GENIUNE", 15))
+
    
     #Save to config     
     g_current_project_game_exe = g_current_project_game_exe_full_dir
@@ -915,13 +886,6 @@ def open_exe_file():
                 config_file.write(g_current_project_game_disk_full_dir + "\n")
             print("Project Config saved. Executable dir: "  +  g_current_project_game_exe)
             
-    #Set compile button text
-    name_of_exe = g_current_project_game_exe.split("/")[-1]
-    if inject_exe_button:
-        inject_exe_button.config(text=f"Create new patched {name_of_exe} copy")
-        
-    check_has_picked_exe()    
-    PrepareBuildInjectOptions()
 
 def open_ISO_file():
     global g_current_project_game_disk
@@ -933,8 +897,6 @@ def open_ISO_file():
         g_current_project_game_disk = file_path.split("/")[-1]          # Spliting based on /, and getting last index with -1 to get only name of file
         
         print(f"Selected file: {file_path}")
-        if build_iso_button:
-            build_iso_button.config(text=f"Build Patched Copy of {g_current_project_game_disk}", command=InjectIntoExeAndRebuildGame)
         #Save to config     
         save_to_config()
             
@@ -959,37 +921,7 @@ def save_to_config():
     #Probably means extracting with no projects selected           
     except FileNotFoundError:
         print("No current project, not saving!")   
-    
-def auto_find_hook_in_ps1_game(event=0):
-    pass
- 
-def auto_find_hook_in_ps2_game(just_return=False, event=0):
-    pass
-
-def auto_find_hook_in_gamecube_game(event=0):
-    pass
-  
-def update_asm_file_auto_ps1_hook():
-    pass
-  
-def update_asm_file_auto_ps2_hook():
-    pass
-        
-def update_asm_file_auto_gamecube_hook():
-    pass
-
-def convert_to_ps2rd_code(ignore_codecaves=False):
-    pass
-    
-def convert_to_gameshark_code(ignore_codecaves=False):
-    pass
-    
-def auto_place_ps1_header(event=0):
-    pass
-         
-def run_every_tab_switch(event=0):
-    pass
-               
+           
 def update_linker_script():
     global g_shouldShowTabs
     global g_current_project_game_exe_name
@@ -1051,9 +983,6 @@ def update_codecaves_hooks_config_file():
         #print(f"No binary patches, ignoring.\t {e}")
         print(e)
     
-def check_has_picked_exe():
-    pass
-        
 def project_switched():
     global g_shouldShowTabs
     global g_current_project_game_exe_name
@@ -1061,15 +990,9 @@ def project_switched():
     global g_current_project_game_exe
     global g_current_project_selected_platform
     global g_current_project_disk_offset
-    global inject_exe_button
-    global inject_emu_button
     global platform_combobox
-    global open_exe_button
-    global choose_exe_label
-    global build_iso_button
     global g_current_project_game_disk
     global g_current_project_game_disk_full_dir
-    global current_project_label
     global g_current_project_ram_watch_name
     global g_current_project_ram_watch_full_dir
     
@@ -1102,20 +1025,6 @@ def project_switched():
         g_current_project_game_disk = ""
         g_current_project_game_disk_full_dir = ""
         g_current_project_selected_platform = ""
-        #selected_game_label = ttk.Label(main_tab, text='Game Executable:\n' + "None Selected", font=("GENIUNE", 15))
-        #selected_game_label.place(x=600, y=5)
-        #current_project_label = ttk.Label(main_tab, text='GameProject:\n' + "None Selected", font=("GENIUNE", 20))
-        #current_project_label.place(x=5, y=5)
-        
-    # Add Current Project Text Label
-    #current_project_label = ttk.Label(main_tab, text='Current Project:\n' + g_current_project_name, font=("GENIUNE", 20))
-    #current_project_label.place(x=5, y=5)
-
-
-    check_has_picked_exe()
-          
-def create_project():
-    pass
 
 def select_project(event=0):
     global g_current_project_name
@@ -1190,41 +1099,8 @@ def select_project(event=0):
     on_platform_select()
     update_linker_script()
     
-def clear_project_settings():
-    pass
+
     
-#COME BACK TO THIS TO MAKE PROJECT ALWAYS UNSELECT AFTER DELETING    
-def remove_project():
-    pass
-   
-def add_codecave():
-    pass
-
-def remove_codecave(event=0):
-    pass
-        
-def select_codecave(event):
-    pass
-
-def add_hook():
-    pass
-
-def remove_hook(event=0):
-    pass
-        
-def select_hook(event):
-    pass
-
-def add_patch():
-    pass
-
-def remove_patch(event=0):
-    pass
-    
-def select_patch(event):
-    pass
-   
-def reset_auto_hook_buttons():
     pass
                            
 def on_platform_select(event=0):
@@ -1286,37 +1162,10 @@ def on_platform_select(event=0):
             g_platform_gcc_strings[key] += f"-c -O2 -I include -fdiagnostics-color=always -fno-builtin"
             g_platform_zig_strings[key] += f"-c -O2 -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
 
-def on_feature_mode_selected(event=0):
-    pass
 
-def replace_codecave_offset_text(event=0):
-    pass
-    
-def replace_hook_offset_text(event=0):
-    pass
-    
-def replace_patches_offset_text(event=0):
-    pass
-
-def toggle_offset_text_state():
-    pass
-
-def validate_no_space(P):
-    pass      
-   
-def validate_hex_prefix(P):
-    pass
-        
-def ensure_hex_entries(event=0):
-    pass
-
-def load_disk_offset_codecaves(event=0):
-    pass
-
-def load_disk_offset_hooks(event=0):
-    pass
 
 #! COMMAND LINE
+# Go to main dir
 old_dir = os.getcwd()
 os.chdir("..\\..\\")
 
@@ -1325,7 +1174,7 @@ try:
     emu = sys.argv[3]
     platform = sys.argv[4]
 except:
-    pass
+    pass # emu/platform not relavent
 
 select_project()
 
@@ -1352,90 +1201,3 @@ try:
 except:
     pass # Not injecting
   
-
-
-
-root = tk.Tk()
-# Create tabs
-tab_control = ttk.Notebook(root)
-main_tab = ttk.Frame(tab_control)
-codecave_tab = ttk.Frame(tab_control)
-hooks_tab = ttk.Frame(tab_control)
-patches_tab = ttk.Frame(tab_control)
-compile_tab = ttk.Frame(tab_control)
-# Bind the <<NotebookTabChanged>> event to the tab_changed function
-tab_control.bind("<<NotebookTabChanged>>", run_every_tab_switch)
-
-tab_control.add(main_tab, text='Project Setup')
-tab_control.pack(expand=1, fill='both')
-
-codecave_tab.bind("<FocusIn>", ensure_hex_entries)
-hooks_tab.bind("<FocusIn>", ensure_hex_entries)
-
-# Create a menu bar
-menubar = tk.Menu(root)
-root.config(menu=menubar)
-
-# Create a "Tools" menu and add items to it
-file_menu = tk.Menu(menubar)
-menubar.add_cascade(label="Tools", menu=file_menu)
-file_menu.add_command(label="Extract PS1 .bin file to folder", command=ExtractPS1Game)
-file_menu.add_separator()
-file_menu.add_command(label="Extract PS2 .iso file to folder", command=ExtractPS2Game)
-file_menu.add_separator()
-file_menu.add_command(label="Extract Gamecube .iso or .c.iso file to folder", command=ExtractGamecubeGame)
-file_menu.add_separator()
-file_menu.add_command(label="Exit", command=root.quit)
-
-
-#! Main Tab
-current_project_label = None
-
-#Feature Mode Combobox
-feature_modes = ["Normal", "Advanced"]
-current_project_feature_mode = tk.StringVar()
-project_feature_combobox = ttk.Combobox(root, textvariable=current_project_feature_mode, values=feature_modes)
-project_feature_combobox.pack(side="right", anchor="nw")
-project_feature_combobox.bind("<<ComboboxSelected>>", on_feature_mode_selected)
-
-create_project_button = tk.Button(main_tab, text='Create New Project', command=create_project)
-select_project_button = tk.Button(main_tab, text='Select Existing Project', command=select_project)
-create_project_button.pack(pady=2)
-select_project_button.pack(pady=(20, 0))
-
-platform_values = ["PS1", "PS2", "Gamecube", "N64", "Other"]
-platform_combobox = ttk.Combobox(main_tab, values=platform_values, font=("Segoe UI", 11))
-platform_combobox.bind("<<ComboboxSelected>>", on_platform_select)
-
-# Create a listbox to display existing projects
-project_listbox = tk.Listbox(main_tab, selectmode=tk.SINGLE, height=20, width=30)
-project_listbox.pack(pady=2, expand=True)
-project_listbox.bind("<KeyPress-Return>", select_project)
-project_listbox.bind("<KeyPress-space>", select_project)
-project_listbox.bind("<Double-Button-1>", select_project)
-
-#Get all names of projects in project folder and fill select box
-project_folder_names = [folder for folder in os.listdir(PROJECTS_FOLDER_PATH) if os.path.isdir(os.path.join(PROJECTS_FOLDER_PATH, folder))]
-for project in project_folder_names:
-    project_listbox.insert(0, project)
-    
-
-
-
-
-
-inject_exe_button = None        # For now
-inject_emu_button = None        # For now
-inject_worse_emu_button = None  # For now
-emulators_combobox = None       # For now
-open_exe_button = None          # For now
-inject_emulator_label = None    # For now
-selected_game_label = None      # For now
-choose_exe_label = None         # For now
-build_iso_button = None         # For now
-change_exe_button = None
-select_platform_label = None
-create_ps2_code_button = None
-create_cheat_code_label = None
-
-#root.mainloop()

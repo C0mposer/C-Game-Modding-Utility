@@ -866,19 +866,21 @@ def Compile():
     
     #! Compile Zig files
     if is_zig_project:
-        compile_string = colored("Zig compilation string: " + platform_compile_strings[g_current_project_selected_platform], "green")
-        print(compile_string)
-        
-        gcc_output = subprocess.run(platform_compile_strings[g_current_project_selected_platform], shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if gcc_output.stdout:
-            print(gcc_output.stdout)
-            print(gcc_output.stderr)
-        if gcc_output.returncode == 1:
-            print(colored("Compilation Failed!", "red"))
-            print(gcc_output.stderr)
+        for src_file in g_src_files.split(): # We have to do a loop specifically for zig because it doesn't output multiple object files like we want with 1 command
+            print(src_file)
+            compile_string = colored("Zig compilation string: " + platform_compile_strings[g_current_project_selected_platform] + " " + src_file, "green")
+            print(compile_string)
             
-            os.chdir(main_dir)
-            return False
+            gcc_output = subprocess.run(platform_compile_strings[g_current_project_selected_platform] + " " + src_file, shell=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if gcc_output.stdout:
+                print(gcc_output.stdout)
+                print(gcc_output.stderr)
+            if gcc_output.returncode == 1:
+                print(colored("Compilation Failed!", "red"))
+                print(gcc_output.stderr)
+                
+                os.chdir(main_dir)
+                return False
     
     print(colored("Compilation Finished!", "green"))
         
@@ -2614,6 +2616,7 @@ def project_switched():
     global game_cover_image_label
     global bizhawk_ramwatch_label
     global g_current_emu_choice
+    global selected_game_label
         
     # For every re-selection/creation
     # Clear textbox entries
@@ -2666,6 +2669,9 @@ def project_switched():
         current_project_label.place_forget()
     if bizhawk_ramwatch_label:
         bizhawk_ramwatch_label.place_forget()
+    if selected_game_label:
+        selected_game_label.place_forget()
+    
         
     bizhawk_ramwatch_checkbox_state.set(0)
     cheat_engine_ramwatch_checkbox_state.set(0)
@@ -3514,7 +3520,7 @@ def on_platform_select(event=0):
         else:
             g_platform_gcc_strings[key] += g_asm_files + g_src_files
             
-        g_platform_zig_strings[key] += g_asm_files + g_src_files
+        # g_platform_zig_strings[key] += g_asm_files + g_src_files
         g_platform_linker_strings[key] += g_obj_files + "-o ../elf_files/MyMod.elf -nostartfiles" # ../ because of weird linker thing with directories? In Build I have to do chdir.
         
         if key == "PS2":
@@ -3527,7 +3533,7 @@ def on_platform_select(event=0):
             g_platform_zig_strings[key] += f"-c -G0 -{g_optimization_level} -I include -target mipsel-linux -march=mips1 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
         if key == "Gamecube" or key == "Wii":
             g_platform_gcc_strings[key] += f"-c -{g_optimization_level} -I include -fdiagnostics-color=always -fno-builtin"
-            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -mabi=32 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
+            g_platform_zig_strings[key] += f"-c -{g_optimization_level} -I include -target powerpc-linux -march=750 -nostartfiles -ffreestanding -nostdlib -fno-builtin -fdiagnostics-color=always"
     
     #Set compile button text
     if g_current_project_game_exe:

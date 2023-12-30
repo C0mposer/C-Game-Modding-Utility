@@ -48,9 +48,19 @@ def find_files_with_extension(directory, extension):
 def open_output_directory():
     return filedialog.askdirectory(title="Choose output directory") 
 
+
 def IsOnWindows():
     if platform.platform().startswith("Windows"):
         return True    
 def IsOnLinux():
     if platform.platform().startswith("Linux"):
         return True    
+    
+def IsOnWineLinux():
+    # Wine sets the 'WINELOADERNOEXEC' environment variable
+    if 'WINELOADERNOEXEC' in os.environ:
+        return True
+    # Alternatively, check for 'WINEPREFIX'
+    if 'WINEPREFIX' in os.environ:
+        return True
+    return False
