@@ -1,5 +1,7 @@
 # C/C++ Game Modding Utility
 
+## Major Rewrite in progress!
+
 **This GUI utility aims to make writing mods for games in C/C++ easier.**   
   
 It streamlines the process of
