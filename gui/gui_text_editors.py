@@ -79,7 +79,7 @@ def _generate_vscode_tasks_internal(current_project_data: ProjectData):
     # Get tool directory (parent of projects folder)
     tool_dir = os.path.abspath(os.path.dirname(os.path.dirname(project_folder)))
     
-    # Get absolute path to modtool.py
+    # Get absolute path to mod_utility
     #modtool_path = os.path.abspath(os.path.join(tool_dir, "modtool.py"))
     modtool_path = os.path.abspath(os.path.join(tool_dir, "mod_utility.exe"))
     
@@ -260,7 +260,7 @@ def _generate_sublime_project_file(current_project_data: ProjectData):
     # Get tool directory
     tool_dir = "${project_path}..\\..\\"
     
-    # Get absolute path to modtool.py
+    # Get absolute path to mod_utility
     modtool_path = "mod_utility.exe"
     
     if not os.path.exists(modtool_path):
@@ -432,7 +432,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
     # Get tool directory
     tool_dir = "..\\..\\..\\"
     
-    # Get absolute path to modtool.py
+    # Get absolute path to mod_utility
     modtool_path = "mod_utility.exe"
     
     if not os.path.exists(modtool_path):

@@ -9,7 +9,7 @@ from functions.verbose_print import verbose_print
 
 def _is_cli_mode() -> bool:
     """
-    Check if running in CLI mode (modtool.py).
+    Check if running in CLI mode.
     Returns True if running from command line, False if GUI mode.
     """
     return any('modtool.py' in arg for arg in sys.argv)
@@ -80,7 +80,7 @@ class ProjectValidator:
         Validate all build versions in project and prompt user to fix missing files.
         Returns True if validation passed or user fixed issues, False if user cancelled.
 
-        In CLI mode (modtool.py), skips prompts and prints warnings for missing files.
+        In CLI mode, skips prompts and prints warnings for missing files.
         """
         # CLI mode - skip all prompts, just check and warn about missing files
         if _is_cli_mode():

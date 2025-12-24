@@ -1209,6 +1209,22 @@ Examples (explicit project):
 
     # Handle no command - show interactive menu
     if not args.command:
+        # Check if we have a project to work with (either provided or auto-detected)
+        has_project = False
+
+        # Check if project was provided as argument
+        if args.top_level_project:
+            has_project = True
+        else:
+            # Check if we're in a project directory
+            if cli.find_project_in_cwd():
+                has_project = True
+
+        # If no project available, show help instead of interactive menu
+        if not has_project:
+            parser.print_help()
+            return 0
+
         # Interactive mode - loop until user exits
         while True:
             selected_command = cli._prompt_command_selection()
