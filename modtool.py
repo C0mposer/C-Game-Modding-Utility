@@ -3,16 +3,16 @@
  Command-Line Interface for C/C++ Game Modding Utility
 
 Usage:
-    Mod Utility.exe [project]                      Interactive mode (select command from menu)
-    Mod Utility.exe compile [project]              Compile project sources
-    Mod Utility.exe build [project]                Full build (compile + ISO)
-    Mod Utility.exe xdelta [project]               Generate xdelta patch
-    Mod Utility.exe inject [project] [emulator]    Inject into running emulator
-    Mod Utility.exe clean [project]                Clean build artifacts
-    Mod Utility.exe validate [project]             Validate project setup
-    Mod Utility.exe list-builds [project]          List build versions
-    Mod Utility.exe set-build [project] <name>     Switch build version
-    Mod Utility.exe info [project]                 Show project information
+    mod_utility.exe [project]                      Interactive mode (select command from menu)
+    mod_utility.exe compile [project]              Compile project sources
+    mod_utility.exe build [project]                Full build (compile + ISO)
+    mod_utility.exe xdelta [project]               Generate xdelta patch
+    mod_utility.exe inject [project] [emulator]    Inject into running emulator
+    mod_utility.exe clean [project]                Clean build artifacts
+    mod_utility.exe validate [project]             Validate project setup
+    mod_utility.exe list-builds [project]          List build versions
+    mod_utility.exe set-build [project] <name>     Switch build version
+    mod_utility.exe info [project]                 Show project information
 
     Note: If [project] is omitted, modtool will auto-detect the .modproj file
           in the current directory. Run from your project directory for convenience!
@@ -1077,28 +1077,28 @@ def modtool_main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Interactive Mode (no command specified):
-  Mod Utility.exe                    Shows menu to select command (defaults to compile)
-  Mod Utility.exe MyProject          Shows menu for specific project
+  mod_utility.exe                    Shows menu to select command (defaults to compile)
+  mod_utility.exe MyProject          Shows menu for specific project
 
 Examples (from project directory - auto-detected):
-  Mod Utility.exe compile
-  Mod Utility.exe compile --build=NTSC-U
-  Mod Utility.exe build
-  Mod Utility.exe inject
-  Mod Utility.exe inject duckstation
+  mod_utility.exe compile
+  mod_utility.exe compile --build=NTSC-U
+  mod_utility.exe build
+  mod_utility.exe inject
+  mod_utility.exe inject duckstation
 
 Examples (explicit project):
-  Mod Utility.exe compile MyProject
-  Mod Utility.exe compile MyProject --build=NTSC-U
-  Mod Utility.exe build MyProject
-  Mod Utility.exe xdelta MyProject
-  Mod Utility.exe xdelta MyProject --original=/path/to/original.iso
-  Mod Utility.exe inject MyProject
-  Mod Utility.exe inject MyProject duckstation
-  Mod Utility.exe inject MyProject PCSX2
-  Mod Utility.exe inject MyProject dolphin --build=NTSC-U
-  Mod Utility.exe clean MyProject
-  Mod Utility.exe info MyProject
+  mod_utility.exe compile MyProject
+  mod_utility.exe compile MyProject --build=NTSC-U
+  mod_utility.exe build MyProject
+  mod_utility.exe xdelta MyProject
+  mod_utility.exe xdelta MyProject --original=/path/to/original.iso
+  mod_utility.exe inject MyProject
+  mod_utility.exe inject MyProject duckstation
+  mod_utility.exe inject MyProject PCSX2
+  mod_utility.exe inject MyProject dolphin --build=NTSC-U
+  mod_utility.exe clean MyProject
+  mod_utility.exe info MyProject
 
     For more information, visit: https://github.com/C0mposer/C-Game-Modding-Utility
         """
@@ -1108,7 +1108,7 @@ Examples (explicit project):
     if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout = open(sys.stdout.fileno(), 'w', encoding='utf-8', closefd=False)
 
-    # Top-level optional project argument (for interactive mode: "Mod Utility.exe MyProject")
+    # Top-level optional project argument (for interactive mode: "mod_utility.exe MyProject")
     parser.add_argument('top_level_project', nargs='?', default=None, metavar='project',
                         help='Project name/path for interactive mode (optional)')
 
@@ -1224,7 +1224,7 @@ Examples (explicit project):
             # Set the command and initialize missing arguments
             args.command = selected_command
 
-            # Use top_level_project if provided (e.g., "Mod Utility.exe MyProject")
+            # Use top_level_project if provided (e.g., "mod_utility.exe MyProject")
             args.project = getattr(args, 'top_level_project', None)
             args.build = None
             args.emulator = None

@@ -8,6 +8,7 @@ from tkinter import filedialog
 import tkinter as tk
 from typing import Tuple
 from classes.project_data.project_data import ProjectData
+from classes.mod_builder import ModBuilder
 from gui.gui_main_project_callbacks import *
 from services.iso_service import ISOService
 from services.emulator_service import EmulatorService
@@ -16,8 +17,6 @@ from functions.verbose_print import verbose_print
 from services.cheat_code_service import CheatCodeService, check_gecko_length, GECKO_MAX_LINES
 from services.game_metadata_service import GameMetadataService
 from path_helper import get_application_directory
-
-from compile import *
 
 compiler_output_value = "Ready for compilation..."
 emulator_options = ["Dolphin    (Default)", "RetroArch (Citra)", "RPCS3", "Cemu"]
