@@ -13,7 +13,7 @@ from gui.gui_hotkeys import setup_hotkeys_for_project
 from functions.verbose_print import *
 from gui.gui_main_project import get_hotkey_manager
 from gui.gui_hotkeys import poll_hotkeys
-from modtool import modtool_main
+from CLI import modtool_main
 
 def is_cli_mode():
     # Check if any command line arguments were passed (beyond the script name)
