@@ -224,7 +224,7 @@ class ModToolCLI:
                 self.logger.error("No project file found in current directory")
                 self.logger.info("Either:")
                 self.logger.info("  • Run modtool from a project directory")
-                self.logger.info("  • Or specify project name: modtool.py <command> <project>")
+                self.logger.info("  • Or specify project name: mod_utility.exe <command> <project>")
                 return None
 
             self.logger.info(f"Auto-detected project: {os.path.basename(project_file)}")
