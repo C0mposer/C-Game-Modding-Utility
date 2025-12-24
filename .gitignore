@@ -5,6 +5,8 @@ prereq/*
 .modtool/*
 syms_file_format/*
 notes/*
+dist/*
+build/*
 
 Old Code Injection Toolchain.zip
 Rewrite Backups.zip
