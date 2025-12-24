@@ -8,7 +8,7 @@ notes/*
 dist/*
 build/*
 projects/*
-*.pyc*
+**.pyc
 
 Old Code Injection Toolchain.zip
 Rewrite Backups.zip
