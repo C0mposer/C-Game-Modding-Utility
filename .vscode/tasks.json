@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run main.py",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "main.py"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build main",
+            "type": "shell",
+            "command": "Pyinstaller",
+            "args": [
+                "main.py",
+                //"--icon=prereq/test_ico.ico",
+                "--onefile",
+                "--name",
+                "mod_utility.exe"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
