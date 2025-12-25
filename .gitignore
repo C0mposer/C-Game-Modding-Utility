@@ -8,6 +8,7 @@ notes/*
 dist/*
 build/*
 projects/*
+5-25-Rewrite/*
 *.pyc
 
 Old Code Injection Toolchain.zip
