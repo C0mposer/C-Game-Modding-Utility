@@ -54,7 +54,7 @@ class ISOService:
             'dumpsxiso': os.path.join(self.tool_dir, 'prereq', 'mkpsxiso', 'dumpsxiso.exe'),
             'mkpsxiso': os.path.join(self.tool_dir, 'prereq', 'mkpsxiso', 'mkpsxiso.exe'),
             '7z': os.path.join(self.tool_dir, 'prereq', '7z', '7z.exe'),
-            'imgburn': os.path.join(self.tool_dir, 'prereq', 'ImgBurn', 'ImgBurn.exe'),
+            'ps2iso': os.path.join(self.tool_dir, 'prereq', 'PS2ISOTools', 'bin', 'ps2iso.exe'),
             'mkisofs': os.path.join(self.tool_dir, 'prereq', 'mkisofs', 'mkisofs.exe'),
             'gcr': os.path.join(self.tool_dir, 'prereq', 'gcr', 'gcr.exe'),
             'gc_fst': os.path.join(self.tool_dir, 'prereq', 'gc-fst', 'gc_fst.exe'),
@@ -1145,20 +1145,20 @@ class ISOService:
             return False
     
     def _rebuild_ps2(self) -> ISOResult:
-        """Rebuild PS2 ISO using ImgBurn"""
+        """Rebuild PS2 ISO using ps2iso (Ps2IsoTools)"""
         self._log_progress("Rebuilding PS2 ISO...")
 
         current_build = self.project_data.GetCurrentBuildVersion()
         project_folder = self.project_data.GetProjectFolder()
         source_dir = current_build.GetGameFolder()
         build_name = current_build.GetBuildName()
-        
+
         build_dir = os.path.join(project_folder, 'build')
         os.makedirs(build_dir, exist_ok=True)
-        
+
         output_iso = os.path.join(build_dir, f'ModdedGame_{build_name}.iso')
-        
-        # --- NEW: delete existing ISO so ImgBurn never prompts to overwrite ---
+
+        # Delete existing ISO (ps2iso will create new one)
         if os.path.exists(output_iso):
             try:
                 self._log_verbose(f"Existing ISO found, deleting: {output_iso}")
@@ -1205,26 +1205,19 @@ class ISOService:
             return ISOResult(False, f"Could not replace executable: {str(e)}")
         
         self._copy_ps2_new_files_to_build(temp_build_dir)
-        
+
         cmd = [
-            self.tools['imgburn'],
-            '/MODE', 'BUILD',
-            '/BUILDMODE', 'IMAGEFILE',
-            '/SRC', temp_build_dir,
-            '/DEST', output_iso,
-            '/FILESYSTEM', 'ISO9660 + UDF',
-            '/ROOTFOLDER', 'YES',
-            '/VOLUMELABEL', 'Modded Game',
-            '/UDFREVISION', '1.50',
-            '/START',
-            '/CLOSE',
-            '/NOIMAGEDETAILS'
+            self.tools['ps2iso'],
+            'build',
+            temp_build_dir,
+            output_iso,
+            '--volume-label', 'Modded_Game'
         ]
-        
+
         self._log_verbose(f"Command: {' '.join(cmd)}")
-        
+
         try:
-            self._log_verbose("\nStarting ImgBurn...")
+            self._log_verbose("\nStarting ps2iso...")
             result = subprocess.run(
                 cmd,
                 shell=False,
@@ -1234,14 +1227,17 @@ class ISOService:
                 cwd=os.getcwd(),
                 timeout=300
             )
-            
+
             if result.stdout:
                 self._log_verbose(f"stdout: {result.stdout}")
             if result.stderr:
                 self._log_verbose(f"stderr: {result.stderr}")
-            
+
+            if result.returncode != 0:
+                return ISOResult(False, f"ps2iso failed with return code {result.returncode}. Check output above.")
+
             if not os.path.exists(output_iso):
-                return ISOResult(False, "ISO file was not created. Check ImgBurn output above.")
+                return ISOResult(False, "ISO file was not created. Check ps2iso output above.")
 
             # Reset injection files back to vanilla for next build
             self._log_verbose("Resetting injection files to vanilla...")
@@ -1256,9 +1252,9 @@ class ISOService:
 
             self._log_progress(f" PS2 ISO rebuilt: ModdedGame.iso")
             return ISOResult(True, f"PS2 ISO rebuilt successfully for build '{build_name}'", output_iso)
-            
+
         except subprocess.TimeoutExpired:
-            return ISOResult(False, "ImgBurn timed out after 5 minutes.")
+            return ISOResult(False, "ps2iso timed out after 5 minutes.")
         except Exception as e:
             import traceback
             return ISOResult(False, f"Rebuild error: {str(e)}\n{traceback.format_exc()}")
