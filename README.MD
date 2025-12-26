@@ -1,6 +1,6 @@
 # C/C++ Game Modding Utility
 
-**This utility aims to make writing mods for 5th/6th generation games in C/C++ easier.**   
+**This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
   
 It streamlines the process of
 - Compiling, linking & extracting mod code
@@ -154,15 +154,15 @@ You can also inject your mod into [supported emulators](google.com) to easily te
 ## Bundled Tools / Special Thanks
  - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards Gamecube/Wii PPC, as well as utilities for analyzing .dol files
  - [ps2toolchain](https://github.com/ps2dev/ps2toolchain) for GCC toolchains targeted towards the PS2 Emotion Engine CPU.
- - [gc_fst](https://github.com/AlexanderHarrison/gc_fst) for extracting/rebuilding Gamecube games.
- - [dolphin-memory-engine](https://github.com/aldelaro5/dolphin-memory-engine) for interacting with Dolphin's emulator memory.
- - [DolphinTool](https://github.com/dolphin-emu/dolphin) for converting between the different GC/Wii image formats.
- - [wiimms-iso-tools](https://github.com/Wiimm/wiimms-iso-tools) for rebuilding Wii disk images.
- - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting/rebuilding PS1 images.
+ - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting & rebuilding PS1 disk images.
   - [Ps2IsoTools](https://github.com/Finzenku/Ps2IsoTools) for rebuilding PS2 disk images.
+ - [gc_fst](https://github.com/AlexanderHarrison/gc_fst) for extracting & rebuilding Gamecube images.
+ - [wiimms-iso-tools](https://github.com/Wiimm/wiimms-iso-tools) for extracting & rebuilding Wii disk images.
+ - [DolphinTool](https://github.com/dolphin-emu/dolphin) for converting between the different GC/Wii image formats.
+ - [dolphin-memory-engine](https://github.com/aldelaro5/dolphin-memory-engine) for interacting with Dolphin's emulator memory.
+  - [xdelta](https://github.com/jmacd/xdelta) for the creation of xdelta patch files
   - [7zip](https://github.com/mcmilk/7-Zip) for solving life's greatest mysteries
-  - [xdelta](https://github.com/jmacd/xdelta) for solving life's greatest mysteries
-  - [Real N64 CRC Tool](https://www.smwcentral.net/?p=section&a=details&id=8799) for updating N64 rom CRC's Copyright (c) RaO
+  - [Real N64 CRC Tool](https://www.smwcentral.net/?p=section&a=details&id=8799) for updating N64 rom CRC's
 
 ## Contact
 
