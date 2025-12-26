@@ -36,7 +36,7 @@ void ModMain(void) {
 }
 ```
 
-**Working with game symbols:** Define addresses in `symbols/default.txt`, declare types in `include/symbols.h`, then use them like normal variables. [Full symbol guide](wiki-link)
+**Working with game symbols:** Define addresses in `symbols/default.txt`, declare types in `include/symbols.h`, then use them like normal variables. [Full symbol guide](https://github.com/C0mposer/C-Game-Modding-Utility/wiki/Using-C-to-Interact-With-In-Game-Symbols)
 
 ### 3. Test Your Mod
 Click **Compile** in the build tab to compile your mod. Then, you can either inject into your emulator to test, or build an ISO!
