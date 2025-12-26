@@ -141,7 +141,7 @@ You can also inject your mod into [supported emulators](google.com) to easily te
  - [P64 Dev](https://www.pj64-emu.com/nightly-builds) for memory searching in Nintendo 64 games
 - [VSCode](https://github.com/microsoft/vscode) or [Sublime](https://www.sublimetext.com/) text editors, for automatic integration with projects
 ## Supported Emulators
-#### Gamecube Emulators
+#### Gamecube/Wii Emulators
  - [Dolphin](https://dolphin-emu.org/download)  
  #### PS2 Emulators
  - [PCSX2](https://pcsx2.net/)  
@@ -152,7 +152,7 @@ You can also inject your mod into [supported emulators](google.com) to easily te
  - [Bizhawk 2.6.1](https://tasvideos.org/BizHawk/ReleaseHistory#Bizhawk261)  
 
 ## Bundled Tools / Special Thanks
- - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards Gamecube/Wii PPC, as well as utilities for analyzing .dol files
+ - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards the Gamecube/Wii PowerPC CPU, as well as utilities for analyzing .dol files
  - [ps2toolchain](https://github.com/ps2dev/ps2toolchain) for GCC toolchains targeted towards the PS2 Emotion Engine CPU.
  - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting & rebuilding PS1 disk images.
   - [Ps2IsoTools](https://github.com/Finzenku/Ps2IsoTools) for rebuilding PS2 disk images.
