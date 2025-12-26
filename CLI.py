@@ -9,9 +9,7 @@ Usage:
     mod_utility.exe xdelta [project]               Generate xdelta patch
     mod_utility.exe inject [project] [emulator]    Inject into running emulator
     mod_utility.exe clean [project]                Clean build artifacts
-    mod_utility.exe validate [project]             Validate project setup
     mod_utility.exe list-builds [project]          List build versions
-    mod_utility.exe set-build [project] <name>     Switch build version
     mod_utility.exe info [project]                 Show project information
 
     Note: If [project] is omitted, modtool will auto-detect the .modproj file
@@ -1092,7 +1090,7 @@ Examples (explicit project):
   mod_utility.exe compile MyProject --build=NTSC-U
   mod_utility.exe build MyProject
   mod_utility.exe xdelta MyProject
-  mod_utility.exe xdelta MyProject --original=/path/to/original.iso
+  mod_utility.exe xdelta MyProject
   mod_utility.exe inject MyProject
   mod_utility.exe inject MyProject duckstation
   mod_utility.exe inject MyProject PCSX2
