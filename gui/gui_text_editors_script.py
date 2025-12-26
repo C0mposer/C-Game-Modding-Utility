@@ -3,7 +3,6 @@
 import os
 import subprocess
 import json
-from tkinter import messagebox
 from classes.project_data.project_data import ProjectData
 
 # ==================== Callbacks for Menu Items ====================

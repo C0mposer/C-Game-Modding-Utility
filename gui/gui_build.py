@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import pyperclip
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from tkinter import filedialog
 import tkinter as tk
 from typing import Tuple
@@ -50,6 +50,14 @@ NO_WARNINGS_MODE = False
 # Per-project "don't ask again" flag for opening folder after build
 _dont_ask_open_folder = False
 
+def _keep_on_top(window):
+    """Keep window on top and focused"""
+    if window.winfo_exists():
+        window.lift()
+        window.focus_force()
+        window.after(100, lambda: _keep_on_top(window))
+
+
 def askyesno_with_checkbox(title, message, checkbox_text="Don't ask me again"):
     """
     Simple yes/no dialog with checkbox, using messagebox style.
@@ -65,6 +73,7 @@ def askyesno_with_checkbox(title, message, checkbox_text="Don't ask me again"):
     dialog = tk.Toplevel(root)
     dialog.title(title)
     dialog.resizable(False, False)
+    dialog.attributes('-topmost', True)
 
     # Message
     tk.Label(dialog, text=message, padx=20, pady=20).pack()
@@ -92,13 +101,22 @@ def askyesno_with_checkbox(title, message, checkbox_text="Don't ask me again"):
     tk.Button(button_frame, text="Yes", command=on_yes, width=10).pack(side=tk.LEFT, padx=5)
     tk.Button(button_frame, text="No", command=on_no, width=10).pack(side=tk.LEFT, padx=5)
 
-    # Center dialog
+    # Center dialog over DPG viewport
     dialog.update_idletasks()
     width = dialog.winfo_width()
     height = dialog.winfo_height()
-    x = (dialog.winfo_screenwidth() // 2) - (width // 2)
-    y = (dialog.winfo_screenheight() // 2) - (height // 2)
+
+    viewport_pos = dpg.get_viewport_pos()
+    viewport_width = dpg.get_viewport_client_width()
+    viewport_height = dpg.get_viewport_client_height()
+
+    x = viewport_pos[0] + (viewport_width - width) // 2
+    y = viewport_pos[1] + (viewport_height - height) // 2
+
     dialog.geometry(f'+{x}+{y}')
+
+    # Start focus monitoring
+    _keep_on_top(dialog)
 
     dialog.grab_set()
     dialog.wait_window()
@@ -396,6 +414,8 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                 
                 current_build = current_project_data.GetCurrentBuildVersion()
                 platform = current_build.GetPlatform()
+                is_single_file_project = current_build.IsSingleFileMode()
+                single_file_name = current_build.GetMainExecutable()
                 
                 dpg.add_text("Build Options")
                 dpg.add_separator()
@@ -405,11 +425,11 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                     dpg.add_spacer(height=20)
 
                 is_single_file = current_build.IsSingleFileMode()
-                button_label = "Open Patched File" if is_single_file else "Build ISO"
+                button_label = f"Patch file" if is_single_file else "Build ISO"
 
                 output_format = current_build.GetOutputFormat() or "iso"
 
-                if platform == "Gamecube":
+                if platform == "Gamecube" and not is_single_file_project:
                     #dpg.add_spacer(height=5)
                     dpg.add_text("Output Format:")
                     with dpg.group(horizontal=True):
@@ -422,7 +442,7 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                             horizontal=True
                         )
 
-                elif platform == "Wii":
+                elif platform == "Wii" and not is_single_file_project:
                     #dpg.add_spacer(height=5)
                     dpg.add_text("Output Format:")
                     with dpg.group(horizontal=True):
@@ -1000,7 +1020,7 @@ def callback_refresh_emulators(sender, app_data, current_project_data):
                         current + "\nNo compatible emulators detected\n")
 
                     # Show error popup
-                    from tkinter import messagebox
+                    from gui import gui_messagebox as messagebox
                     messagebox.showerror("No Emulators Found", "Could not find any emulators.\n\nPlease make sure your emulator is running.")
 
                 LoadingIndicator.hide()
@@ -1062,6 +1082,7 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
     ):
         current_build = current_project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
+        is_single_file_project = current_build.IsSingleFileMode()
 
         dpg.add_text("Build Options")
         dpg.add_separator()
@@ -1071,11 +1092,11 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
             dpg.add_spacer(height=20)
 
         is_single_file = current_build.IsSingleFileMode()
-        button_label = "Open Patched File" if is_single_file else "Build ISO"
+        button_label = "Patch file" if is_single_file else "Build ISO"
 
         output_format = current_build.GetOutputFormat() or "iso"
 
-        if platform == "Gamecube":
+        if platform == "Gamecube" and not is_single_file_project:
             dpg.add_text("Output Format:")
             with dpg.group(horizontal=True):
                 dpg.add_radio_button(
@@ -1087,7 +1108,7 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
                     horizontal=True
                 )
 
-        elif platform == "Wii":
+        elif platform == "Wii" and not is_single_file_project:
             dpg.add_text("Output Format:")
             with dpg.group(horizontal=True):
                 dpg.add_radio_button(
@@ -1277,7 +1298,7 @@ def callback_build_iso(sender, app_data, user_data):
                     LoadingIndicator.hide()
 
                     if patch_result.success:
-                        patched_file = os.path.join(f'{project_folder}/build/', f"patched_{main_exe}")
+                        patched_file = os.path.join(project_folder, 'build', f"patched_{main_exe}")
 
                         on_progress("\n" + "=" * 60)
                         on_progress(f"PATCHING COMPLETE! (Took {elapsed_time:.2f}s)")
@@ -1303,7 +1324,7 @@ def callback_build_iso(sender, app_data, user_data):
 
                             if response:
                                 import subprocess
-                                folder = os.path.dirname(patched_file)
+                                folder = os.path.normpath(os.path.dirname(patched_file))
                                 subprocess.Popen(f'explorer "{folder}"', shell=True)
                     else:
                         on_progress("\n" + "=" * 60)
@@ -1381,7 +1402,7 @@ def callback_build_iso(sender, app_data, user_data):
 
                         if response:
                             import subprocess
-                            folder = os.path.dirname(result.output_path)
+                            folder = os.path.normpath(os.path.dirname(result.output_path))
                             subprocess.Popen(f'explorer "{folder}"', shell=True)
 
                 else:
@@ -1512,7 +1533,7 @@ def callback_generate_xdelta(sender, app_data, user_data):
 
                         if response:
                             import subprocess
-                            folder = os.path.dirname(result.output_path)
+                            folder = os.path.normpath(os.path.dirname(result.output_path))
                             subprocess.Popen(f'explorer "{folder}"', shell=True)
                 else:
                     on_progress("\n" + "=" * 60)

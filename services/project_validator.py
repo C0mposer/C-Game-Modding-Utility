@@ -1,7 +1,8 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import filedialog
+from gui import gui_messagebox as messagebox
 from classes.project_data.project_data import ProjectData
 from classes.project_data.build_version import BuildVersion
 from functions.verbose_print import verbose_print

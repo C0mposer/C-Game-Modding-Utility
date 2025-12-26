@@ -6,7 +6,7 @@ from functions.helper_funcs import *
 import os
 from functions.verbose_print import verbose_print
 
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from tkinter import filedialog
 
 _currently_selected_binary_patch_name = None

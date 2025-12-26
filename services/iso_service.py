@@ -2501,7 +2501,8 @@ class ISOService:
         source_path = current_build.GetSourcePath()
 
         if not source_path:
-            from tkinter import filedialog, messagebox
+            from tkinter import filedialog
+            from gui import gui_messagebox as messagebox
 
             if platform in ["Gamecube", "Wii"]:
                 messagebox.showinfo(
@@ -2950,21 +2951,11 @@ class ISOService:
         return format_map.get(ext, 'unknown')
 
     def generate_xdelta_patch(self, original_file: Optional[str] = None) -> ISOResult:
-        """
-        Generate an xdelta patch comparing the original file to the modded file.
-
-        Args:
-            original_file: Path to the original file. If None, will try to auto-detect from source_path.
-                          For folder-based projects, this must be provided by the user.
-
-        Returns:
-            ISOResult with success status and patch file path
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         project_folder = self.project_data.GetProjectFolder()
         build_name = current_build.GetBuildName()
 
-        # Determine if this is single file mode or ISO mode
+        # Determine if this is a single file project, or ISO project
         is_single_file = current_build.IsSingleFileMode()
 
         # Find the modded file
@@ -2977,6 +2968,7 @@ class ISOService:
             filename = os.path.basename(single_file_path)
             build_dir = os.path.join(project_folder, 'build')
             modded_file = os.path.join(build_dir, f"patched_{filename}")
+            platform = current_build.GetPlatform()
 
             if not os.path.exists(modded_file):
                 return ISOResult(False, f"Modded file not found: {modded_file}")
@@ -3110,7 +3102,7 @@ class ISOService:
             patch_size = os.path.getsize(patch_file)
             patch_size_mb = patch_size / (1024 * 1024)
 
-            self._log_verbose(f"\n✓ Patch generated successfully!")
+            self._log_verbose(f"\nPatch generated successfully!")
             self._log_verbose(f"  File: {patch_file}")
             self._log_progress(f"  Size: {patch_size_mb:.2f} MB")
 

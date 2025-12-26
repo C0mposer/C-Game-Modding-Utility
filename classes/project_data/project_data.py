@@ -48,7 +48,7 @@ class ProjectData:
         
     # Set the default project settings from "New Project"        
     def SetDefaultNewProjectData(self):
-        self.AddBuildVersionWithName("default_build")
+        self.AddBuildVersionWithName("default")
         self.build_versions[0].SetPlatform("PS1")
 
     def SetProjectFolder(self, file_path):

@@ -497,7 +497,7 @@ def callback_build_section_map_for_file(sender, app_data, user_data):
     success = current_build.BuildSectionMapForFile(filename)
     
     if success:
-        from tkinter import messagebox
+        from gui import gui_messagebox as messagebox
         
         # Get section count
         section_count = len(current_build.section_maps.get(filename, []))
@@ -519,7 +519,7 @@ def callback_build_section_map_for_file(sender, app_data, user_data):
         from gui.gui_main_project import trigger_auto_save
         trigger_auto_save()
     else:
-        from tkinter import messagebox
+        from gui import gui_messagebox as messagebox
         
         messagebox.showerror(
             "Section Map Failed",

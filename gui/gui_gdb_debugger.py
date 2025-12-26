@@ -398,7 +398,7 @@ def _launch_gdb_cli(project_data: ProjectData):
 
 def _show_emulator_instructions(emulator_name: str):
     """Show setup instructions for the emulator"""
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     
     if not _debugger_state.service:
         return
@@ -408,7 +408,7 @@ def _show_emulator_instructions(emulator_name: str):
 
 def _show_message(title: str, message: str):
     """Show a message dialog"""
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     messagebox.showinfo(title, message)
 
 def _on_window_close():

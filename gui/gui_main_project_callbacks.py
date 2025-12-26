@@ -1,15 +1,18 @@
 import dearpygui.dearpygui as dpg
+import os
 from dpg.widget_themes import *
 from classes.project_data.project_data import *
 from gui.gui_c_injection import *
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from tkinter import filedialog
 from services.project_serializer import ProjectSerializer
 from services.iso_service import ISOService
 from services.ghidra_pattern_service import GhidraPatternService
 from gui.gui_loading_indicator import LoadingIndicator
 from gui.gui_build import refresh_build_panel_ui, update_build_button_label
+from gui.gui_prereq_prompt import check_and_prompt_prereqs
 from services.emulator_connection_manager import get_emulator_manager
+from path_helper import get_application_directory
 
 
 def _scan_for_os_library_functions(current_project_data: ProjectData):
@@ -223,7 +226,7 @@ def callback_add_project_build_version(sender, app_data, current_project_data: P
             tag="new_build_version_name_input", 
             default_value="", 
             width=450, 
-            hint="e.g., NTSC-U, PAL, PS2-Version"
+            hint="e.g., NTSC, PAL, PS2_NTSC"
         )
         
         dpg.add_spacer(height=15)
@@ -432,12 +435,21 @@ def callback_switch_project_build_version(sender, app_data, current_project_data
             # Switch to this build version
             old_index = current_project_data.GetBuildVersionIndex()
             current_project_data.SetBuildVersionIndex(i)
-            
+
+            # Check prerequisites for the new build version's platform
+            tool_dir = get_application_directory()
+            new_platform = build_version.GetPlatform()
+
+            if not check_and_prompt_prereqs(tool_dir, new_platform, None):
+                # User cancelled download - switch back to old build
+                current_project_data.SetBuildVersionIndex(old_index)
+                return
+
             print(f"Switched from build #{old_index} to build #{i}: {selected_build_name}")
-            
+
             # Refresh the entire UI to show the new build version's data
             refresh_ui_for_current_build(current_project_data)
-            
+
             from gui.gui_main_project import trigger_auto_save
             trigger_auto_save()
             return
@@ -1751,7 +1763,8 @@ def callback_choose_n64_rom(sender, app_data, current_project_data: ProjectData)
     
 def callback_choose_single_file(sender, app_data, current_project_data: ProjectData):
     """Choose a single file for modification (no ISO rebuilding)"""
-    from tkinter import messagebox, filedialog
+    from tkinter import filedialog
+    from gui import gui_messagebox as messagebox
     
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()

@@ -1,11 +1,15 @@
 # gui/gui_startup_window.py - UPDATED VERSION
 
 import dearpygui.dearpygui as dpg
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
+from gui import gui_messagebox as messagebox
+import os
 
 from gui.gui_project_wizard import show_project_wizard  # NEW: Import wizard
+from gui.gui_prereq_prompt import check_and_prompt_prereqs
 from dpg.widget_themes import *
 from services.project_serializer import ProjectSerializer
+from path_helper import get_application_directory
 
 
 # Helper Functions (defined first so they can be called by InitMainWindow)
@@ -68,6 +72,14 @@ def _load_recent_project(t, a, project_path):
 
     project_data = ProjectSerializer.load_project(project_path, show_loading=True)
     if project_data:
+        # Check prerequisites for this project's platform
+        tool_dir = get_application_directory()
+        platform = project_data.GetCurrentBuildVersion().GetPlatform()
+
+        if not check_and_prompt_prereqs(tool_dir, platform, None):
+            # User cancelled download - don't open project
+            return
+
         dpg.delete_item("startup_window")
         InitMainProjectWindowWithData(project_data)
     else:
@@ -144,6 +156,14 @@ def load_project_callback():
 
     if project_data is None:
         messagebox.showerror("Load Failed", "Failed to load project file. The file may be corrupted.")
+        return
+
+    # Check prerequisites for this project's platform
+    tool_dir = get_application_directory()
+    platform = project_data.GetCurrentBuildVersion().GetPlatform()
+
+    if not check_and_prompt_prereqs(tool_dir, platform, None):
+        # User cancelled download - don't open project
         return
 
     # Import here to avoid circular imports

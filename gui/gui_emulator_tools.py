@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 import os
 import threading
 from typing import List, Optional, Dict
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from classes.project_data.project_data import ProjectData
 from services.emulator_service import EmulatorService
 from services.emulator_connection_manager import get_emulator_manager

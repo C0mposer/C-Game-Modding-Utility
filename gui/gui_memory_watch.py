@@ -355,7 +355,7 @@ class MemoryWatchWindow:
                 dpg.hide_item(self.scanning_modal_tag)
 
                 if not self.available_emulators:
-                    from tkinter import messagebox
+                    from gui import gui_messagebox as messagebox
                     messagebox.showwarning(
                         "No Emulators",
                         "No compatible emulators detected.\n\n"
@@ -452,14 +452,14 @@ class MemoryWatchWindow:
             return
         
         if not self.emu_service:
-            from tkinter import messagebox
+            from gui import gui_messagebox as messagebox
             messagebox.showerror("Error", "Please scan for emulators first")
             return
         
         dpg.show_item(self.loading_modal_tag)
         
         def connect_thread():
-            from tkinter import messagebox
+            from gui import gui_messagebox as messagebox
             
             # Try to connect
             success = self.watch_service.set_emulator_connection(self.emu_service, selected)
@@ -552,7 +552,7 @@ class MemoryWatchWindow:
             dpg.set_value("manual_name_input", "")
             
         except ValueError:
-            from tkinter import messagebox
+            from gui import gui_messagebox as messagebox
             messagebox.showerror("Invalid Input", f"Invalid address: {address_str}")
     
     def _add_manual_watch_row(self, entry: WatchEntry):
@@ -950,10 +950,10 @@ class MemoryWatchWindow:
                 if success:
                     self._immediate_read_value(entry)
                 else:
-                    from tkinter import messagebox
+                    from gui import gui_messagebox as messagebox
                     messagebox.showerror("Write Failed", "Could not write float value to memory")
             except Exception as e:
-                from tkinter import messagebox
+                from gui import gui_messagebox as messagebox
                 messagebox.showerror("Error", f"Failed to modify float: {e}")
             return
         
@@ -972,7 +972,7 @@ class MemoryWatchWindow:
             # Immediately read back and update the UI for instant feedback
             self._immediate_read_value(entry)
         else:
-            from tkinter import messagebox
+            from gui import gui_messagebox as messagebox
             messagebox.showerror("Write Failed", "Could not write value to memory")
     
     def _edit_value_dialog(self, entry: WatchEntry):
@@ -1032,10 +1032,10 @@ class MemoryWatchWindow:
                     self._immediate_read_value(entry)
                     dpg.delete_item(dialog_tag)
                 else:
-                    from tkinter import messagebox
+                    from gui import gui_messagebox as messagebox
                     messagebox.showerror("Write Failed", "Could not write value to memory")
             except ValueError:
-                from tkinter import messagebox
+                from gui import gui_messagebox as messagebox
                 messagebox.showerror("Invalid Value", "Please enter a valid number")
         
         # Get default value for input field
@@ -1179,7 +1179,7 @@ class MemoryWatchWindow:
         map_path = os.path.join(project_folder, '.config', 'memory_map', 'MyMod.map')
         
         if not os.path.exists(map_path):
-            from tkinter import messagebox
+            from gui import gui_messagebox as messagebox
             messagebox.showerror(
                 "Map File Not Found",
                 "Memory map not found.\n\n"
@@ -1192,7 +1192,7 @@ class MemoryWatchWindow:
         symbols = self.symbol_parser.parse()
         
         if not symbols:
-            from tkinter import messagebox
+            from gui import gui_messagebox as messagebox
             messagebox.showwarning(
                 "No Symbols",
                 "No symbols found in map file."

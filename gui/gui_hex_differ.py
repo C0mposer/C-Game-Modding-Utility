@@ -333,7 +333,7 @@ def _render_hex_data(
             # Calculate how many bytes to show in this row
             bytes_in_row = min(BYTES_PER_ROW, len(data) - current_offset, end_offset - current_offset)
             
-            with dpg.group(horizontal=True):
+            with dpg.group(horizontal=True, horizontal_spacing=0):
                 # Address column
                 dpg.add_text(f"{current_offset:08X}: ", color=COLOR_ADDRESS)
 
@@ -354,7 +354,7 @@ def _render_hex_data(
                         color = COLOR_ORIGINAL
 
                     # Group consecutive bytes with same color
-                    hex_string = f"{byte_value:02X}"
+                    hex_bytes = [f"{byte_value:02X}"]
                     j = i + 1
                     while j < bytes_in_row:
                         next_offset = current_offset + j
@@ -369,12 +369,29 @@ def _render_hex_data(
                             next_color = COLOR_ORIGINAL
 
                         if next_color == color:
-                            hex_string += f" {data[next_offset]:02X}"
+                            hex_bytes.append(f"{data[next_offset]:02X}")
                             j += 1
                         else:
                             break
 
-                    dpg.add_text(hex_string + " ", color=color)
+                    # Join bytes with spaces
+                    # Each byte in hex_bytes becomes "XX " except we don't want trailing space in the segment
+                    hex_parts = []
+                    for k, byte_hex in enumerate(hex_bytes):
+                        if k < len(hex_bytes) - 1:
+                            hex_parts.append(f"{byte_hex} ")
+                        else:
+                            # Last byte in this colored segment
+                            if j < bytes_in_row:
+                                # More bytes follow in this row (different color), add space
+                                hex_parts.append(f"{byte_hex} ")
+                            else:
+                                # Last byte in row, no trailing space
+                                hex_parts.append(byte_hex)
+
+                    hex_string = "".join(hex_parts)
+                    dpg.add_text(hex_string, color=color)
+
                     i = j
 
                 # Padding for incomplete rows (if needed)

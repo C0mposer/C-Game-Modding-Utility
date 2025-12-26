@@ -6,7 +6,7 @@ Codecave Finder Tool - Searches for empty space (null bytes) in game files
 import dearpygui.dearpygui as dpg
 import os
 from typing import List, Optional
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from classes.project_data.project_data import ProjectData
 from classes.injection_targets.code_cave import Codecave
 from dpg.widget_themes import SetLastItemsTheme
@@ -789,6 +789,10 @@ _print:
         f"Codecave added successfully!\n\n"
         f"Size: 0x{adjusted_size:X} bytes\n")
 
+    # Close the codecave finder window
+    if dpg.does_item_exist("codecave_finder_window"):
+        dpg.delete_item("codecave_finder_window")
+
 # ==================== Debug String Finder Functions ====================
 
 # Global storage for debug string scan results
@@ -1378,3 +1382,7 @@ _print:
     messagebox.showinfo("Codecave Added",
         f"Debug strings region added as codecave!\n\n"
         f"Size: {group.size} bytes\n")
+
+    # Close the codecave finder window
+    if dpg.does_item_exist("codecave_finder_window"):
+        dpg.delete_item("codecave_finder_window")

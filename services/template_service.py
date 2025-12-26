@@ -415,7 +415,7 @@ void ModMain(void) {
     {return_type} ret = {underscore_func}(); // MUST keep as first line. This is the function that was replaced by the hook.
 
     // Your code here
-    _print("Hello World!\n");
+    _print("Hello World!\\n");
 
     return ret; // MUST keep as last line. This is the return value from the replaced function.
 }}
@@ -475,7 +475,7 @@ def callback_add_ps1_header_codecave(sender, app_data, current_project_data: Pro
     Callback for "Add PS1 Header Codecave" button in codecaves tab.
     Only visible for PS1 projects.
     """
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     
     template_service = TemplateService(current_project_data)
     
@@ -531,7 +531,7 @@ def callback_apply_ps1_template(sender, app_data, current_project_data: ProjectD
     Callback for "Apply PS1 Template" prompt.
     Shows after extracting PS1 game for new projects.
     """
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     from gui.gui_loading_indicator import LoadingIndicator
     
     # Show loading indicator
@@ -590,7 +590,7 @@ def show_ps1_template_prompt(current_project_data: ProjectData):
     Only shown when conditions are met.
     """
     import dearpygui.dearpygui as dpg
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     
     template_service = TemplateService(current_project_data)
     should_offer, reason = template_service.should_offer_template()

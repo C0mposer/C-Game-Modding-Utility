@@ -12,7 +12,7 @@ from classes.injection_targets.injection_target import (
     INJECTION_TYPE_MEMORY_ONLY,
 )
 
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from tkinter import filedialog
 
 _currently_selected_codecave_name = None

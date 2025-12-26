@@ -2,7 +2,6 @@ import sys
 import dearpygui.dearpygui as dpg
 import dearpygui.demo as demo
 from tk.tk_file_picker import *
-from tkinter import messagebox
 from tkinter import filedialog
 
 from gui.gui_startup_window import *

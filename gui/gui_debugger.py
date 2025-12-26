@@ -12,7 +12,8 @@ Interactive debugger for C code with:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, filedialog
+from gui import gui_messagebox as messagebox
 import os
 import threading
 from typing import Optional, List, Dict

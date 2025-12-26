@@ -142,7 +142,7 @@ def show_alignment_error_dialog(address_str: str, platform: str, injection_type:
         platform: Platform name
         injection_type: Type of injection - "codecave", "hook", or "patch"
     """
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
 
     alignment = get_platform_alignment(platform, injection_type)
 

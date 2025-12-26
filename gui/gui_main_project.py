@@ -1,6 +1,7 @@
 # --- START OF FILE: gui/gui_main_project.py ---
 
 import dearpygui.dearpygui as dpg
+import os
 from dpg.widget_themes import *
 from typing import Optional
 
@@ -25,8 +26,10 @@ from gui.gui_string_editor import show_string_editor_window
 from gui.gui_emulator_tools import show_emulator_tools_window
 from later_features.gui_c_debugger_launcher import show_c_debugger_window
 from gui.gui_build import refresh_build_panel_ui
+from gui.gui_prereq_prompt import check_and_prompt_prereqs
 from functions.verbose_print import verbose_print
 from services.emulator_connection_manager import get_emulator_manager
+from path_helper import get_application_directory
 
 # Global auto-save manager
 _auto_save_manager: Optional[AutoSaveManager] = None
@@ -627,6 +630,18 @@ def _restore_project_state(current_project_data: ProjectData):
             
         
 def callback_platform_combobox(sender, combo_box_data, current_project_data: ProjectData):
+    # Check prerequisites when platform is changed
+    tool_dir = get_application_directory()
+
+    # Get the old platform before we change it
+    old_platform = current_project_data.GetCurrentBuildVersion().GetPlatform()
+
+    if not check_and_prompt_prereqs(tool_dir, combo_box_data, None):
+        # User cancelled download - revert to old platform in combobox
+        if dpg.does_item_exist("combobox_platform"):
+            dpg.set_value("combobox_platform", old_platform)
+        return
+
     current_project_data.GetCurrentBuildVersion().SetPlatform(combo_box_data)
     if hasattr(current_project_data, "platform"):
         if current_project_data.platform == "PS2":
@@ -634,14 +649,14 @@ def callback_platform_combobox(sender, combo_box_data, current_project_data: Pro
                                                                                      # The problem is it tries to link to libraries like fptodp, dpadd, dptofp, etc.
     refresh_build_panel_ui(current_project_data)
     update_build_button_label(current_project_data)
-    
+
     print(f"Current Platform for {current_project_data.GetCurrentBuildVersion().GetBuildName()} is: {current_project_data.GetCurrentBuildVersion().GetPlatform()}")
     AddRelevantGameFileOptions(current_project_data)
-    
+
     # Update PS1 codecave button visibility
     from gui.gui_c_injection import update_ps1_codecave_button_visibility
     update_ps1_codecave_button_visibility(current_project_data)
-    
+
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
 

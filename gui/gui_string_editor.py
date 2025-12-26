@@ -6,7 +6,7 @@ String Search/Editor Tool - Find, edit, and repurpose strings in game files
 import dearpygui.dearpygui as dpg
 import os
 from typing import List, Optional, Tuple
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from classes.project_data.project_data import ProjectData
 from classes.injection_targets.binary_patch import BinaryPatch
 

@@ -1,4 +1,5 @@
 __pycache__/*
+*.pyc
 
 later_features/*
 prereq/*
@@ -9,7 +10,7 @@ dist/*
 build/*
 projects/*
 5-25-24 Rewrite/*
-*.pyc
 
 Old Code Injection Toolchain.zip
 Rewrite Backups.zip
+mod_utility.exe.spec

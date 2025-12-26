@@ -8,7 +8,7 @@ import os
 from functions.verbose_print import verbose_print
 from functions.alignment_validator import *
 
-from tkinter import messagebox
+from gui import gui_messagebox as messagebox
 from tkinter import filedialog
 
 _currently_selected_hook_name = None
@@ -890,7 +890,7 @@ def callback_auto_calculate_file_address_checkbox(sender, app_data, current_proj
 def callback_auto_detect_hook(sender, app_data, current_project_data: ProjectData):
     """Auto-detect common hook patterns in the game executable"""
     from services.pattern_service import PatternService
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     
     # Check if main executable is set
     current_build = current_project_data.GetCurrentBuildVersion()
@@ -944,7 +944,7 @@ def callback_auto_detect_hook(sender, app_data, current_project_data: ProjectDat
 def show_pattern_selection_dialog(matches, current_project_data: ProjectData):
     """Show dialog to select which pattern to use"""
     from services.pattern_service import PatternService
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     
     if dpg.does_item_exist("pattern_selection_modal"):
         dpg.delete_item("pattern_selection_modal")
@@ -1007,7 +1007,7 @@ def callback_use_pattern(sender, app_data, user_data):
     global _currently_selected_hook_name
     global _currently_selected_hook_index
     from services.pattern_service import PatternService
-    from tkinter import messagebox
+    from gui import gui_messagebox as messagebox
     
     pattern_match, current_project_data = user_data
     
@@ -1099,7 +1099,7 @@ def hide_hook_getting_started_message():
 def callback_import_multipatch(sender, app_data, current_project_data: ProjectData):
     """Import a multi-patch ASM file reference (doesn't create hooks until compilation)"""
     from services.asm_parser_service import ASMParserService
-    from tkinter import messagebox, filedialog
+    from gui import gui_messagebox as messagebox, filedialog
     from classes.injection_targets.multipatch_asm import MultiPatchASM
     
     # Choose ASM file

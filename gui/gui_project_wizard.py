@@ -15,7 +15,8 @@ Usage:
 """
 
 import dearpygui.dearpygui as dpg
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
+from gui import gui_messagebox as messagebox
 import os
 from typing import Optional
 
@@ -25,7 +26,9 @@ from services.iso_service import ISOService
 from services.template_service import TemplateService
 from services.ghidra_pattern_service import GhidraPatternService
 from gui.gui_loading_indicator import LoadingIndicator
+from gui.gui_prereq_prompt import check_and_prompt_prereqs
 from functions.verbose_print import verbose_print
+from path_helper import get_application_directory
 
 class ProjectWizardState:
     """Holds the state of the wizard"""
@@ -443,6 +446,14 @@ def _validate_current_step() -> bool:
 def _on_platform_selected(platform: str):
     """Handle platform selection"""
     global _wizard_state
+
+    # Check prerequisites when platform is selected
+    tool_dir = get_application_directory()
+
+    if not check_and_prompt_prereqs(tool_dir, platform, None):
+        # User cancelled download - don't change platform selection
+        return
+
     _wizard_state.platform = platform
     _update_wizard_ui()
 
