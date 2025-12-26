@@ -3,18 +3,17 @@
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
 
 ## Features  
-- Supports PS1, PS2, GameCube, & Wii. Comes bundled with cross-compilation toolchains.
+- Supports PS1, PS2, GameCube, & Wii. - Comes bundled with cross-compilation toolchains.
 - GUI and CLI interfaces
-- Rebuilding game ISO's
+- Rebuild's game ISO's
 - Live emulator injection into [supported emulators](https://github.com/C0mposer/C-Game-Modding-Utility?tab=readme-ov-file#supported-emulators)
-- Real-time memory watch and editing
 - Multi-version symbol management
 - Code cave finder and pattern-based hook detection
+- And much more!
 
 [Click here to see the Wiki](https://github.com/C0mposer/C-Game-Modding-Utility/wiki)
 
 ## Quick Start:
-***This quick start guide will get you up and running with a mod in C that runs every frame along side your game of choice***
 
 ### Creating a Project
 1. Click "Create New Project", and give it a name
@@ -23,8 +22,8 @@
 
 ### 2. Setup code caves & hooks
 **Need help finding code caves and hooks?** The tool includes:
-- **Auto-Hook Detection** - Automatically finds every-frame functions
 - **Codecave Finder** - Scans for free memory space & debug strings
+- **Auto-Hook Detection** - Automatically finds every-frame functions
 
 ### 3. Write Your First Mod
 The tool auto-generated a project with everything you need. Edit `src/main.c`:
