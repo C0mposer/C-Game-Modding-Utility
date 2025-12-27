@@ -390,10 +390,6 @@ class ISOService:
             return False, "", error_msg
 
     def extract_iso(self, iso_path: str, output_dir: str) -> ISOResult:
-        """
-        Extract ISO based on current platform.
-        Automatically detects platform from project data.
-        """
         platform = self.project_data.GetCurrentBuildVersion().GetPlatform()
         
         if platform == "PS1":

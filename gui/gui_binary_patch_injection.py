@@ -57,7 +57,7 @@ def CreateBinaryFileInjectionGui(current_project_data: ProjectData):
             dpg.add_button(label="Clear Binary Files List", tag="clear_binary_patch_files_button", callback=callback_clear_binary_files, user_data=current_project_data) # Unique tag and callback
 
         # Choose Injection File
-        dpg.add_text("Game File to Inject Into")
+        dpg.add_text("Target Game File")
         dpg.add_combo(("",), tag="binary_patch_target_game_file",
                      callback=callback_binary_patch_injection_file_changed,
                      user_data=current_project_data) # Unique tag

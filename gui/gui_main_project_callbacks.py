@@ -192,7 +192,7 @@ def reset_global_project_state():
     print("Global project state reset complete")
 
 def ShowFullProjectTabs():
-    dpg.configure_item("Game Files To Inject Into", show=True)
+    dpg.configure_item("Target Game Files", show=True)
     dpg.configure_item("Modifications", show=True)
     dpg.configure_item("Build", show=True)
     
@@ -655,10 +655,10 @@ def refresh_ui_for_current_build(current_project_data: ProjectData):
     
     # Show/hide tabs based on whether platform and game folder are set
     if platform and platform != "Choose a Platform" and current_build.GetGameFolder():
-        dpg.configure_item("Game Files To Inject Into", show=True)
+        dpg.configure_item("Target Game Files", show=True)
         dpg.configure_item("Modifications", show=True)
     else:
-        dpg.configure_item("Game Files To Inject Into", show=False)
+        dpg.configure_item("Target Game Files", show=False)
         dpg.configure_item("Modifications", show=False)
         
     if dpg.does_item_exist("compiler_flags_input"):
@@ -1122,7 +1122,7 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
 
                             dpg.set_value("File Offset From Ram Input", "F800")
 
-                            dpg.configure_item("Game Files To Inject Into", show=True)
+                            dpg.configure_item("Target Game Files", show=True)
                             dpg.configure_item("Modifications", show=True)
                         except Exception as e:
                             print(f"Warning: GUI update failed (this is OK): {e}")
@@ -1244,7 +1244,7 @@ def callback_extract_ps2_iso(sender, app_data, current_project_data: ProjectData
                         offset = current_build.GetInjectionFileOffset(main_exe)
                         #dpg.set_value("File Offset From Ram Input", offset if offset else "")
 
-                        dpg.configure_item("Game Files To Inject Into", show=True)
+                        dpg.configure_item("Target Game Files", show=True)
                         dpg.configure_item("Modifications", show=True)
 
                         # Download box art
@@ -1383,7 +1383,7 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
                         offset = current_build.GetInjectionFileOffset(main_exe)
                         #dpg.set_value("File Offset From Ram Input", offset if offset else "")
 
-                        dpg.configure_item("Game Files To Inject Into", show=True)
+                        dpg.configure_item("Target Game Files", show=True)
                         dpg.configure_item("Modifications", show=True)
 
                         # Download box art
@@ -1499,7 +1499,7 @@ def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData
                         offset = current_build.GetInjectionFileOffset(main_exe)
                         #dpg.set_value("File Offset From Ram Input", offset if offset else "")
 
-                        dpg.configure_item("Game Files To Inject Into", show=True)
+                        dpg.configure_item("Target Game Files", show=True)
                         dpg.configure_item("Modifications", show=True)
 
                         # Download box art
@@ -1577,7 +1577,7 @@ def callback_choose_ps1_iso_folder(sender, button_data, current_project_data: Pr
                     offset = current_build.GetInjectionFileOffset(main_exe)
                     dpg.set_value("File Offset From Ram Input", "F800")
                 
-                dpg.configure_item("Game Files To Inject Into", show=True)
+                dpg.configure_item("Target Game Files", show=True)
                 dpg.configure_item("Modifications", show=True)
 
                 # Download box art
@@ -1637,7 +1637,7 @@ def callback_choose_ps2_iso_folder(sender, button_data, current_project_data: Pr
         offset = current_project_data.GetCurrentBuildVersion().GetInjectionFileOffset(main_exe)
         #dpg.set_value("File Offset From Ram Input", offset if offset else "")
     
-    dpg.configure_item("Game Files To Inject Into", show=True)
+    dpg.configure_item("Target Game Files", show=True)
     dpg.configure_item("Modifications", show=True)
 
     # Download box art
@@ -1716,7 +1716,7 @@ def callback_choose_gamecube_iso_folder(sender, button_data, current_project_dat
         CInjectionChangeGameFiles(current_project_data.GetCurrentBuildVersion().GetInjectionFiles())
         dpg.configure_item("game_files_listbox", items=(current_project_data.GetCurrentBuildVersion().GetMainExecutable(), ))
 
-    dpg.configure_item("Game Files To Inject Into", show=True)
+    dpg.configure_item("Target Game Files", show=True)
     dpg.configure_item("Modifications", show=True)
 
     # Download box art
@@ -1754,7 +1754,7 @@ def callback_choose_n64_rom(sender, app_data, current_project_data: ProjectData)
     CInjectionChangeGameFiles(current_project_data.GetCurrentBuildVersion().GetInjectionFiles())
     dpg.configure_item("game_files_listbox", items=(rom_name,))
     
-    dpg.configure_item("Game Files To Inject Into", show=True)
+    dpg.configure_item("Target Game Files", show=True)
     dpg.configure_item("Modifications", show=True)
     
     from gui.gui_main_project import trigger_auto_save
@@ -1839,7 +1839,7 @@ def callback_choose_single_file(sender, app_data, current_project_data: ProjectD
     #dpg.set_value("File Offset From Ram Input", offset if offset else "")
     
     # Show modification tabs
-    dpg.configure_item("Game Files To Inject Into", show=True)
+    dpg.configure_item("Target Game Files", show=True)
     dpg.configure_item("Modifications", show=True)
 
     # Download box art

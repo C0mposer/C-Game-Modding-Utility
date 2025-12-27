@@ -255,7 +255,7 @@ def callback_add_file_to_inject_into(sender, app_data, current_project_data: Pro
     
     # Allow selection from ANY location
     game_file_path = filedialog.askopenfilename(
-        title="Choose Game File to Inject Into",
+        title="Choose Target Game File",
         initialdir=current_project_data.GetCurrentBuildVersion().GetGameFolder()
     )
     

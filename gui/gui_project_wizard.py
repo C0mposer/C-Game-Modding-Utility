@@ -147,7 +147,7 @@ def _render_step_2():
             ("PS2", "PlayStation 2", ""),
             ("Gamecube", "Nintendo GameCube", ""),
             ("Wii", "Nintendo Wii", ""),
-            ("N64", "Nintendo 64", "")
+            #("N64", "Nintendo 64", "")
         ]
         
         for i, (platform_id, platform_name, icon) in enumerate(platforms):

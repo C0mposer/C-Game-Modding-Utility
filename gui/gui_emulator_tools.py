@@ -93,7 +93,7 @@ def show_emulator_tools_window(sender, app_data, current_project_data: ProjectDa
     pos_x = (viewport_width - window_width) // 2 - 8
     pos_y = (viewport_height - window_height) // 2 - 12
     with dpg.window(
-        label="Verification Tools",
+        label="Runtime Verification",
         tag="emulator_tools_window",
         width=window_width,
         height=window_height,

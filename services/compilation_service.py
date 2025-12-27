@@ -675,7 +675,7 @@ class CompilationService:
                 self._log_error(f"    - No file offset set")
             self._log_error("\nFix this by:")
             self._log_error("  1. Provide explicit file address: J_HOOK(0x80123456, \"file.bin\", 0x1234), OR")
-            self._log_error("  2. Set file offset in 'Game Files To Inject Into' tab, OR")
+            self._log_error("  2. Set file offset in 'Target Game Files' tab, OR")
             self._log_error("  3. Build section map for the file (if supported)")
             self._log_error("Then recompile.")
         

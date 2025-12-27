@@ -69,7 +69,7 @@ def show_visual_patcher_window(sender, app_data, project_data: ProjectData):
             )
             
             dpg.add_spacer(width=20)
-            dpg.add_text("Patch:")
+            dpg.add_text("Modification:")
             dpg.add_combo(
                 items=[],
                 tag=f"{WINDOW_TAG}_patch_combo",

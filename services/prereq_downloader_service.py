@@ -132,7 +132,7 @@ class ToolManager:
 
             # Verify installation
             if self.is_platform_installed(platform):
-                print(f"{package.display_name} tools installed successfully!")
+                print(f"{package.display_name} tools installed")
                 return True
             else:
                 print(f"Installation verification failed for {package.display_name}")

@@ -373,7 +373,7 @@ def _on_function_selected(function_name: str, project_data: ProjectData):
     
     # Update title
     dpg.set_value(f"{WINDOW_TAG}_asm_title", 
-                  f"Assembly Code - {func.name} (0x{func.address})")
+                  f"Disassembly - {func.name} (0x{func.address})")
     
     # Clear display
     _clear_asm_display()

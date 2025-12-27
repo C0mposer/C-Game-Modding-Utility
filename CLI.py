@@ -126,6 +126,10 @@ class ModToolCLI:
         self.logger = logger
         # Use centralized helper for PyInstaller compatibility
         self.tool_dir = get_application_directory()
+        # Initialize callback attributes (for GUI compatibility)
+        self.on_progress = None
+        self.on_error = None
+        self.verbose = False
     
     def _log(self, msg: str):
         """Always shown (CLI + GUI) – for the *simple* output."""
@@ -1062,7 +1066,7 @@ class ModToolCLI:
             "PS2": ["PCSX2"],
             "Gamecube": ["Dolphin"],
             "Wii": ["Dolphin"],
-            "N64": ["Project64"]
+            #"N64": ["Project64"]
         }
         return emulator_map.get(platform, [])
 
@@ -1101,14 +1105,10 @@ Examples (explicit project):
     For more information, visit: https://github.com/C0mposer/C-Game-Modding-Utility
         """
     )
-    
+
     # For Sublime
     if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout = open(sys.stdout.fileno(), 'w', encoding='utf-8', closefd=False)
-
-    # Top-level optional project argument (for interactive mode: "mod_utility.exe MyProject")
-    parser.add_argument('top_level_project', nargs='?', default=None, metavar='project',
-                        help='Project name/path for interactive mode (optional)')
 
     # Subcommands
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
@@ -1190,7 +1190,21 @@ Examples (explicit project):
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
     parser.add_argument('--no-color', action='store_true', help='Disable colors')
     parser.add_argument('--version', action='version', version='Mod Utility 1.0.0')
-    
+
+    # Manual handling for interactive mode with project name
+    # Check if first arg (after script name) is NOT a known command and NOT a flag
+    # If so, it's a project name for interactive mode
+    top_level_project = None
+    commands = ['compile', 'build', 'xdelta', 'inject', 'clean', 'validate', 'list-builds', 'set-build', 'info']
+
+    if len(sys.argv) > 1:
+        first_arg = sys.argv[1]
+        # If first arg is not a flag and not a known command, it's a project name for interactive mode
+        if not first_arg.startswith('-') and first_arg not in commands:
+            top_level_project = first_arg
+            # Remove it from sys.argv so argparse doesn't see it
+            sys.argv.pop(1)
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -1211,7 +1225,7 @@ Examples (explicit project):
         has_project = False
 
         # Check if project was provided as argument
-        if args.top_level_project:
+        if top_level_project:
             has_project = True
         else:
             # Check if we're in a project directory
@@ -1239,7 +1253,7 @@ Examples (explicit project):
             args.command = selected_command
 
             # Use top_level_project if provided (e.g., "mod_utility.exe MyProject")
-            args.project = getattr(args, 'top_level_project', None)
+            args.project = top_level_project
             args.build = None
             args.emulator = None
             args.original = None

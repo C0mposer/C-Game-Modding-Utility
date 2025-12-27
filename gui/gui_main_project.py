@@ -393,7 +393,7 @@ def _init_project_window_ui(current_project_data: ProjectData):
                 # )
                 # WIP
                 dpg.add_menu_item(
-                    label="Verification Tools",
+                    label="Runtime Verification",
                     callback=lambda: show_emulator_tools_window(None, None, current_project_data)
                 )
                 dpg.add_menu_item(
@@ -483,7 +483,7 @@ def _init_project_window_ui(current_project_data: ProjectData):
                 default_platform = current_platform if current_platform else "Choose a Platform"
                 
                 dpg.add_combo(
-                    ("PS1", "PS2", "Gamecube", "Wii", "N64"),
+                    ("PS1", "PS2", "Gamecube", "Wii"),
                     label="Platform",
                     default_value=default_platform,
                     callback=callback_platform_combobox,
@@ -494,7 +494,7 @@ def _init_project_window_ui(current_project_data: ProjectData):
                 dpg.add_separator()
 
             #! Files To Inject Into Tab
-            with dpg.tab(label="Game Files To Inject Into", tag="Game Files To Inject Into", show=False):
+            with dpg.tab(label="Target Game Files", tag="Target Game Files", show=False):
                 CreateGameFilesGui(current_project_data)
 
             #! Modifications
@@ -583,7 +583,7 @@ def _restore_project_state(current_project_data: ProjectData):
         
         # If game folder is set, show the tabs
         if current_build.GetGameFolder():
-            dpg.configure_item("Game Files To Inject Into", show=True)
+            dpg.configure_item("Target Game Files", show=True)
             dpg.configure_item("Modifications", show=True)
             
             # FIX: Restore game files listbox with formatted items

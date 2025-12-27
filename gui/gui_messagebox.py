@@ -39,78 +39,85 @@ def _create_positioned_parent():
     return root
 
 
-def showinfo(title, message, parent=None):
+def showinfo(title=None, message=None, **options):
     """Show info messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.showinfo(title, message, parent=root)
+        result = messagebox.showinfo(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.showinfo(title, message, parent=parent)
+        return messagebox.showinfo(title, message, **options)
 
 
-def showerror(title, message, parent=None):
+def showerror(title=None, message=None, **options):
     """Show error messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.showerror(title, message, parent=root)
+        result = messagebox.showerror(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.showerror(title, message, parent=parent)
+        return messagebox.showerror(title, message, **options)
 
 
-def showwarning(title, message, parent=None):
+def showwarning(title=None, message=None, **options):
     """Show warning messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.showwarning(title, message, parent=root)
+        result = messagebox.showwarning(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.showwarning(title, message, parent=parent)
+        return messagebox.showwarning(title, message, **options)
 
 
-def askyesno(title, message, parent=None):
+def askyesno(title=None, message=None, **options):
     """Show yes/no messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.askyesno(title, message, parent=root)
+        result = messagebox.askyesno(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.askyesno(title, message, parent=parent)
+        return messagebox.askyesno(title, message, **options)
 
 
-def askokcancel(title, message, parent=None):
+def askokcancel(title=None, message=None, **options):
     """Show ok/cancel messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.askokcancel(title, message, parent=root)
+        result = messagebox.askokcancel(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.askokcancel(title, message, parent=parent)
+        return messagebox.askokcancel(title, message, **options)
 
 
-def askyesnocancel(title, message, parent=None):
+def askyesnocancel(title=None, message=None, **options):
     """Show yes/no/cancel messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.askyesnocancel(title, message, parent=root)
+        result = messagebox.askyesnocancel(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.askyesnocancel(title, message, parent=parent)
+        return messagebox.askyesnocancel(title, message, **options)
 
 
-def askretrycancel(title, message, parent=None):
+def askretrycancel(title=None, message=None, **options):
     """Show retry/cancel messagebox centered over DPG viewport"""
+    parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
-        result = messagebox.askretrycancel(title, message, parent=root)
+        result = messagebox.askretrycancel(title, message, parent=root, **{k: v for k, v in options.items() if k != 'parent'})
         root.destroy()
         return result
     else:
-        return messagebox.askretrycancel(title, message, parent=parent)
+        return messagebox.askretrycancel(title, message, **options)

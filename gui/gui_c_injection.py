@@ -154,7 +154,7 @@ def CreateCInjectionGui(current_project_data: ProjectData):
 
         # Existing game file selection (show/hide based on injection type)
         with dpg.group(tag="codecave_existing_file_group", show=True):
-            dpg.add_text("Game File to Inject Into")
+            dpg.add_text("Target Game File")
             dpg.add_combo(("",), tag="target_game_file",
                          callback=callback_codecave_injection_file_changed,
                          user_data=current_project_data)

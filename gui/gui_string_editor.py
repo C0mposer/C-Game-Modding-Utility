@@ -65,7 +65,7 @@ def show_string_editor_window(sender, app_data, current_project_data: ProjectDat
     game_files = current_build.GetInjectionFiles()
 
     if not game_files:
-        messagebox.showinfo("No Files", "No game files available.\n\nPlease add game files first in the 'Game Files To Inject Into' tab.")
+        messagebox.showinfo("No Files", "No game files available.\n\nPlease add game files first in the 'Target Game Files' tab.")
         return
 
     with dpg.window(

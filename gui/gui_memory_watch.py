@@ -5,6 +5,7 @@ from services.memory_watch_service import MemoryWatchService, WatchEntry, DataTy
 from services.symbol_map_parser_service import SymbolParserService
 from services.emulator_service import EmulatorService
 from services.emulator_connection_manager import get_emulator_manager
+from functions.verbose_print import verbose_print
 import os
 import threading
 
@@ -26,7 +27,7 @@ _memory_watch_window_instance = None
 # Module-level callback for emulator scans (called even when window isn't open)
 def _on_emulators_scanned_module_callback(available: list):
     """Update Memory Watch UI when emulators are scanned from other windows"""
-    print(f"[MemoryWatch Module] _on_emulators_scanned called with: {available}")
+    verbose_print(f"[MemoryWatch Module] _on_emulators_scanned called with: {available}")
 
     # Update instance state if it exists
     if _memory_watch_window_instance:
@@ -368,7 +369,7 @@ class MemoryWatchWindow:
                     dpg.configure_item("emulator_combo", items=self.available_emulators)
                     dpg.set_value("emulator_combo", self.available_emulators[0])
                     dpg.configure_item("connect_button", enabled=True)
-                    print(f"Found {len(self.available_emulators)} emulators: {self.available_emulators}")
+                    verbose_print(f"Found {len(self.available_emulators)} emulators: {self.available_emulators}")
 
             # Schedule on main thread using a simple approach
             import time
@@ -386,7 +387,7 @@ class MemoryWatchWindow:
 
     def _on_emulators_scanned(self, available: list):
         """Callback when emulators are scanned by manager (from other windows)"""
-        print(f"[MemoryWatch] _on_emulators_scanned called with: {available}")
+        verbose_print(f"[MemoryWatch] _on_emulators_scanned called with: {available}")
 
         # Update our local state
         self.available_emulators = available
@@ -427,7 +428,7 @@ class MemoryWatchWindow:
                 dpg.configure_item("emulator_combo", items=self.available_emulators)
                 dpg.set_value("emulator_combo", connection.emulator_name)
                 dpg.configure_item("connect_button", enabled=True)
-                print(f"[MemoryWatch] Restored connection to {connection.emulator_name}")
+                verbose_print(f"[MemoryWatch] Restored connection to {connection.emulator_name}")
         elif self.manager.available_emulators and dpg.does_item_exist("emulator_combo"):
             # Use cached scan results from manager (scanned from another window)
             self.available_emulators = self.manager.available_emulators
@@ -435,7 +436,7 @@ class MemoryWatchWindow:
             dpg.configure_item("emulator_combo", items=self.available_emulators)
             dpg.set_value("emulator_combo", self.available_emulators[0])
             dpg.configure_item("connect_button", enabled=True)
-            print(f"[MemoryWatch] Restored {len(self.available_emulators)} emulators from cache")
+            verbose_print(f"[MemoryWatch] Restored {len(self.available_emulators)} emulators from cache")
     
     def _on_emulator_selected(self):
         """Called when emulator is selected from combo"""
@@ -686,7 +687,7 @@ class MemoryWatchWindow:
         needs_rebuild = (old_type.is_color != new_type.is_color) or (old_type.has_alpha != new_type.has_alpha)
         
         entry.data_type = new_type
-        print(f"Changed {entry.name} type to {new_type_str}")
+        verbose_print(f"Changed {entry.name} type to {new_type_str}")
         
         # If switching to/from color types or changing alpha support, rebuild the row
         if needs_rebuild:
@@ -875,13 +876,13 @@ class MemoryWatchWindow:
                     # RGB/BGR -> (r, g, b)
                     entry.update_rgb_value(*color)
             else:
-                print(f"Warning: Failed to read color value for {entry.name}")
+                verbose_print(f"Warning: Failed to read color value for {entry.name}")
         else:
             value = self.watch_service._read_value(handle, entry.address, entry.data_type)
             if value is not None:
                 entry.update_value(value)
             else:
-                print(f"Warning: Failed to read value for {entry.name}")
+                verbose_print(f"Warning: Failed to read value for {entry.name}")
 
         # Update UI immediately
         self._update_entry_ui(entry)
@@ -1094,7 +1095,7 @@ class MemoryWatchWindow:
                 entry.update_rgba_value(*color)
             else:
                 entry.update_rgb_value(*color)
-            print(f"Successfully read color from memory: {color}")
+            verbose_print(f"Successfully read color from memory: {color}")
         else:
             print(f"Warning: Could not read color from memory for {entry.name}")
         
@@ -1102,21 +1103,21 @@ class MemoryWatchWindow:
         if entry.data_type.has_alpha and entry.rgba_value is not None:
             r, g, b, a = entry.rgba_value
             initial_color = (r, g, b, a)
-            print(f"Opening color picker with RGBA (0-255): {r}, {g}, {b}, {a}")
+            verbose_print(f"Opening color picker with RGBA (0-255): {r}, {g}, {b}, {a}")
         elif entry.rgb_value is not None:
             r, g, b = entry.rgb_value
             initial_color = (r, g, b, 255)
-            print(f"Opening color picker with RGB (0-255): {r}, {g}, {b}")
+            verbose_print(f"Opening color picker with RGB (0-255): {r}, {g}, {b}")
         else:
             # Fallback to white if we still couldn't read
             initial_color = (255, 255, 255, 255)
-            print("Warning: Using default white color because read failed")
+            verbose_print("Warning: Using default white color because read failed")
 
         def on_color_change(sender, app_data):
             """Called whenever the color picker changes - write immediately"""
             color = dpg.get_value(f"{dialog_tag}_color_picker")
             
-            print(f"Color picker returned: {color}")
+            verbose_print(f"Color picker returned: {color}")
 
             # DearPyGui returns values in 0-255 range
             r = round(color[0])
@@ -1129,8 +1130,6 @@ class MemoryWatchWindow:
             g = max(0, min(255, g))
             b = max(0, min(255, b))
             a = max(0, min(255, a))
-            
-            print(f"Writing to memory: R={r}, G={g}, B={b}, A={a}")
 
             # Write to memory immediately
             self.watch_service.write_color_value(entry.address, entry.data_type, r, g, b, a)
@@ -1501,7 +1500,7 @@ class MemoryWatchWindow:
                 
                 count += 1
         
-        print(f"Added {count} symbol watches")
+        verbose_print(f"Added {count} symbol watches")
     
     def _filter_symbols(self):
         """Filter symbols by search text"""
@@ -1583,7 +1582,7 @@ class MemoryWatchWindow:
         # DON'T unregister scan callback - keep receiving updates even when window is closed
         # The callback checks if window exists before updating UI
 
-        print("Memory watch window closed (connection preserved)")
+        verbose_print("Memory watch window closed (connection preserved)")
     
     def _reset_window_state(self):
         """Reset the entire window state - only called when switching projects"""
@@ -1627,7 +1626,7 @@ class MemoryWatchWindow:
         if dpg.does_item_exist(self.scanning_modal_tag):
             dpg.delete_item(self.scanning_modal_tag)
 
-        print("Memory watch window state fully reset (UI deleted for recreation)")
+        verbose_print("Memory watch window state fully reset")
     
     
     def show(self):
@@ -1656,7 +1655,7 @@ def reset_memory_watch_for_project_change():
     global _memory_watch_window, _last_project_data
     
     if _memory_watch_window is not None:
-        print("Resetting memory watch for project change")
+        verbose_print("Resetting memory watch for project change")
         _memory_watch_window._reset_window_state()
         _memory_watch_window = None
     
@@ -1669,7 +1668,7 @@ def show_memory_watch_window(project_data: ProjectData):
     
     # If project changed, fully reset
     if _memory_watch_window is not None and _last_project_data is not project_data:
-        print("Project changed - fully resetting memory watch")
+        verbose_print("Project changed, fully resetting memory watch")
         _memory_watch_window._reset_window_state()
         _memory_watch_window = None
     

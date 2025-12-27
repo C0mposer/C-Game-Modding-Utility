@@ -16,7 +16,7 @@ from CLI import modtool_main
 
 def is_cli_mode():
     # Check if any command line arguments were passed (beyond the script name)
-    if len(sys.argv) > 2:
+    if len(sys.argv) >= 2:
         return True
     if "--help" in sys.argv or "-help" in sys.argv:
         return True

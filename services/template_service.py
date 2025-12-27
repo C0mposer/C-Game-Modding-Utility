@@ -557,7 +557,7 @@ def callback_apply_ps1_template(sender, app_data, current_project_data: ProjectD
                     
                     # Show tabs
                     import dearpygui.dearpygui as dpg
-                    dpg.configure_item("Game Files To Inject Into", show=True)
+                    dpg.configure_item("Target Game Files", show=True)
                     dpg.configure_item("Modifications", show=True)
                     
                     # Trigger auto-save

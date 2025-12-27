@@ -95,7 +95,7 @@ class PrereqDownloadPrompt:
             button_frame,
             text="Cancel",
             command=self._on_close,
-            width=15
+            width=12
         )
         self.cancel_btn.pack(side=tk.RIGHT, padx=5)
 
@@ -114,7 +114,7 @@ class PrereqDownloadPrompt:
             button_frame,
             text=f"Download {package_info.display_name} Tools",
             command=self._download_platform,
-            width=25,
+            width=32,
             bg="#27ae60",
             fg="white",
             font=("Segoe UI", 9, "bold")

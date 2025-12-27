@@ -76,7 +76,7 @@ def show_codecave_finder_window(sender, app_data, current_project_data: ProjectD
     game_files = current_build.GetInjectionFiles()
 
     if not game_files:
-        messagebox.showinfo("No Files", "No game files available.\n\nPlease add game files first in the 'Game Files To Inject Into' tab.")
+        messagebox.showinfo("No Files", "No game files available.\n\nPlease add game files first in the 'Target Game Files' tab.")
         return
 
     # Calculate centered position for 1024x768 viewport
@@ -96,7 +96,6 @@ def show_codecave_finder_window(sender, app_data, current_project_data: ProjectD
         pos=[pos_x, pos_y],
         modal=False,
         no_close=False,
-        no_move = True
     ):
         dpg.add_text("Find Codecaves in Game Files", color=(100, 150, 255))
         dpg.add_separator()
@@ -106,13 +105,14 @@ def show_codecave_finder_window(sender, app_data, current_project_data: ProjectD
         # Main tab bar for codecave finder
     # Tab bar for different finder types
         with dpg.tab_bar(tag="codecave_finder_tab_bar"):
-            # Padding Finder tab (original functionality)
+            # Debug String Finder tab
+            with dpg.tab(label="Debug String Finder", tag="debug_string_finder_tab"):
+                _create_debug_string_finder_tab(current_project_data, game_files)
+                
+            # Padding Finder tab
             with dpg.tab(label="Padding Finder", tag="padding_finder_tab"):
                 _create_padding_finder_tab(current_project_data, game_files)
 
-            # Debug String Finder tab (new functionality)
-            with dpg.tab(label="Debug String Finder", tag="debug_string_finder_tab"):
-                _create_debug_string_finder_tab(current_project_data, game_files)
 
 def _create_padding_finder_tab(current_project_data: ProjectData, game_files: List[str]):
     """Create the padding finder tab (original codecave finder)"""

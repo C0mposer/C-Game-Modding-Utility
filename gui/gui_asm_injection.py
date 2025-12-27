@@ -75,7 +75,7 @@ def CreateASMInjectionGui(current_project_data: ProjectData):
             dpg.add_button(label="Clear ASM Files List", tag="clear_hook_asm_files_button", callback=callback_clear_asm_files, user_data=current_project_data)
 
         # Choose Injection File
-        dpg.add_text("Game File to Inject Into")
+        dpg.add_text("Target Game File")
         dpg.add_combo(("",), tag="hook_target_game_file",
                      callback=callback_hook_injection_file_changed,
                      user_data=current_project_data)
