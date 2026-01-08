@@ -3,7 +3,7 @@
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
 
 ## Features  
-- Supports PS1, PS2, GameCube, & Wii. - Comes bundled with cross-compilation toolchains.
+- Supports PS1, PS2, GameCube, & Wii
 - GUI and CLI interfaces
 - Rebuild's game ISO's
 - Live emulator injection into [supported emulators](https://github.com/C0mposer/C-Game-Modding-Utility?tab=readme-ov-file#supported-emulators)
@@ -80,4 +80,4 @@ Click **Compile** in the build tab to compile your mod. Then, you can either inj
 
 ## Contact
 
-If you need any help using this utility, feel free to reach out to me on discord: **Composer** :)
+If you need any help using this utility, feel free to join the community discord: [Join Discord](https://discord.gg/Hw8pSMcB)

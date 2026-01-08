@@ -1072,38 +1072,54 @@ class ModToolCLI:
 
 # ==================== Main Entry Point ====================
 
+def print_custom_help():
+    """Print custom help message"""
+    help_text = """Command-line interface for C/C++ Game Modding Utility
+
+Interactive Mode:
+  mod_utility.exe <PROJECT_NAME>          Shows interactive menu for your project
+
+Explicit Command Mode:
+  mod_utility.exe <COMMAND> <PROJECT_NAME> <optional_args>
+
+positional arguments:
+  compile             Compile project sources
+  build               Full build (compile + ISO)
+  xdelta              Generate xdelta patch
+  inject              Inject into emulator
+  clean               Clean build artifacts
+  validate            Validate project
+  list-builds         List build versions
+  set-build           Switch build version
+  info                Show project info
+
+Examples:
+  mod_utility.exe compile MyProject
+  mod_utility.exe build MyProject
+  mod_utility.exe inject MyProject
+  mod_utility.exe clean MyProject
+
+Examples with Arguments:
+  mod_utility.exe compile MyProject --build=NTSC-U
+  mod_utility.exe build MyProject --build=NTSC-U
+  mod_utility.exe inject MyProject duckstation
+  mod_utility.exe inject MyProject dolphin --build=NTSC-U
+
+For more information, visit: https://github.com/C0mposer/C-Game-Modding-Utility
+"""
+    print(help_text)
+
 def modtool_main():
+    # Check for --help or -h before argparse to use custom help
+    if '--help' in sys.argv or '-h' in sys.argv:
+        print_custom_help()
+        return 0
+
     parser = argparse.ArgumentParser(
         prog='Mod Utility',
         description='Command-line interface for C/C++ Game Modding Utility',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Interactive Mode (no command specified):
-  mod_utility.exe                    Shows menu to select command (defaults to compile)
-  mod_utility.exe MyProject          Shows menu for specific project
-
-Examples (from project directory - auto-detected):
-  mod_utility.exe compile
-  mod_utility.exe compile --build=NTSC-U
-  mod_utility.exe build
-  mod_utility.exe inject
-  mod_utility.exe inject duckstation
-
-Examples (explicit project):
-  mod_utility.exe compile MyProject
-  mod_utility.exe compile MyProject --build=NTSC-U
-  mod_utility.exe build MyProject
-  mod_utility.exe xdelta MyProject
-  mod_utility.exe xdelta MyProject
-  mod_utility.exe inject MyProject
-  mod_utility.exe inject MyProject duckstation
-  mod_utility.exe inject MyProject PCSX2
-  mod_utility.exe inject MyProject dolphin --build=NTSC-U
-  mod_utility.exe clean MyProject
-  mod_utility.exe info MyProject
-
-    For more information, visit: https://github.com/C0mposer/C-Game-Modding-Utility
-        """
+        add_help=False  # Disable automatic help to use custom help
     )
 
     # For Sublime
@@ -1234,7 +1250,7 @@ Examples (explicit project):
 
         # If no project available, show help instead of interactive menu
         if not has_project:
-            parser.print_help()
+            print_custom_help()
             return 0
 
         # Interactive mode - loop until user exits

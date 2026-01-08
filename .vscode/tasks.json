@@ -16,10 +16,61 @@
             "command": "Pyinstaller",
             "args": [
                 "main.py",
-                //"--icon=prereq/test_ico.ico",
+                "--icon=prereq/icons/cd.ico",
                 "--onefile",
                 "--name",
                 "mod_utility.exe"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build with Nuitka",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "-m",
+                "nuitka",
+                "--standalone",
+                "--onefile",
+                "--windows-console-mode=attach",
+                "--enable-plugin=tk-inter",
+                "--follow-imports",
+                "--include-package=dearpygui",
+                "--include-package=dpg",
+                "--include-package=classes",
+                "--include-package=services",
+                "--include-package=functions",
+                "--include-package=gui",
+                "--include-package=tk",
+                "--output-dir=dist",
+                "--output-filename=mod_utility.exe",
+                "main.py"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build with Nuitka (Optimized)",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "-m",
+                "nuitka",
+                "--standalone",
+                "--onefile",
+                "--windows-console-mode=attach",
+                "--enable-plugin=tk-inter",
+                "--follow-imports",
+                "--include-package=dearpygui",
+                "--include-package=dpg",
+                "--include-package=classes",
+                "--include-package=services",
+                "--include-package=functions",
+                "--include-package=gui",
+                "--include-package=tk",
+                "--lto=yes",
+                "--output-dir=dist",
+                "--output-filename=mod_utility.exe",
+                "main.py"
             ],
             "problemMatcher": []
         }
