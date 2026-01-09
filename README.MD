@@ -1,5 +1,5 @@
 # C/C++ Game Modding Utility
-![Logo](https://media.giphy.com/media/vFKqnCdLPNOKc/giphy.gif)
+![Logo](logo.gif)
 
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
 
