@@ -104,7 +104,7 @@ class CLILogger:
     def debug(self, message: str):
         """Debug message (only in verbose mode)"""
         if self.verbose:
-            print(f"{Colors.GRAY}→{Colors.RESET} {message}")
+            print(f"{Colors.GRAY}->{Colors.RESET} {message}")
     
     def header(self, message: str):
         """Section header"""
@@ -225,8 +225,8 @@ class ModToolCLI:
             if not project_file:
                 self.logger.error("No project file found in current directory")
                 self.logger.info("Either:")
-                self.logger.info("  • Run modtool from a project directory")
-                self.logger.info("  • Or specify project name: mod_utility.exe <command> <project>")
+                self.logger.info("  - Run modtool from a project directory")
+                self.logger.info("  - Or specify project name: mod_utility.exe <command> <project>")
                 return None
 
             self.logger.info(f"Auto-detected project: {os.path.basename(project_file)}")
@@ -237,9 +237,9 @@ class ModToolCLI:
             if not project_file:
                 self.logger.error(f"Project not found: {project_name}")
                 self.logger.info("Searched in:")
-                self.logger.info("  • Current directory")
-                self.logger.info("  • projects/ directory")
-                self.logger.info("  • Subdirectories")
+                self.logger.info("  - Current directory")
+                self.logger.info("  - projects/ directory")
+                self.logger.info("  - Subdirectories")
                 return None
 
         self.logger.debug(f"Loading project from: {project_file}")
@@ -489,8 +489,8 @@ class ModToolCLI:
                 obj_dir = os.path.join(project_folder, ".config", "output", "object_files")
                 bin_dir = os.path.join(project_folder, ".config", "output", "bin_files")
                 
-                self.logger.info(f"  • Object files: {obj_dir}")
-                self.logger.info(f"  • Binary files: {bin_dir}")
+                self.logger.info(f"  - Object files: {obj_dir}")
+                self.logger.info(f"  - Binary files: {bin_dir}")
             
             return 0
         else:
@@ -731,17 +731,17 @@ class ModToolCLI:
                 self.logger.error("No running emulators detected")
                 self.logger.info("\nSupported emulators by platform:")
                 self.logger.info("  PS1:")
-                self.logger.info("    • DuckStation")
-                self.logger.info("    • PCSX-Redux")
-                self.logger.info("    • BizHawk")
-                self.logger.info("    • Mednafen 1.29")
-                self.logger.info("    • Mednafen 1.31")
+                self.logger.info("    - DuckStation")
+                self.logger.info("    - PCSX-Redux")
+                self.logger.info("    - BizHawk")
+                self.logger.info("    - Mednafen 1.29")
+                self.logger.info("    - Mednafen 1.31")
                 self.logger.info("  PS2:")
-                self.logger.info("    • PCSX2")
+                self.logger.info("    - PCSX2")
                 self.logger.info("  GameCube/Wii:")
-                self.logger.info("    • Dolphin")
+                self.logger.info("    - Dolphin")
                 self.logger.info("  N64:")
-                self.logger.info("    • Project64")
+                self.logger.info("    - Project64")
                 self.logger.info("\nMake sure the emulator is running with a game loaded.")
                 return 1
 
@@ -1020,15 +1020,15 @@ class ModToolCLI:
         
         # Modifications
         print(f"\n{Colors.BOLD}Modifications:{Colors.RESET}")
-        print(f"  • Codecaves: {len(current_build.GetCodeCaves())}")
-        print(f"  • Hooks: {len(current_build.GetHooks())}")
-        print(f"  • Binary Patches: {len(current_build.GetBinaryPatches())}")
+        print(f"  - Codecaves: {len(current_build.GetCodeCaves())}")
+        print(f"  - Hooks: {len(current_build.GetHooks())}")
+        print(f"  - Binary Patches: {len(current_build.GetBinaryPatches())}")
         
         # Codecaves details
         if current_build.GetCodeCaves():
             print(f"\n{Colors.BOLD}Codecaves:{Colors.RESET}")
             for cave in current_build.GetCodeCaves():
-                print(f"  • {cave.GetName()} @ 0x{cave.GetMemoryAddress()}")
+                print(f"  - {cave.GetName()} @ 0x{cave.GetMemoryAddress()}")
                 if self.logger.verbose:
                     print(f"    Size: 0x{cave.GetSize()}")
                     print(f"    Files: {len(cave.GetCodeFilesPaths())}")
@@ -1037,7 +1037,7 @@ class ModToolCLI:
         if current_build.GetHooks():
             print(f"\n{Colors.BOLD}Hooks:{Colors.RESET}")
             for hook in current_build.GetHooks():
-                print(f"  • {hook.GetName()} @ 0x{hook.GetMemoryAddress()}")
+                print(f"  - {hook.GetName()} @ 0x{hook.GetMemoryAddress()}")
                 if self.logger.verbose:
                     print(f"    Files: {len(hook.GetCodeFilesPaths())}")
         

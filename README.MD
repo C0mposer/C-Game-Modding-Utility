@@ -1,4 +1,5 @@
 # C/C++ Game Modding Utility
+![Logo](https://media.giphy.com/media/vFKqnCdLPNOKc/giphy.gif)
 
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
 
@@ -64,7 +65,7 @@ Click **Compile** in the build tab to compile your mod. Then, you can either inj
  - [Mednefan 1.29](https://mednafen.github.io/releases/)  
  - [Bizhawk 2.6.1](https://tasvideos.org/BizHawk/ReleaseHistory#Bizhawk261)  
 
-## Bundled Tools / Special Thanks
+## Bundled Tools
  - [devkitPro](https://github.com/devkitPro) for GCC toolchains targeted towards the Gamecube/Wii PowerPC CPU, as well as utilities for analyzing .dol files
  - [ps2toolchain](https://github.com/ps2dev/ps2toolchain) for GCC toolchains targeted towards the PS2 Emotion Engine CPU.
  - [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) for extracting & rebuilding PS1 disk images.
@@ -77,6 +78,10 @@ Click **Compile** in the build tab to compile your mod. Then, you can either inj
   - [xdelta](https://github.com/jmacd/xdelta) for the creation of xdelta patch files
   - [7zip](https://github.com/mcmilk/7-Zip) for solving life's greatest mysteries
   - [Real N64 CRC Tool](https://www.smwcentral.net/?p=section&a=details&id=8799) for updating N64 rom CRC's
+
+## Special Thanks
+- Ebbe - For testing the tool, reporting bugs, and suggesting features throughout it's development
+- Wafflewizard1 - For creating the icon
 
 ## Contact
 

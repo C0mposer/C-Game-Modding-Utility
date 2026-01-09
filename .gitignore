@@ -6,6 +6,7 @@ prereq/*
 .modtool/*
 syms_file_format/*
 notes/*
+wiki/*
 dist/*
 build/*
 projects/*
@@ -17,3 +18,4 @@ Rewrite Backups.zip
 mod_utility.exe.spec
 c_modding_tool.zip
 old_readme.md
+mod_utilityy.exe.spec
