@@ -1,5 +1,5 @@
 # C/C++ Game Modding Utility
-![Downloads](https://img.shields.io/github/downloads/C0mposer/C-Game-Modding-Utility/total.svg)
+![Latest](https://img.shields.io/github/v/release/c0mposer/C-Game-Modding-Utility?style=flat-square&color=blue&link=https%3A%2F%2Fgithub.com%2FC0mposer%2FC-Game-Modding-Utility%2Freleases%2Ftag%2Flatest) ![Downloads](https://img.shields.io/github/downloads/C0mposer/C-Game-Modding-Utility/total?style=flat-square&color=purple&link=https%3A%2F%2Fgithub.com%2FC0mposer%2FC-Game-Modding-Utility%2Freleases%2Ftag%latest)
 
 ![Logo](logo.gif)
 
