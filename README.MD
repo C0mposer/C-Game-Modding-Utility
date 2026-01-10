@@ -3,7 +3,7 @@
 
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
 
-https://img.shields.io/github/downloads/C0mposer/C-Game-Modding-Utility/total.svg
+![Downloads](https://img.shields.io/github/downloads/C0mposer/C-Game-Modding-Utility/total.svg)
 
 ## Features  
 - Supports PS1, PS2, GameCube, & Wii
