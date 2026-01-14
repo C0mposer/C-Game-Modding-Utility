@@ -9,21 +9,13 @@ from functions.verbose_print import verbose_print
 
 
 def _is_cli_mode() -> bool:
-    """
-    Check if running in CLI mode.
-    Returns True if running from command line, False if GUI mode.
-    """
     return any('modtool.py' in arg for arg in sys.argv)
 
 
 def _show_missing_game_files_dialog(title: str, message: str) -> str:
-    """
-    Custom 3-button dialog for missing game files.
-    Returns 'extract', 'select', or 'cancel'
-    """
     result = {'choice': 'cancel'}
 
-    # Create hidden root if needed
+    # Create hidden root
     root = tk.Tk()
     root.withdraw()
 
@@ -73,17 +65,10 @@ def _show_missing_game_files_dialog(title: str, message: str) -> str:
 
 
 class ProjectValidator:
-    """Validates project file paths and prompts user to locate missing files"""
 
     @staticmethod
     def validate_and_fix_project(project_data: ProjectData) -> bool:
-        """
-        Validate all build versions in project and prompt user to fix missing files.
-        Returns True if validation passed or user fixed issues, False if user cancelled.
-
-        In CLI mode, skips prompts and prints warnings for missing files.
-        """
-        # CLI mode - skip all prompts, just check and warn about missing files
+        # CLI mode just warn about missing files
         if _is_cli_mode():
             for build_version in project_data.build_versions:
                 build_name = build_version.GetBuildName()
@@ -98,7 +83,7 @@ class ProjectValidator:
                     if not game_folder or not os.path.exists(game_folder):
                         print(f"Warning: Build '{build_name}' has missing game files (skipping validation)", file=sys.stderr)
 
-            # Still create .config directories if needed
+            # Create .config directories if needed
             full_project_path = project_data.GetProjectFolder()
             config_dir = os.path.join(full_project_path, ".config")
             if not os.path.exists(config_dir):
@@ -108,10 +93,8 @@ class ProjectValidator:
 
             return True
 
-        # GUI mode - continue with prompts
         print("\n[Validating Project Files]")
 
-        # Track already processed game folders to avoid asking for duplicates
         processed_folders = {}  # Maps game_folder path -> build_name that provided it
 
         for build_version in project_data.build_versions:
@@ -136,9 +119,7 @@ class ProjectValidator:
 
     @staticmethod
     def _validate_build_version(build_version: BuildVersion, project_data: ProjectData, processed_folders: dict) -> bool:
-        """Validate a single build version. Returns False if user cancels."""
         build_name = build_version.GetBuildName()
-        #print(f"\nValidating build: {build_name}")
 
         # Check single file mode
         if build_version.IsSingleFileMode():
@@ -148,7 +129,6 @@ class ProjectValidator:
 
     @staticmethod
     def _validate_single_file_mode(build_version: BuildVersion, build_name: str) -> bool:
-        """Validate single file mode - check if the single file exists"""
         single_file_path = build_version.GetSingleFilePath()
 
         if not single_file_path:
@@ -159,7 +139,7 @@ class ProjectValidator:
             print(f"   Single file exists: {single_file_path}")
             return True
 
-        # File is missing - prompt user
+        # File is missing
         print(f"  Single file not found: {single_file_path}")
 
         response = messagebox.askyesno(
@@ -170,9 +150,9 @@ class ProjectValidator:
         )
 
         if not response:
-            return True  # User chose not to fix, that's okay
+            return True  # Chose not to fix
 
-        # Prompt user to select the file
+        # Prompt to select the file
         new_file_path = filedialog.askopenfilename(
             title=f"Locate Single File for '{build_name}'",
             filetypes=[("All Files", "*.*")]
@@ -180,7 +160,7 @@ class ProjectValidator:
 
         if not new_file_path:
             print(f"  User cancelled file selection")
-            return True  # User cancelled, but don't block loading
+            return True  # Cancelled, but don't block loading
 
         # Update the path
         build_version.SetSingleFilePath(new_file_path)
@@ -189,7 +169,6 @@ class ProjectValidator:
 
     @staticmethod
     def _validate_extracted_mode(build_version: BuildVersion, build_name: str, project_data: ProjectData, processed_folders: dict) -> bool:
-        """Validate extracted game folder mode"""
         game_folder = build_version.GetGameFolder()
         platform = build_version.GetPlatform()
 
@@ -233,7 +212,6 @@ class ProjectValidator:
 
     @staticmethod
     def _prompt_ps1_extraction(build_version: BuildVersion, build_name: str, project_data: ProjectData) -> bool:
-        """Prompt user to extract PS1 BIN (must extract to generate XML, can't use existing folder)"""
         response = messagebox.askyesno(
             "Missing PS1 Game Files",
             f"The game files for build version \"{build_name}\" could not be found.\n\n"
@@ -249,7 +227,6 @@ class ProjectValidator:
 
     @staticmethod
     def _extract_ps1_bin(build_version: BuildVersion, build_name: str, project_data: ProjectData) -> bool:
-        """Extract PS1 BIN/CUE file"""
         original_file_path = filedialog.askopenfilename(
             title=f"Choose PS1 BIN/CUE File for '{build_name}' (use .cue for multi-bin games)",
             filetypes=[("PS1 Images", "*.bin;*.cue"), ("All Files", "*.*")]
@@ -314,7 +291,6 @@ class ProjectValidator:
 
     @staticmethod
     def _select_extracted_folder(build_version: BuildVersion, build_name: str, project_data: ProjectData = None) -> bool:
-        """Select an already extracted game folder"""
         folder_path = filedialog.askdirectory(
             title=f"Select Extracted Game Folder for '{build_name}'"
         )
@@ -344,7 +320,6 @@ class ProjectValidator:
 
     @staticmethod
     def _extract_iso(build_version: BuildVersion, build_name: str, platform: str, project_data: ProjectData) -> bool:
-        """Extract ISO file for PS2/GC/Wii platforms"""
         # Determine file types based on platform
         if platform == "PS2":
             filetypes = [("PS2 ISO", "*.iso"), ("All Files", "*.*")]
@@ -424,7 +399,6 @@ class ProjectValidator:
 
     @staticmethod
     def _prompt_folder_selection(build_version: BuildVersion, build_name: str, platform: str, project_data: ProjectData = None) -> bool:
-        """Prompt user to extract ISO or select folder for non-PS1 platforms"""
         # Get expected ISO name or game_id
         source_path = build_version.GetSourcePath()
         main_executable = build_version.GetMainExecutable()

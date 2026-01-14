@@ -19,8 +19,8 @@ class InjectionTarget:
         self.injection_file_address_offset_from_memory_address = None
         self.auto_calculate_injection_file_address = False
 
-        self.injection_type: str = INJECTION_TYPE_EXISTING_FILE  # Default to existing behavior
-        self.enabled: bool = True  # Whether this target is enabled (for compilation/injection)
+        self.injection_type: str = INJECTION_TYPE_EXISTING_FILE 
+        self.enabled: bool = True  # Whether its is enabled for compilation/injection
         
     def GetName(self):
         return self.name
@@ -44,7 +44,7 @@ class InjectionTarget:
     def GetSizeAsInt(self):
         return int(self.size, base=16)
         
-    # Make specific methods for Codecave, Hook, and BinaryPatch
+
     def GetCodeFilesPaths(self):
         return self.code_files
     def GetCodeFilesPathsAsString(self):

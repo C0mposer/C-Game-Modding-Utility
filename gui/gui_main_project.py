@@ -1,5 +1,3 @@
-# --- START OF FILE: gui/gui_main_project.py ---
-
 import dearpygui.dearpygui as dpg
 import os
 from dpg.widget_themes import *
@@ -12,7 +10,7 @@ from gui.gui_asm_injection import *
 from gui.gui_binary_patch_injection import *
 from gui.gui_game_files import *
 from gui.gui_build import *
-from gui.gui_themes import *
+# from gui.gui_themes import *
 from services.project_serializer import ProjectSerializer
 from services.auto_save_manager import AutoSaveManager
 from gui.gui_text_editors import *
@@ -20,10 +18,10 @@ from gui.gui_hex_differ import show_visual_patcher_window
 from gui.gui_game_files import _update_game_files_listbox
 from dpg.listbox_rc_math import *
 from gui.gui_assembly_viewer import show_assembly_viewer_window
-from gui.gui_gdb_debugger import show_gdb_debugger_window
+from later_features.gui_gdb_debugger import show_gdb_debugger_window
 from gui.gui_codecave_finder import show_codecave_finder_window
-from gui.gui_string_editor import show_string_editor_window
 from gui.gui_emulator_tools import show_emulator_tools_window
+from gui.gui_help import *
 from later_features.gui_c_debugger_launcher import show_c_debugger_window
 from gui.gui_build import refresh_build_panel_ui
 from gui.gui_prereq_prompt import check_and_prompt_prereqs
@@ -31,18 +29,12 @@ from functions.verbose_print import verbose_print
 from services.emulator_connection_manager import get_emulator_manager
 from path_helper import get_application_directory
 
-# Global auto-save manager
+# Global save manager
 _auto_save_manager: Optional[AutoSaveManager] = None
 
 def callback_modifications_tab_changed(sender, app_data, current_project_data: ProjectData):
-    """
-    When switching between C/ASM/Binary tabs, ensure the first entry
-    in that tab is selected and its details are loaded (if nothing
-    is selected yet).
-    """
     current_build = current_project_data.GetCurrentBuildVersion()
 
-    # Helper to auto-select first item if the details panel is empty
     def _auto_select_first(listbox_tag: str, detail_input_tag: str, names, select_callback):
         if not names:
             return
@@ -51,16 +43,15 @@ def callback_modifications_tab_changed(sender, app_data, current_project_data: P
         if not dpg.does_item_exist(detail_input_tag):
             return
 
-        # Check if the detail name field is empty
         detail_value = dpg.get_value(detail_input_tag)
         if not detail_value or detail_value == "":
-            # Details panel is empty, so select the first item
+            # Select the first item
             first_name = names[0]
             dpg.set_value(listbox_tag, first_name)
-            # Trigger the callback to load the details
+            # Load the details
             select_callback(listbox_tag, first_name, current_project_data)
 
-    if app_data == "C & C++ Injection":
+    if app_data == "code_injection_tab":
         from gui.gui_c_injection import callback_codecave_selected
         codecave_names = current_build.GetCodeCaveNames()
         _auto_select_first("codecaves_listbox", "codecave_name_detail_input", codecave_names, callback_codecave_selected)
@@ -84,20 +75,19 @@ def trigger_auto_save(immediate: bool = True):
         if hasattr(_auto_save_manager, 'project_data'):
             update_project_dashboard(_auto_save_manager.project_data)
 
-        # Show brief feedback in UI
         if dpg.does_item_exist("Project Window"):
             try:
                 current_title = dpg.get_item_label("Project Window")
                 if not current_title.endswith("*"):
                     dpg.set_item_label("Project Window", current_title + " *")
 
-                # Schedule title restore after save completes
+
                 def restore_title():
                     import time
                     if immediate:
-                        time.sleep(0.5)  # Quick restore for immediate saves
+                        time.sleep(0.5)
                     else:
-                        time.sleep(1.0)  # Longer for debounced saves
+                        time.sleep(1.0)
                     if dpg.does_item_exist("Project Window"):
                         dpg.set_item_label("Project Window", current_title)
 
@@ -109,14 +99,12 @@ def trigger_auto_save(immediate: bool = True):
 _hotkey_manager = None
 
 def get_hotkey_manager():
-    """Get the current hotkey manager instance"""
     return _hotkey_manager
 
 def reset_main_project_state():
-    """Reset gui_main_project global state when project closes"""
     global _auto_save_manager, _hotkey_manager
 
-    # Stop and clear auto-save manager (should already be done in close callback, but double-check)
+    # Clear auto-save manager (should already be done but might as well double check)
     if _auto_save_manager:
         try:
             _auto_save_manager.stop()
@@ -127,9 +115,8 @@ def reset_main_project_state():
     # Clear hotkey manager
     _hotkey_manager = None
 
-# Init the main project window for a NEW project
+# Init the main project window
 def InitMainProjectWindow():
-    """Initialize a NEW project window"""
     dpg.delete_item("Project Window")
     dpg.delete_item("startup_window")
     
@@ -139,31 +126,59 @@ def InitMainProjectWindow():
     current_project_data.SetDefaultNewProjectData()
     current_project_data.SetProjectFolder(current_project_data.GetProjectName())
     
-    # Save the new project immediately
     ProjectSerializer.save_project(current_project_data)
     
-    # Initialize the project window
+    # Init the window
     _init_project_window_ui(current_project_data)
 
-    # Register emulator callbacks early so they receive scan events
+    # Register emulator callbacks
     _init_emulator_callbacks(current_project_data)
 
     AddRelevantGameFileOptions(current_project_data)
 
 def InitMainProjectWindowWithData(project_data: ProjectData):
-    """Initialize project window with LOADED data"""
     
     from gui.gui_c_injection import reset_codecave_state, reset_hook_state, reset_binary_patch_state
     
+    reset_codecave_state()
+    reset_hook_state()
+    reset_binary_patch_state()
+    
+    # Delete all pop up windows. (I spent so long trying to figure out where some persisting old project data was coming from, and it was some windows not being deleted.)
+    # Add to this list if more windows that rely on project data get added to the util
+    window_tags = [
+        "add_hook_modal",
+        "rename_hook_modal",
+        "pattern_selection_modal",
+        "add_codecave_modal",
+        "rename_codecave_modal",
+        "add_binary_patch_modal",
+        "rename_binary_patch_modal",
+        "add_build_version_modal",
+        "rename_build_version_modal",
+        "rename_project_modal",
+        "assembly_viewer_window",
+        "visual_patcher_window",
+        "codecave_finder_window",
+        "emulator_tools_window"
+    ]
+    for tag in window_tags:
+        if dpg.does_item_exist(tag):
+            try:
+                dpg.delete_item(tag)
+            except:
+                print("Error deleting a window on project switch")
+    
     dpg.delete_item("Project Window")
     dpg.delete_item("startup_window")
+    dpg.split_frame()
     
-    # Initialize the project window
+    # Init window
     _init_project_window_ui(project_data)
     
     current_build = project_data.GetCurrentBuildVersion()
     
-    # Update all listboxes with loaded data
+    # Update listboxes
     from gui.gui_asm_injection import UpdateHooksListbox
     from gui.gui_c_injection import UpdateCodecavesListbox
     from gui.gui_binary_patch_injection import UpdateBinaryPatchesListbox
@@ -174,7 +189,7 @@ def InitMainProjectWindowWithData(project_data: ProjectData):
     UpdateBinaryPatchesListbox(project_data)
     _update_game_files_listbox(project_data)
     
-    # Update game files in combo dropdowns
+    # Update game files in dropdowns
     if current_build.GetInjectionFiles():
         from gui.gui_c_injection import CInjectionChangeGameFiles
         from gui.gui_asm_injection import HookInjectionChangeGameFiles  
@@ -184,16 +199,16 @@ def InitMainProjectWindowWithData(project_data: ProjectData):
         HookInjectionChangeGameFiles(current_build.GetInjectionFiles())
         BinaryPatchInjectionChangeGameFiles(current_build.GetInjectionFiles())
     
-    # Verify multi-patches loaded
+    # Verify multi-patches
     multipatches = current_build.GetMultiPatches()
     if multipatches:
         print(f"Loaded {len(multipatches)} multi-patch(es):")
         for mp in multipatches:
-            print(f"    • {mp.GetName()} → {mp.GetFilePath()}")
+            print(f"    - {mp.GetName()} -> {mp.GetFilePath()}")
     
     #print(f"Project window initialized: {project_data.GetProjectName()}")
 
-    # Auto-select first item in each tab if items exist
+    # Auto-select first item in each tab
     from gui.gui_c_injection import callback_codecave_selected
     from gui.gui_asm_injection import callback_hook_selected
     from gui.gui_binary_patch_injection import callback_binary_patch_selected
@@ -216,28 +231,22 @@ def InitMainProjectWindowWithData(project_data: ProjectData):
         dpg.set_value("binary_patches_listbox", first_patch)
         callback_binary_patch_selected("binary_patches_listbox", first_patch, project_data)
 
-    # Register emulator callbacks early so they receive scan events
+    # Register emulator callbacks
     _init_emulator_callbacks(project_data)
 
 
 def _init_emulator_callbacks(project_data: ProjectData):
-    """Register emulator scan callbacks early so all windows receive scan events"""
     manager = get_emulator_manager()
     manager.set_project_data(project_data)
 
-    # Import and register callbacks from GUI modules
     from gui.gui_emulator_tools import _on_emulators_scanned_callback as emu_tools_callback
     from gui.gui_memory_watch import register_memory_watch_callback
 
-    # Register both callbacks
     manager.register_scan_callback(emu_tools_callback)
     register_memory_watch_callback(manager)
 
-    #print(f"[ProjectInit] Registered emulator callbacks (total: {len(manager.on_emulators_scanned)})")
-
 
 def _load_boxart_texture(current_project_data: ProjectData):
-    """Load box art texture if it exists"""
     from services.game_boxart_service import GameBoxartService
 
     boxart_path = GameBoxartService.get_boxart_path(current_project_data)
@@ -246,16 +255,15 @@ def _load_boxart_texture(current_project_data: ProjectData):
             # Load the image
             width, height, _channels, data = dpg.load_image(boxart_path)
 
-            # Create texture registry if it doesn't exist
             if not dpg.does_item_exist("texture_registry"):
                 with dpg.texture_registry(tag="texture_registry"):
                     pass
 
-            # Remove old texture if it exists
+            # Remove old image if it exists
             if dpg.does_item_exist("game_boxart_texture"):
                 dpg.delete_item("game_boxart_texture")
 
-            # Add texture
+            # Add image
             with dpg.texture_registry():
                 dpg.add_static_texture(width=width, height=height, default_value=data, tag="game_boxart_texture")
 
@@ -266,38 +274,32 @@ def _load_boxart_texture(current_project_data: ProjectData):
     return False
 
 def update_boxart_display(current_project_data: ProjectData):
-    """Update the box art display in the GUI after downloading"""
     from services.game_boxart_service import GameBoxartService
 
-    # Try to load the texture
     if _load_boxart_texture(current_project_data):
-        # Remove the "No box art" text if it exists
+        # Remove the default text
         if dpg.does_item_exist("boxart_container"):
-            # Clear existing children
             children = dpg.get_item_children("boxart_container", slot=1)
             if children:
                 for child in children:
                     dpg.delete_item(child)
 
-            # Add the image
+            # Add image
             if dpg.does_item_exist("game_boxart_texture"):
                 dpg.add_image("game_boxart_texture", width=180, height=180, tag="game_boxart_image", parent="boxart_container")
                 print(" Box art display updated")
 
 def update_project_dashboard(current_project_data: ProjectData):
-    """Update the project dashboard with current statistics"""
     from services.project_dashboard_service import ProjectDashboardService
 
-    # Get current stats
     stats = ProjectDashboardService.get_project_stats(current_project_data)
-
-    # Build dashboard display
+    
     lines = []
 
-    # Row 1: Platform and Build info
+    # Platform and Build info
     lines.append(f"Platform: {stats['platform']}  |  Build: {stats['current_build']}  ({stats['build_count']} total)")
 
-    # Row 2: Modifications summary
+    # Modifications summary
     mod_parts = []
     if stats['codecaves'] > 0:
         mod_parts.append(f"{stats['codecaves']} Codecave{'s' if stats['codecaves'] != 1 else ''}")
@@ -313,22 +315,22 @@ def update_project_dashboard(current_project_data: ProjectData):
     else:
         lines.append("Modifications: None")
 
-    # Row 3: Lines of code
+    # Lines of code
     if stats['total_lines'] > 0:
         lines.append(f"Lines of Code: {stats['total_lines']}")
 
-    # Row 4: Resources (Main Exe, Symbols, Size)
+    # Resources
     extra_parts = []
 
-    # Main executable first
+    # Main executable
     if stats['main_executable'] != "Not set":
         extra_parts.append(f"Main EXE: {stats['main_executable']}")
 
-    # Symbols second
+    # Symbols
     if stats['symbols_count'] > 0:
         extra_parts.append(f"{stats['symbols_count']} Symbol{'s' if stats['symbols_count'] != 1 else ''}")
 
-    # Size last
+    # Size
     if stats['total_code_size'] > 0:
         if stats['total_code_size_kb'] < 1:
             extra_parts.append(f"Size: {stats['total_code_size']} bytes")
@@ -338,7 +340,7 @@ def update_project_dashboard(current_project_data: ProjectData):
     if extra_parts:
         lines.append(f"{', '.join(extra_parts)}")
 
-    # Update both dashboard text widgets
+
     dashboard_text = "\n".join(lines)
     if dpg.does_item_exist("dashboard_text_basic"):
         dpg.set_value("dashboard_text_basic", dashboard_text)
@@ -346,16 +348,14 @@ def update_project_dashboard(current_project_data: ProjectData):
         dpg.set_value("dashboard_text_build", dashboard_text)
 
 def _init_project_window_ui(current_project_data: ProjectData):
-    """Internal function to create the project window UI"""
     from gui.gui_memory_watch import show_memory_watch_window
     from services.project_dashboard_service import ProjectDashboardService
     global _auto_save_manager
 
-    # Start auto-save
     _auto_save_manager = AutoSaveManager(current_project_data)
     _auto_save_manager.start()
 
-    # Load box art texture
+    # Load box art
     has_boxart = _load_boxart_texture(current_project_data)
 
     with dpg.window(label="Project Window", tag="Project Window", no_move=True, no_resize=True, no_collapse=True, menubar=False) as main_project_window:
@@ -400,25 +400,23 @@ def _init_project_window_ui(current_project_data: ProjectData):
                     label="Memory Watch",
                     callback=lambda: show_memory_watch_window(current_project_data)
                 )
-                # Probably not needed
-                # dpg.add_menu_item(
-                #     label="Connect to GDB Server",
-                #     callback=lambda: show_gdb_debugger_window(None, None, current_project_data)
-                # )
             with dpg.menu(label="Text Editors"):
                 dpg.add_menu_item(label="Open in VSCode", callback=callback_open_vscode, user_data=current_project_data)
                 dpg.add_menu_item(label="Open in Zed", callback=callback_open_zed, user_data=current_project_data)
                 dpg.add_menu_item(label="Open in Sublime Text", callback=callback_open_sublime, user_data=current_project_data)
                 dpg.add_menu_item(label="Open in Notepad++", callback=callback_open_notepadpp, user_data=current_project_data)
+            with dpg.menu(label="Help"):
+                dpg.add_menu_item(label="View Wiki", callback=callback_open_wiki)
+                dpg.add_menu_item(label="About", callback=callback_open_about)
             # with dpg.menu(label="Themes"):
             #     dpg.add_menu_item(label="Theme Editor", callback=show_theme_customization_window, user_data=current_project_data)
             
         with dpg.tab_bar(tag="main_tab_bar"):
             #! Basic Tab
             with dpg.tab(label="Basic Settings", tag="Basic Settings"):
-                # Box art and project info in horizontal group
+                # Box art and project inf
                 with dpg.group(horizontal=True):
-                    # Left side: Box art
+                    # Box art
                     with dpg.child_window(width=190, height=190, border=False, tag="boxart_container"):
                         if has_boxart and dpg.does_item_exist("game_boxart_texture"):
                             dpg.add_image("game_boxart_texture", width=180, height=180, tag="game_boxart_image")
@@ -427,13 +425,13 @@ def _init_project_window_ui(current_project_data: ProjectData):
                             dpg.add_spacer(height=10)
                             dpg.add_text("(Will download when\ngame is extracted)", wrap=180, color=(100, 100, 100))
 
-                    # Right side: Project info and build versions
+                    # Project info and build versions
                     with dpg.group():
                         dpg.add_text("Project: " + current_project_data.GetProjectName())
                         dpg.add_separator()
                         dpg.add_text("Build Versions:")
 
-                        # Build version listbox - show all build versions
+                        # Build version listbox
                         build_version_names = [bv.GetBuildName() for bv in current_project_data.build_versions]
                         current_build_name = current_project_data.GetCurrentBuildVersion().GetBuildName()
 
@@ -478,7 +476,7 @@ def _init_project_window_ui(current_project_data: ProjectData):
 
                 dpg.add_text(f"Editing: {current_project_data.GetCurrentBuildVersionName()}", tag="current_build_label")
                 
-                # Platform selector
+                # Platform selection
                 current_platform = current_project_data.GetCurrentBuildVersion().GetPlatform()
                 default_platform = current_platform if current_platform else "Choose a Platform"
                 
@@ -512,26 +510,22 @@ def _init_project_window_ui(current_project_data: ProjectData):
             with dpg.tab(label="Build Project", tag="Build", show=True):
                 CreateCompileAndBuildGui(current_project_data)
 
-                # Project Dashboard in Build tab
+                # Project Dashboard
                 dpg.add_separator()
                 dpg.add_text("Project Dashboard", color=(180, 180, 180))
                 dpg.add_text("Loading project statistics...", tag="dashboard_text_build", wrap=0, color=(200, 200, 200))
 
-    # Update dashboard with initial stats
+    # Update dashboard with stats
     update_project_dashboard(current_project_data)
 
-    # IMPORTANT: After UI is created, restore the state based on loaded data
+    # After UI is created, restore the project state
     _restore_project_state(current_project_data)
     current_build = current_project_data.GetCurrentBuildVersion()
     if current_build.GetPlatform() and not current_build.GetGameFolder():
-        # New project with platform but no game folder set yet
+        # New project with platform but no game folder
         AddRelevantGameFileOptions(current_project_data)
     
 def SelectFirstModificationsInGui(current_project_data: ProjectData):
-    """
-    Ensure each of the three modification types has a selected item
-    (if there is at least one), and load its details.
-    """
     from gui.gui_c_injection import UpdateCodecavesListbox, callback_codecave_selected
     from gui.gui_asm_injection import UpdateHooksListbox, callback_hook_selected
     from gui.gui_binary_patch_injection import UpdateBinaryPatchesListbox, callback_binary_patch_selected
@@ -567,18 +561,17 @@ def SelectFirstModificationsInGui(current_project_data: ProjectData):
 
 
 def _restore_project_state(current_project_data: ProjectData):
-    """Restore GUI state after loading a project"""
     current_build = current_project_data.GetCurrentBuildVersion()
     
     # Update build version listbox
     from gui.gui_main_project_callbacks import update_build_version_listbox
     update_build_version_listbox(current_project_data)
     
-    # If platform is set, show the appropriate options and tabs
+    # If platform is set, show the rest of the tabs
     if current_build.GetPlatform() and current_build.GetPlatform() != "Choose a Platform":
         verbose_print(f"Restoring project state for platform: {current_build.GetPlatform()}")
         
-        # Add the platform-specific buttons
+        # Add the platform-specific options
         AddRelevantGameFileOptions(current_project_data)
         
         # If game folder is set, show the tabs
@@ -586,11 +579,10 @@ def _restore_project_state(current_project_data: ProjectData):
             dpg.configure_item("Target Game Files", show=True)
             dpg.configure_item("Modifications", show=True)
             
-            # FIX: Restore game files listbox with formatted items
+            # Restore game files listbox
             if current_build.GetInjectionFiles():
                 CInjectionChangeGameFiles(current_build.GetInjectionFiles())
                 
-                # Import the formatting function from gui_game_files
                 from gui.gui_game_files import _get_formatted_file_list
                 
                 # Use formatted list for display
@@ -723,7 +715,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
             callback=callback_choose_ps2_iso_folder, 
             user_data=current_project_data
         )
-        # NEW: Single file button
+        # Single file button
         dpg.add_button(
             label="Choose Single Game File (No ISO)", 
             tag="Choose Single PS2 File", 
@@ -747,7 +739,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
             callback=callback_choose_gamecube_iso_folder,
             user_data=current_project_data
         )
-        # NEW: Single file button
+        # Single file button
         dpg.add_button(
             label="Choose Single Game File (No ISO)", 
             tag="Choose Single GameCube File", 
@@ -767,7 +759,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
         # Add tooltip for multi-bin games
         with dpg.tooltip("Choose PS1 Bin FIle to Extract"):
             dpg.add_text("For multi-bin PS1 games, select the .cue file.\nThe tool will automatically merge the bins for you.")
-        # Extract bin can't work for ps1 because we need the original XML structure 
+        # Choosing a folder can't work for ps1 because we need the original XML structure from a mkpsxiso extract. Maybe in the future I could let someone choose a mkpsxiso xml? Not a priority right now either way.
         # dpg.add_button(
         #     label="Choose Extracted BIN Folder", 
         #     tag="Choose Extracted PS1 Bin Folder", 
@@ -775,7 +767,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
         #     callback=callback_choose_ps1_iso_folder, 
         #     user_data=current_project_data
         # )
-        # NEW: Single file button
+        # Single file button
         dpg.add_button(
             label="Choose Single Game File (No ISO)", 
             tag="Choose Single PS1 File", 
@@ -799,7 +791,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
             callback=callback_choose_gamecube_iso_folder,
             user_data=current_project_data
         )
-        # NEW: Single file button
+        # Single file button
         dpg.add_button(
             label="Choose Single Game File (No ISO)", 
             tag="Choose Single Wii File", 
@@ -809,7 +801,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
         )
         
     elif current_project_build.IsPlatformN64():
-        # NEW: Single file button (N64 is already single-file by default, but for consistency)
+        # Single file button (N64 is single-file by default cuz its a rom not a disk)
         dpg.add_button(
             label="Choose N64 ROM File", 
             tag="Choose Single N64 File", 
@@ -818,7 +810,7 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
             user_data=current_project_data
         )
 
-    # Add Symbols Drop Down
+    # Symbols Drop Down
     dpg.add_separator(parent="Basic Settings", tag="symbols_separator")
     dpg.add_text(
         "Symbols File for Current Build:",
@@ -844,16 +836,15 @@ def AddRelevantGameFileOptions(current_project_data: ProjectData):
         width=300
     )
 
-    # Project Dashboard at the very bottom of Basic Settings
+    # Project Dashboard
     dpg.add_separator(parent="Basic Settings", tag="dashboard_separator_basic")
     dpg.add_text("Project Dashboard", color=(180, 180, 180), parent="Basic Settings", tag="dashboard_title_basic")
     dpg.add_text("Loading project statistics...", tag="dashboard_text_basic", wrap=0, color=(200, 200, 200), parent="Basic Settings")
 
-    # Update dashboard immediately after creation
+    # Update dashboard
     update_project_dashboard(current_project_data)
 
 def callback_symbols_file_changed(sender, app_data, current_project_data: ProjectData):
-    """Handle symbols file selection change"""
     selected_file = app_data
     current_project_data.GetCurrentBuildVersion().SetSymbolsFile(selected_file)
     

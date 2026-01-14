@@ -12,11 +12,10 @@ from services.emulator_pid_utils import find_emulator_pid
 from services.memory_utils import read_process_memory
 from functions.PE import find_export_rva
 
-# --- Windows API Definitions (Kernel32.dll) ---
-# Load kernel32 library
+
 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
 
-# Define necessary Win32 types and constants
+# Define Win32 types and constants
 SIZE_T = ctypes.c_size_t
 DWORD = ctypes.wintypes.DWORD
 HANDLE = ctypes.wintypes.HANDLE
@@ -55,25 +54,19 @@ FreeLibrary = kernel32.FreeLibrary
 # -----------------------------------------------
 
 def find_pcsx2_pid() -> int | None:
-    """Find PCSX2 process PID"""
     return find_emulator_pid("pcsx2", "PCSX2")
 
 def set_ee_base_address_ctypes() -> int:
-    """
-    Finds the base address of the Emotion Engine (EE) memory in the PCSX2 process
-    using ctypes and a low-level PID lookup.
-    """
     ee_base_address = 0
     proc_handle = None
 
-    # 1. Find the process PID using low-level approach
+    # Find the process PID using low-level approach
     pcsx2_pid = find_pcsx2_pid()
     if not pcsx2_pid:
         print("Error: PCSX2 process not found.")
         return 0
 
-    # 2. Create a psutil.Process object only AFTER we know the PID
-    #    (this is cheap; no full process iteration)
+    # Create a psutil.Process object
     try:
         pcsx2_proc = psutil.Process(pcsx2_pid)
     except psutil.NoSuchProcess:
@@ -84,7 +77,7 @@ def set_ee_base_address_ctypes() -> int:
         return 0
 
     try:
-        # 3. Open the process handle
+        # Open the process handle
         proc_handle = OpenProcess(PROCESS_ALL_ACCESS, False, pcsx2_pid)
         if not proc_handle:
             print(f"Error: Could not open process with ID {pcsx2_pid}. Try running as Administrator.")
@@ -97,7 +90,7 @@ def set_ee_base_address_ctypes() -> int:
             print("Error: Access denied when reading process exe path.")
             return 0
 
-        # --- Strategy 1: Parse PE Export Table ---
+        # Parse PE Export Table (Should work on v1.7 and above)
         symbol_rva = find_export_rva(main_module_path, "EEmem")
         
         if symbol_rva:
@@ -128,8 +121,8 @@ def set_ee_base_address_ctypes() -> int:
             else:
                 print("Could not find main module's memory map.")
 
-        # --- Strategy 2: Fallback Brute-Force Search ---
-        print("'EEmem' export not found or failed. Starting fallback search...")
+        # Fallback Brute-Force Search (For 1.6)
+        print("'EEmem' export not found or failed. Starting pattern search...")
         
         main_module_map = next(
             (m for m in pcsx2_proc.memory_maps(grouped=False) 

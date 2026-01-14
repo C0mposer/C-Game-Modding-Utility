@@ -1,5 +1,4 @@
 class MultiPatchASM:
-    """Represents a multi-patch ASM file that generates hooks dynamically"""
     def __init__(self):
         self.name: str = ""
         self.file_path: str = ""  # Path to .s/.asm file

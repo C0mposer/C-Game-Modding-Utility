@@ -3,7 +3,7 @@ import json
 import psutil
 from typing import Optional, Dict
 
-#! Technically, cacheing is not as needed anymore since we made PID scanning faster, but oh well
+#! Technically, caching is not as needed anymore since we made PID scanning faster.
 class PIDCacheService:
     def __init__(self, project_folder: str):
         self.project_folder = project_folder

@@ -1,14 +1,9 @@
-"""
-Messagebox wrapper that centers dialogs over DPG viewport
-"""
-
 import tkinter as tk
 from tkinter import messagebox
 import dearpygui.dearpygui as dpg
 
 
 def _keep_on_top(window):
-    """Keep window on top and focused"""
     try:
         if window.winfo_exists():
             window.lift()
@@ -19,7 +14,6 @@ def _keep_on_top(window):
 
 
 def _create_positioned_parent():
-    """Create a tiny parent window at viewport center for messagebox positioning"""
     viewport_pos = dpg.get_viewport_pos()
     viewport_width = dpg.get_viewport_client_width()
     viewport_height = dpg.get_viewport_client_height()
@@ -40,7 +34,6 @@ def _create_positioned_parent():
 
 
 def showinfo(title=None, message=None, **options):
-    """Show info messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
@@ -52,7 +45,6 @@ def showinfo(title=None, message=None, **options):
 
 
 def showerror(title=None, message=None, **options):
-    """Show error messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
@@ -64,7 +56,6 @@ def showerror(title=None, message=None, **options):
 
 
 def showwarning(title=None, message=None, **options):
-    """Show warning messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
@@ -76,7 +67,6 @@ def showwarning(title=None, message=None, **options):
 
 
 def askyesno(title=None, message=None, **options):
-    """Show yes/no messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
@@ -88,7 +78,6 @@ def askyesno(title=None, message=None, **options):
 
 
 def askokcancel(title=None, message=None, **options):
-    """Show ok/cancel messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
@@ -100,7 +89,6 @@ def askokcancel(title=None, message=None, **options):
 
 
 def askyesnocancel(title=None, message=None, **options):
-    """Show yes/no/cancel messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()
@@ -112,7 +100,6 @@ def askyesnocancel(title=None, message=None, **options):
 
 
 def askretrycancel(title=None, message=None, **options):
-    """Show retry/cancel messagebox centered over DPG viewport"""
     parent = options.get('parent', None)
     if parent is None:
         root = _create_positioned_parent()

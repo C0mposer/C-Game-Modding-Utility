@@ -7,13 +7,10 @@ import os
 import pefile
 from functions.verbose_print import *
 
-# Import consolidated utilities
 from services.emulator_pid_utils import find_emulator_pid
 from services.memory_utils import read_process_memory
 from functions.PE import find_export_rva
 
-# --- Windows API Definitions (Kernel32.dll) ---
-# Load kernel32 library
 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
 
 # Define necessary Win32 types and constants
@@ -55,21 +52,13 @@ FreeLibrary = kernel32.FreeLibrary
 # -----------------------------------------------
 
 def find_duckstation_pid() -> int | None:
-    """Find DuckStation process PID"""
     return find_emulator_pid("duckstation", "DuckStation")
 
 def get_ram_base_address_ctypes(pid: int = None) -> int:
-    """
-    Finds the base address of the PlayStation RAM in the DuckStation process
-    using ctypes and a low-level PID lookup.
-
-    Args:
-        pid: Optional process ID. If provided, skips process scanning.
-    """
     ram_base_address = 0
     proc_handle = None
 
-    # 1. Resolve the DuckStation PID
+    # Resolve the DuckStation PID
     if pid is not None:
         duckstation_pid = pid
     else:
@@ -79,7 +68,7 @@ def get_ram_base_address_ctypes(pid: int = None) -> int:
         print("Error: No DuckStation process found.")
         return 0
 
-    # 2. Create a psutil.Process object only AFTER we know the PID
+    # Create a psutil.Process object only AFTER we know the PID
     try:
         duckstation_proc = psutil.Process(duckstation_pid)
         print(f"Found DuckStation process: {duckstation_proc.name()} (PID: {duckstation_pid})")
@@ -91,7 +80,7 @@ def get_ram_base_address_ctypes(pid: int = None) -> int:
         return 0
 
     try:
-        # 3. Open the process handle
+        # Open the process handle
         proc_handle = OpenProcess(PROCESS_ALL_ACCESS, False, duckstation_pid)
         if not proc_handle:
             print(f"Error: Could not open process with ID {duckstation_pid}. Try running as Administrator.")
@@ -104,7 +93,7 @@ def get_ram_base_address_ctypes(pid: int = None) -> int:
             print("Error: Access denied when reading process info.")
             return 0
 
-        # --- Strategy 1: Parse PE Export Table ---
+        # Parse PE Export Table
         symbol_rva = find_export_rva(main_module_path, "RAM")
         
         if symbol_rva:
@@ -136,7 +125,7 @@ def get_ram_base_address_ctypes(pid: int = None) -> int:
                 print("Could not find main module's memory map.")
 
         if ram_base_address == 0:
-            print("Failed to find RAM Base Address using both methods.")
+            print("Failed to find RAM Base Address")
         
         return ram_base_address
 

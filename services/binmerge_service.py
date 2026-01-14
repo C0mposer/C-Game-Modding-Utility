@@ -4,21 +4,15 @@ from typing import Optional, Tuple
 
 
 class BinmergeService:
-    """Service for handling multi-bin PS1 games using binmerge tool"""
-
     BINMERGE_PATH = os.path.join("prereq", "binmerge", "binmerge.exe")
 
     @staticmethod
     def parse_cue_file(cue_path: str) -> int:
-        """
-        Parse a CUE file and count how many FILE entries it has.
-        Returns the number of BIN files referenced in the CUE.
-        """
         try:
             with open(cue_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
-            # Count FILE entries (case-insensitive)
+            # Count file entries
             file_count = content.upper().count('FILE ')
             print(f"  Found {file_count} FILE entries in CUE file")
             return file_count
@@ -28,10 +22,6 @@ class BinmergeService:
 
     @staticmethod
     def get_bin_from_single_file_cue(cue_path: str) -> Optional[str]:
-        """
-        If CUE file references only one BIN, extract and return the BIN path.
-        Returns None if CUE has multiple bins or can't parse.
-        """
         try:
             with open(cue_path, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = f.readlines()
@@ -64,16 +54,6 @@ class BinmergeService:
 
     @staticmethod
     def merge_bins(cue_path: str, output_name: str) -> Tuple[bool, Optional[str]]:
-        """
-        Run binmerge on a multi-bin CUE file to create a single merged BIN.
-
-        Args:
-            cue_path: Path to the .cue file
-            output_name: Name for the merged output (without extension)
-
-        Returns:
-            Tuple of (success: bool, merged_bin_path: Optional[str])
-        """
         try:
             # Get directory where CUE file is located
             cue_dir = os.path.dirname(cue_path)
@@ -127,13 +107,6 @@ class BinmergeService:
 
     @staticmethod
     def get_first_data_track_from_cue(cue_path: str) -> Optional[str]:
-        """
-        Extract the first data track (Track 01) from a multi-bin CUE file.
-        For PS1 games, Track 01 is always the data track, and subsequent tracks are audio.
-        We only need Track 01 for modding purposes.
-
-        Returns the path to Track 01 BIN file, or None if not found.
-        """
         try:
             with open(cue_path, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = f.readlines()
@@ -168,17 +141,6 @@ class BinmergeService:
 
     @staticmethod
     def create_multibin_cue(modded_bin_path: str, original_cue_path: str, output_cue_path: str) -> bool:
-        """
-        Create a multi-bin CUE file that combines a modded data track with original audio tracks.
-
-        Args:
-            modded_bin_path: Path to the newly built data track BIN
-            original_cue_path: Path to the original multi-bin CUE file
-            output_cue_path: Path where the new CUE file should be written
-
-        Returns:
-            True if successful, False otherwise
-        """
         try:
             with open(original_cue_path, 'r', encoding='utf-8', errors='ignore') as f:
                 original_lines = f.readlines()
@@ -217,10 +179,6 @@ class BinmergeService:
             with open(output_cue_path, 'w', encoding='utf-8') as f:
                 f.writelines(new_cue_lines)
 
-            print(f"   Created multi-bin CUE file: {os.path.basename(output_cue_path)}")
-            print(f"    - Track 01 (data): {modded_bin_filename} (modded)")
-            print(f"    - Tracks 02+: Original audio tracks from {os.path.basename(original_cue_path)}")
-
             return True
 
         except Exception as e:
@@ -231,17 +189,6 @@ class BinmergeService:
 
     @staticmethod
     def process_ps1_file(file_path: str) -> Tuple[bool, Optional[str], str]:
-        """
-        Process a PS1 file (BIN or CUE) and determine the correct BIN to use.
-
-        Args:
-            file_path: Path to the .bin or .cue file selected by user
-
-        Returns:
-            Tuple of (success: bool, bin_path: Optional[str], message: str)
-            - If success=True, bin_path contains the file to extract
-            - message contains info/error message
-        """
         file_ext = os.path.splitext(file_path)[1].lower()
 
         # If user selected a BIN directly, just use it
@@ -270,11 +217,6 @@ class BinmergeService:
                     return False, None, "Could not locate BIN file referenced in CUE"
 
             else:
-                # Multi-bin - for PS1, we only need Track 01 (the data track)
-                # Audio tracks (Track 02+) are not needed for modding
-                print(f"CUE file references {bin_count} BIN files (Track 01 + {bin_count-1} audio tracks)")
-                print(f"  Only Track 01 (data track) is needed for modding")
-
                 # Get Track 01 (the first bin)
                 track01_bin = BinmergeService.get_first_data_track_from_cue(file_path)
 

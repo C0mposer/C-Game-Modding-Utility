@@ -28,20 +28,6 @@ class ASMParserService:
         return line.strip()
     
     def parse_multipatch_asm(self, asm_file_path: str) -> List[ASMPatch]:
-        """
-        Parse a multi-patch ASM file and extract individual patches.
-        
-        Format:
-            .memaddr 0x80123456
-            .file SCUS.elf          # Optional - explicit file, defaults to main exe
-            .fileaddr 0x1000        # Optional - explicit file address, defaults to automatically calculate from section map or manual file offset
-            nop
-            
-        Example:
-            .memaddr 0x80111222
-            li $a0, 0x69
-            li $a1, 0x420
-        """
         if not os.path.exists(asm_file_path):
             print(f" ASM file not found: {asm_file_path}")
             return []
@@ -96,7 +82,7 @@ class ASMParserService:
                 current_code_lines = []
                 patch_start_line = line_num
             
-            # Check .fileaddr BEFORE .file 
+            # Check .fileaddr before .file
             elif stripped_no_comments.lower().startswith('.fileaddr'):
                 parts = stripped_no_comments.split(maxsplit=1)
                 if len(parts) < 2:
@@ -199,19 +185,19 @@ class ASMParserService:
             
             hook.SetInjectionFile(injection_file)
             
-            #  It tries to find the file address in this order:
+            # This is the file address search order:
             # 1. Explicit .fileaddr
             # 2. Section map
-            # 3. Single offset (if not section map available, or on PS1)
+            # 3. Single offset
             
             if patch.file_offset:
-                # Priority 1: Explicit file address provided
+                # Explicit file address provided
                 clean_file_addr = patch.file_offset.replace('0x', '').replace('0X', '').strip()
                 hook.SetInjectionFileAddress(clean_file_addr)
                 hook.SetAutoCalculateInjectionFileAddress(False)
                 print(f"    Using explicit file address: 0x{clean_file_addr} for {injection_file}")
             else:
-                # Try to calculate file offset
+                # Calculate file offset
                 try:
                     # Parse memory address
                     mem_addr_str = clean_mem_addr
@@ -250,14 +236,11 @@ class ASMParserService:
                     hook.SetAutoCalculateInjectionFileAddress(False)
             
             hooks.append(hook)
-            print(f"   Created internal hook: {hook_name} @ 0x{clean_mem_addr} → {injection_file}")
+            print(f"   Created internal hook: {hook_name} @ 0x{clean_mem_addr} -> {injection_file}")
         
         return hooks
     
     def is_multipatch_file(self, asm_file_path: str) -> bool:
-        """
-        Check if an ASM file is a multi-patch file by looking for .memaddr text
-        """
         if not os.path.exists(asm_file_path):
             return False
         

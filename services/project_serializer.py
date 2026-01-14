@@ -18,18 +18,11 @@ from functions.verbose_print import verbose_print
 
 
 class ProjectSerializer:
-    """Handles saving and loading project data to/from JSON files"""
-    
     PROJECT_FILE_VERSION = "1.0"
     PROJECT_FILE_EXTENSION = ".modproj"
     
     @staticmethod
     def save_project(project_data: ProjectData, file_path: Optional[str] = None) -> bool:
-        """
-        Save project data to a JSON file.
-        If file_path is None, saves to default location in project folder.
-        Returns True on success, False on failure.
-        """
         try:
             # Determine save path
             if file_path is None:
@@ -40,7 +33,7 @@ class ProjectSerializer:
             # Serialize project data
             project_dict = ProjectSerializer._serialize_project(project_data)
             
-            # Write to file with pretty formatting
+            # Write to file
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(project_dict, f, indent=2, ensure_ascii=False)
 
@@ -55,14 +48,6 @@ class ProjectSerializer:
     
     @staticmethod
     def load_project(file_path: str, show_loading: bool = True) -> Optional[ProjectData]:
-        """
-        Load project data from a JSON file.
-        Returns ProjectData on success, None on failure.
-
-        Args:
-            file_path: Path to the .modproj file
-            show_loading: Whether to show loading indicator (default True)
-        """
         import dearpygui.dearpygui as dpg
         from gui.gui_loading_indicator import LoadingIndicator
 
@@ -103,19 +88,15 @@ class ProjectSerializer:
 
             verbose_print(f" Project loaded from: {file_path}")
 
-            # Hide loading indicator before validation (validation shows dialogs)
+            # Hide loading indicator
             if show_loading:
                 try:
                     LoadingIndicator.hide()
                 except:
                     pass
 
-            # Validate project files and prompt user to fix any missing files
-            if not ProjectValidator.validate_and_fix_project(project_data):
-                print(f" Project validation cancelled by user")
-                return None
 
-            # Add to recent projects after successful load and validation
+            # Add to recent projects after successful load
             try:
                 from services.recent_projects_service import RecentProjectsService
                 project_name = project_data.GetProjectName()
@@ -140,7 +121,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _serialize_project(project_data: ProjectData) -> Dict[str, Any]:
-        """Convert ProjectData to a dictionary"""
         project_folder = project_data.GetProjectFolder()
         return {
             'version': ProjectSerializer.PROJECT_FILE_VERSION,
@@ -190,7 +170,7 @@ class ProjectSerializer:
                 ProjectSerializer._serialize_codecave(cc, project_folder)
                 for cc in build_version.GetCodeCaves()
             ],
-            'hooks': [  # NEW: Only serialize permanent hooks
+            'hooks': [  # Only serialize permanent hooks
                 ProjectSerializer._serialize_hook(h, project_folder)
                 for h in permanent_hooks
             ],
@@ -206,7 +186,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _serialize_codecave(codecave: Codecave, project_folder: str) -> Dict[str, Any]:
-        """Convert Codecave to a dictionary"""
         return {
             'name': codecave.GetName(),
             'code_files': PathUtils.convert_paths_to_relative(codecave.GetCodeFilesPaths(), project_folder),
@@ -221,7 +200,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _serialize_hook(hook: Hook, project_folder: str) -> Dict[str, Any]:
-        """Convert Hook to a dictionary"""
         return {
             'name': hook.GetName(),
             'code_files': PathUtils.convert_paths_to_relative(hook.GetCodeFilesPaths(), project_folder),
@@ -235,7 +213,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _serialize_binary_patch(patch: BinaryPatch, project_folder: str) -> Dict[str, Any]:
-        """Convert BinaryPatch to a dictionary"""
         return {
             'name': patch.GetName(),
             'code_files': PathUtils.convert_paths_to_relative(patch.GetCodeFilesPaths(), project_folder),
@@ -249,7 +226,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _serialize_multipatch(multipatch: MultiPatchASM, project_folder: str) -> Dict[str, Any]:
-        """Convert MultiPatchASM to a dictionary"""
         return {
             'name': multipatch.GetName(),
             'file_path': PathUtils.make_relative_if_in_project(multipatch.GetFilePath(), project_folder)
@@ -257,7 +233,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _deserialize_project(project_dict: Dict[str, Any]) -> ProjectData:
-        """Convert dictionary to ProjectData"""
         project_data = ProjectData()
         project_data.SetProjectName(project_dict['project_name'])
         project_data.project_folder = project_dict['project_folder']
@@ -272,7 +247,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _deserialize_build_version(bv_dict: Dict[str, Any], project_folder: str) -> BuildVersion:
-        """Convert dictionary to BuildVersion"""
         from services.section_parser_service import SectionInfo
         build_version = BuildVersion()
         build_version.SetBuildName(bv_dict['build_name'])
@@ -289,10 +263,7 @@ class ProjectSerializer:
         build_version.is_single_file_mode = bv_dict.get('is_single_file_mode', False)
         build_version.single_file_path = PathUtils.make_absolute_if_relative(bv_dict.get('single_file_path'), project_folder)
         
-        # Check if game folder needs updating to build-specific path
         if build_version.extracted_game_folder:
-            # Old format: .config/game_files
-            # New format: .config/game_files/{build_name}
             if '.config/game_files' in build_version.extracted_game_folder:
                 # Check if it's the old format (doesn't have build name)
                 parts = build_version.extracted_game_folder.split(os.sep)
@@ -356,7 +327,6 @@ class ProjectSerializer:
         
     @staticmethod
     def _deserialize_codecave(cc_dict: Dict[str, Any], project_folder: str) -> Codecave:
-        """Convert dictionary to Codecave"""
         codecave = Codecave()
         codecave.SetName(cc_dict['name'])
         codecave.code_files = PathUtils.convert_paths_to_absolute(cc_dict['code_files'], project_folder)
@@ -373,7 +343,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _deserialize_hook(h_dict: Dict[str, Any], project_folder: str) -> Hook:
-        """Convert dictionary to Hook"""
         hook = Hook()
         hook.SetName(h_dict['name'])
         hook.code_files = PathUtils.convert_paths_to_absolute(h_dict['code_files'], project_folder)
@@ -389,7 +358,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _deserialize_binary_patch(bp_dict: Dict[str, Any], project_folder: str) -> BinaryPatch:
-        """Convert dictionary to BinaryPatch"""
         patch = BinaryPatch()
         patch.SetName(bp_dict['name'])
         patch.code_files = PathUtils.convert_paths_to_absolute(bp_dict['code_files'], project_folder)
@@ -405,7 +373,6 @@ class ProjectSerializer:
     
     @staticmethod
     def _deserialize_multipatch(mp_dict: Dict[str, Any], project_folder: str) -> MultiPatchASM:
-        """Convert dictionary to MultiPatchASM"""
         multipatch = MultiPatchASM()
         multipatch.SetName(mp_dict['name'])
         multipatch.SetFilePath(PathUtils.make_absolute_if_relative(mp_dict['file_path'], project_folder))

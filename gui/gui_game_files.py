@@ -19,7 +19,7 @@ def CreateGameFilesGui(current_project_data):
                      color=(150, 150, 150))
 
     with dpg.group(horizontal=False):
-        # Use listbox with formatted strings
+        # Game files listbox
         dpg.add_listbox(
             tag="game_files_listbox",
             items=_get_formatted_file_list(current_project_data),
@@ -30,13 +30,13 @@ def CreateGameFilesGui(current_project_data):
         )
 
     with dpg.group(horizontal=True):
-        # Only show "Add New File" button if NOT in single file mode
+        # Only show "Add New File" button if project is not a single file project
         if not is_single_file:
             dpg.add_button(label="Add New File", tag="Add New File",
                           callback=callback_add_file_to_inject_into,
                           user_data=current_project_data)
         else:
-            # Show disabled button with tooltip explaining why
+            # Show disabled button if sinlge file
             dpg.add_button(label="Add New File", tag="Add New File",
                           enabled=False)
             with dpg.tooltip("Add New File"):
@@ -47,24 +47,20 @@ def CreateGameFilesGui(current_project_data):
         dpg.add_button(label="Delete Selected File", tag="Delete Selected File To Inject Into",
                       callback=callback_delete_selected_file_to_inject_into,
                       user_data=current_project_data,
-                      enabled=not is_single_file)  # Also disable delete in single file mode
+                      enabled=not is_single_file)  # Disable delete in single file mode
 
     dpg.add_separator()
     dpg.add_spacer(height=10)
     
-    # ===== UPDATED: Dynamic section display area =====
+    # Section Map
     dpg.add_text("File Sections / Offset", tag="section_info_header")
     
-    # Container for section info (will be dynamically updated)
+    # Container for section map
     with dpg.group(tag="section_info_container"):
         dpg.add_text("Select a file to view section information", color=(150, 150, 150))
 
 
 def _get_formatted_file_list(current_project_data: ProjectData) -> list:
-    """
-    Generate formatted list items with DF/EF prefixes.
-    Returns list of strings like: "[DF] filename.bin" or "[EF] other.dat"
-    """
     current_build = current_project_data.GetCurrentBuildVersion()
     formatted_items = []
     main_exe = current_build.GetMainExecutable()
@@ -78,7 +74,7 @@ def _get_formatted_file_list(current_project_data: ProjectData) -> list:
         else:  # external
             prefix = "[EF]"
         
-        # Add (Main) suffix if it's the main executable
+        # Add (Main) if it's the main executable (scus, main.dol, etc)
         if filename == main_exe:
             formatted_items.append(f"{prefix} {filename} (Main)")
         else:
@@ -88,39 +84,32 @@ def _get_formatted_file_list(current_project_data: ProjectData) -> list:
 
 
 def _get_filename_from_formatted(formatted_string: str) -> str:
-    """
-    Extract the actual filename from a formatted listbox item.
-    Input: "[DF] somefile.bin" or "[EF] other.dat (Main)"
-    Output: "somefile.bin" or "other.dat"
-    """
     # Remove the prefix [DF] or [EF]
     without_prefix = formatted_string.split("] ", 1)[-1]
     
-    # Remove (Main) suffix if present
+    # Remove (Main) suffix
     filename = without_prefix.replace(" (Main)", "").strip()
     
     return filename
 
 
 def _update_game_files_listbox(current_project_data: ProjectData):
-    """Update the game files listbox with current files"""
     if dpg.does_item_exist("game_files_listbox"):
         formatted_items = _get_formatted_file_list(current_project_data)
         dpg.configure_item("game_files_listbox", items=formatted_items)
         
-        # Clear selection
+        # Clear
         dpg.set_value("game_files_listbox", "")
 
 
 def callback_game_file_selected(sender, app_data, current_project_data: ProjectData):
-    """Handle listbox selection - NOW with multi-section display"""
     if not app_data:
         return
     
-    # Extract actual filename from formatted string
+    # Extract actual filename
     filename = _get_filename_from_formatted(app_data)
     
-    # Store selected filename globally
+    # Store selected filename
     global _selected_game_file
     _selected_game_file = filename
     
@@ -128,49 +117,44 @@ def callback_game_file_selected(sender, app_data, current_project_data: ProjectD
     current_build = current_project_data.GetCurrentBuildVersion()
     file_type = current_build.GetInjectionFileType(filename)
     
-    # ===== UPDATED: Display section information =====
+    # Display section information 
     _update_section_display(current_project_data, filename, file_type)
 
 
 def _update_section_display(current_project_data: ProjectData, filename: str, file_type: str):
-    """
-    Update the section info display area.
-    Shows all sections if available, otherwise shows single offset.
-    """
     current_build = current_project_data.GetCurrentBuildVersion()
     
-    # Clear existing content
+    # Clear
     if dpg.does_item_exist("section_info_container"):
         dpg.delete_item("section_info_container", children_only=True)
     else:
-        # Create container if it doesn't exist
         with dpg.group(tag="section_info_container", before="save_offset_button"):
             pass
     
-    # Check if sections exist
+    # Check if sections exist (Some games have really weird outputs from objdump, which may make a section map not be saved correctly)
     has_sections = filename in current_build.section_maps
     
     if has_sections:
         sections = current_build.section_maps[filename]
         
-        # Display section table
+        # Display
         with dpg.group(parent="section_info_container"):
             dpg.add_text(f"File: {filename} ({file_type})", color=(100, 200, 255))
             dpg.add_text(f"Sections: {len(sections)}", color=(150, 150, 150))
             dpg.add_spacer(height=5)
             
-            # Create a table for sections
+            # Table for sections
             with dpg.table(header_row=True, borders_innerH=True, borders_outerH=True,
                           borders_innerV=True, borders_outerV=True, row_background=True,
                           scrollY=True, height=200):
-                # Columns: Type, Memory Range, File Offset, Size
+                # Columns
                 dpg.add_table_column(label="Type", width_fixed=True, init_width_or_weight=80)
                 dpg.add_table_column(label="Memory Range", width_fixed=True, init_width_or_weight=180)
                 dpg.add_table_column(label="File Offset", width_fixed=True, init_width_or_weight=100)
                 dpg.add_table_column(label="Size", width_fixed=True, init_width_or_weight=100)
                 dpg.add_table_column(label="Offset Diff", width_fixed=True, init_width_or_weight=100)
                 
-                # Add rows for each section
+                # Rows
                 for i, section in enumerate(sections):
                     with dpg.table_row():
                         # Type
@@ -186,7 +170,7 @@ def _update_section_display(current_project_data: ProjectData, filename: str, fi
                         # Size
                         dpg.add_text(f"0x{section.size:X}")
                         
-                        # Offset Diff (mem_start - file_offset)
+                        # Offset Diff
                         dpg.add_text(f"0x{section.offset_diff:X}")
             
             dpg.add_spacer(height=10)
@@ -194,11 +178,11 @@ def _update_section_display(current_project_data: ProjectData, filename: str, fi
                         color=(100, 255, 100), tag="section_auto_calc_note")
     
     else:
-        # Check if this file type SHOULD have sections
+        # Check if this file type should even have sections
         platform = current_build.GetPlatform()
         could_have_sections = _is_file_supported_for_sections(filename, platform)
         
-        # Fallback: Single offset display (original behavior)
+        # Fallback: Hard-coded offset
         with dpg.group(parent="section_info_container"):
             dpg.add_text(f"File: {filename} ({file_type})", color=(100, 200, 255))
             
@@ -239,34 +223,32 @@ def _update_section_display(current_project_data: ProjectData, filename: str, fi
 
 
 def _get_section_type_color(section_type: str) -> tuple:
-    """Get color for section type"""
     color_map = {
-        "text": (100, 255, 100),   # Green
-        "data": (255, 200, 100),   # Orange
-        "rodata": (100, 200, 255), # Blue
-        "bss": (255, 100, 255),    # Magenta
-        "unknown": (150, 150, 150) # Gray
+        "text": (100, 255, 100), 
+        "data": (255, 200, 100),
+        "rodata": (100, 200, 255),
+        "bss": (255, 100, 255),
+        "unknown": (150, 150, 150)
     }
     return color_map.get(section_type.lower(), (255, 255, 255))
 
 
 def callback_add_file_to_inject_into(sender, app_data, current_project_data: ProjectData):
-    #print("Add Game File button clicked!")
+    #print("Add Game File button clicked")
     
-    # Allow selection from ANY location
     game_file_path = filedialog.askopenfilename(
         title="Choose Target Game File",
         initialdir=current_project_data.GetCurrentBuildVersion().GetGameFolder()
     )
     
     if not game_file_path:
-        print("File selection cancelled.")
+        verbose_print("File selection cancelled.")
         return
 
-    # AddInjectionFile now automatically determines file type
+    # Automatically determine file type
     current_project_data.GetCurrentBuildVersion().AddInjectionFile(game_file_path)
     
-    # ===== NEW: Auto-build section map for supported file types =====
+    # Auto-build section map for supported file types
     filename = os.path.basename(game_file_path)
     _auto_build_section_map_if_supported(current_project_data, filename, game_file_path)
 
@@ -302,7 +284,7 @@ def callback_delete_selected_file_to_inject_into(sender, app_data, current_proje
     # Clear file references in all injection targets
     _clear_file_references_in_targets(current_project_data, _selected_game_file)
     
-    # Remove the file from injection list
+    # Remove the file from target game files
     current_project_data.GetCurrentBuildVersion().RemoveInjectionFile(_selected_game_file)
     
     # Update listbox
@@ -333,7 +315,6 @@ def callback_delete_selected_file_to_inject_into(sender, app_data, current_proje
     trigger_auto_save()
 
 def _clear_file_references_in_targets(current_project_data: ProjectData, file_name: str):
-    """Clear references to a file in all codecaves, hooks, and binary patches"""
     current_build = current_project_data.GetCurrentBuildVersion()
     
     cleared_count = 0
@@ -344,7 +325,7 @@ def _clear_file_references_in_targets(current_project_data: ProjectData, file_na
             codecave.SetInjectionFile("")
             codecave.SetInjectionFileAddress("")
             cleared_count += 1
-            print(f"  Cleared file reference from codecave: {codecave.GetName()}")
+            verbose_print(f"  Cleared file reference from codecave: {codecave.GetName()}")
     
     # Clear from hooks
     for hook in current_build.GetHooks():
@@ -352,7 +333,7 @@ def _clear_file_references_in_targets(current_project_data: ProjectData, file_na
             hook.SetInjectionFile("")
             hook.SetInjectionFileAddress("")
             cleared_count += 1
-            print(f"  Cleared file reference from hook: {hook.GetName()}")
+            verbose_print(f"  Cleared file reference from hook: {hook.GetName()}")
     
     # Clear from binary patches
     for patch in current_build.GetBinaryPatches():
@@ -360,29 +341,24 @@ def _clear_file_references_in_targets(current_project_data: ProjectData, file_na
             patch.SetInjectionFile("")
             patch.SetInjectionFileAddress("")
             cleared_count += 1
-            print(f"  Cleared file reference from patch: {patch.GetName()}")
+            verbose_print(f"  Cleared file reference from patch: {patch.GetName()}")
     
     if cleared_count > 0:
-        print(f"Cleared {cleared_count} reference(s) to '{file_name}'")
+        verbose_print(f"Cleared {cleared_count} reference(s) to '{file_name}'")
     else:
-        print(f"  No references to '{file_name}' found")
+        verbose_print(f"  No references to '{file_name}' found")
 
 def listbox_selection_callback(sender, selected_file_name, current_project_data: ProjectData):
-    """
-    Updates the 'File Offset From Ram Input' when a new file is selected in the listbox.
-    """
-    print(f"Listbox selection changed. Selected: {selected_file_name}")
+    verbose_print(f"Listbox selection changed. Selected: {selected_file_name}")
     if selected_file_name:
-        # Get the offset associated with the selected file
+        # Get the offset
         offset = current_project_data.GetCurrentBuildVersion().GetInjectionFileOffset(selected_file_name)
-        # Update the input text field with the retrieved offset
+        # Update the input text field
         dpg.set_value("File Offset From Ram Input", offset)
     else:
-        # If no file is selected (e.g., list is empty), clear the input field
         dpg.set_value("File Offset From Ram Input", "")
         
 def callback_save_offset(sender, app_data, current_project_data: ProjectData):
-    """Save the offset for the currently selected file (only used for non-section files)"""
     global _selected_game_file
     
     if not _selected_game_file:
@@ -407,23 +383,16 @@ def callback_save_offset(sender, app_data, current_project_data: ProjectData):
 _selected_game_file = None
 
 def reset_game_files_state():
-    """Reset gui_game_files global state when project closes"""
     global _selected_game_file
     _selected_game_file = None
 
 def _auto_build_section_map_if_supported(current_project_data: ProjectData, filename: str, file_path: str):
-    """
-    Automatically build section map for supported file types.
-    Supports: .dol (GameCube/Wii), .elf (PS2)
-    
-    PS1 is NOT supported - it uses simple fixed offsets instead.
-    """
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
     
     # Check if section map already exists
     if filename in current_build.section_maps:
-        print(f"  Section map already exists for {filename}")
+        verbose_print(f"  Section map already exists for {filename}")
         return
     
     # Determine if file is supported
@@ -433,35 +402,34 @@ def _auto_build_section_map_if_supported(current_project_data: ProjectData, file
     # GameCube/Wii DOL files
     if file_lower.endswith('.dol') and platform in ["Gamecube", "Wii"]:
         is_supported = True
-        print(f"  Detected {platform} DOL file: {filename}")
+        verbose_print(f"  Detected {platform} DOL file: {filename}")
     
-    # PS2 ELF files
+    # PS2 ELF files (Maybe include any extension eventually, because I think some ps2 games might have elfs, with a different extension? Need to do more research on this)
     elif file_lower.endswith('.elf') and platform == "PS2":
         is_supported = True
-        print(f"  Detected PS2 ELF file: {filename}")
+        verbose_print(f"  Detected PS2 ELF file: {filename}")
     
-    # PS1 executables
+    # PS1 executables (I don't think there are any tools that can parse PS1 exe's in the same way, since they really are stripped to the bone of anything other than a header, and the raw data.)
     elif platform == "PS1":
         filename_upper = filename.upper()
         ps1_prefixes = ["SCUS", "SCES", "SLUS", "SLES", "SCPS", "SLPS"]
         if any(filename_upper.startswith(prefix) for prefix in ps1_prefixes):
             # PS1 detected, but we don't build section maps for it
-            print(f"  Detected PS1 executable: {filename} (using fixed offset, no section map)")
+            verbose_print(f"  Detected PS1 executable: {filename}, no section map")
             return
     
     if not is_supported:
-        print(f"  {filename} is not a supported executable type for section parsing")
         return
     
     # Build section map
-    print(f"  Building section map for {filename}...")
+    verbose_print(f"  Building section map for {filename}...")
     success = current_build.BuildSectionMapForFile(filename)
     
     if success:
         section_count = len(current_build.section_maps[filename])
-        print(f"  Built section map: {section_count} section(s)")
+        verbose_print(f"  Built section map: {section_count} section(s)")
     else:
-        print(f"  Failed to build section map")
+        verbose_print(f"  Failed to build section map")
 
 
 def _is_file_supported_for_sections(filename: str, platform: str) -> bool:
@@ -472,22 +440,15 @@ def _is_file_supported_for_sections(filename: str, platform: str) -> bool:
     if file_lower.endswith('.dol') and platform in ["Gamecube", "Wii"]:
         return True
     
-    # PS2 ELF files (can be .elf extension OR SCUS/SCES/SLUS/SLES prefix)
+    # PS2 ELF files
     if platform == "PS2":
-        ps2_prefixes = ["SCUS", "SCES", "SLUS", "SLES"]
+        ps2_prefixes = ["SCUS", "SCES", "SLUS", "SLES"] # My current hack for allowing some other files that may not end in elf
         if file_lower.endswith('.elf') or any(filename_upper.startswith(prefix) for prefix in ps2_prefixes):
             return True
-    
-    # PS1 does NOT support section parsing - always return False
-    # (PS1 uses simple fixed offsets, typically 0xF800)
     
     return False
 
 def callback_build_section_map_for_file(sender, app_data, user_data):
-    """
-    Build section map for a selected file.
-    user_data is a tuple: (current_project_data, filename)
-    """
     current_project_data, filename = user_data
     current_build = current_project_data.GetCurrentBuildVersion()
     
@@ -502,16 +463,11 @@ def callback_build_section_map_for_file(sender, app_data, user_data):
         # Get section count
         section_count = len(current_build.section_maps.get(filename, []))
         
-        messagebox.showinfo(
-            "Section Map Built",
-            f"Successfully built section map for {filename}!\n\n"
-            f"Found {section_count} section(s).\n\n"
-            f"File offsets will now be calculated automatically from memory addresses."
-        )
+        messagebox.showinfo("Section Map Built", f"File offsets will now be calculated automatically from memory addresses.")
         
-        print(f"Built section map: {section_count} section(s)")
+        verbose_print(f"Built section map: {section_count} section(s)")
         
-        # Refresh the display to show the sections
+        # Refresh
         _update_section_display(current_project_data, filename, 
                                current_build.GetInjectionFileType(filename))
         
@@ -522,13 +478,6 @@ def callback_build_section_map_for_file(sender, app_data, user_data):
         from gui import gui_messagebox as messagebox
         
         messagebox.showerror(
-            "Section Map Failed",
-            f"Could not build section map for {filename}.\n\n"
-            f"Possible reasons:\n"
-            f"• File not found\n"
-            f"• Unsupported file format\n"
-            f"• Required tools not installed\n\n"
-            f"Check console output for details."
-        )
+            "Section Map Failed", f"Could not build section map for {filename}.\n\n")
         
-        print(f"Failed to build section map for {filename}")
+        verbose_print(f"Failed to build section map for {filename}")

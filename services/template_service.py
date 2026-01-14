@@ -7,7 +7,6 @@ from services.pattern_service import PatternService
 from functions.verbose_print import verbose_print
 
 class TemplateResult:
-    """Result of template application"""
     def __init__(self, success: bool, message: str = ""):
         self.success = success
         self.message = message
@@ -15,7 +14,6 @@ class TemplateResult:
         self.hooks_created = 0
 
 class TemplateService:
-    """Handles platform-specific project templates"""
     
     # PS1 Header Codecave (exists in ALL PS1 games)
     PS1_HEADER_CODECAVE = {
@@ -30,15 +28,6 @@ class TemplateService:
         self.project_data = project_data
     
     def apply_ps1_template(self) -> TemplateResult:
-        """
-        Apply complete PS1 template:
-        1. Create header codecave
-        2. Add main.c to codecave
-        3. Find first auto-hook
-        4. Set everything up for immediate compilation
-        
-        Returns TemplateResult with success status
-        """
         result = TemplateResult(success=False)
         
         current_build = self.project_data.GetCurrentBuildVersion()
@@ -94,10 +83,6 @@ class TemplateService:
         return result
     
     def create_ps1_header_codecave_only(self) -> bool:
-        """
-        Create just the PS1 header codecave (for the button in codecaves tab).
-        Returns True on success.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
         
@@ -114,7 +99,6 @@ class TemplateService:
         return self._create_ps1_header_codecave()
     
     def _create_ps1_header_codecave(self) -> bool:
-        """Create the PS1 header codecave with main.c and syscalls"""
         current_build = self.project_data.GetCurrentBuildVersion()
         project_folder = self.project_data.GetProjectFolder()
 
@@ -191,7 +175,7 @@ void ModMain(void) {
             file_offset = current_build.GetInjectionFileOffset(main_exe)
             if file_offset:
                 try:
-                    # Memory: 0x8000B0B8 → Remove 0x80 prefix → 0x00B0B8
+                    # Memory: 0x8000B0B8 -> Remove 0x80 prefix -> 0x00B0B8
                     mem_addr_int = int(self.PS1_HEADER_CODECAVE['memory_address'][2:], 16)
                     offset_int = int(file_offset, 16)
                     file_addr = 0x48
@@ -222,10 +206,6 @@ void ModMain(void) {
         return True
     
     def _auto_detect_first_hook(self) -> Optional[str]:
-        """
-        Auto-detect and create the first hook found.
-        Returns hook name on success, None on failure.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         
         # Use pattern service to find hooks
@@ -258,25 +238,24 @@ void ModMain(void) {
         return hook_name
     
     def _verify_ps1_setup(self) -> bool:
-        """Verify that PS1 project has everything needed to compile"""
         current_build = self.project_data.GetCurrentBuildVersion()
         project_folder = self.project_data.GetProjectFolder()
         
         checks = []
         
-        # Check 1: Main executable set
+        # Check main executable set
         has_main_exe = current_build.GetMainExecutable() is not None
         checks.append(("Main executable set", has_main_exe))
         
-        # Check 2: At least one codecave
+        # Check at least one codecave
         has_codecave = len(current_build.GetEnabledCodeCaves()) > 0
         checks.append(("Codecave created", has_codecave))
         
-        # Check 3: main.c exists
+        # Check main.c exists
         main_c_exists = os.path.exists(os.path.join(project_folder, "src", "main.c"))
         checks.append(("main.c exists", main_c_exists))
         
-        # Check 4: File offset set
+        # Check file offset set
         main_exe = current_build.GetMainExecutable()
         has_offset = False
         if main_exe:
@@ -284,7 +263,7 @@ void ModMain(void) {
             has_offset = offset and offset != ""
         checks.append(("File offset set", has_offset))
         
-        # Print verification results
+
         for check_name, passed in checks:
             status = "" if passed else ""
             print(f"    {status} {check_name}")
@@ -292,11 +271,6 @@ void ModMain(void) {
         return all(passed for _, passed in checks)
 
     def setup_ps2_print_syscall(self) -> bool:
-        """
-        Create PS2 _print syscall files (syscalls.s and syscalls.h).
-        Updates main.c to call _print("Hello World!\n").
-        Returns True on success.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
         project_folder = self.project_data.GetProjectFolder()
@@ -365,16 +339,6 @@ void ModMain(void) {
         return True
 
     def setup_ps2_hook_with_return_value(self, original_function: str, return_type: str = "int") -> bool:
-        """
-        Create PS2 template for hooks that need to preserve return values.
-
-        Args:
-            original_function: Name of the original function (e.g., "sceSifSendCmd")
-            return_type: Return type (e.g., "int")
-
-        Returns:
-            True if template was created, False if main.c already customized
-        """
         project_folder = self.project_data.GetProjectFolder()
         main_c_path = os.path.join(project_folder, "src", "main.c")
 
@@ -449,7 +413,7 @@ void ModMain(void) {
         if not is_ps1_exe:
             return False, "Not a PS1 executable"
         
-        # FIX: Check if THIS BUILD VERSION has codecaves
+        #  Check if THIS BUILD VERSION has codecaves
         # (not just if any build version has codecaves)
         has_codecaves = len(current_build.GetEnabledCodeCaves()) > 0
         if has_codecaves:
@@ -460,7 +424,7 @@ void ModMain(void) {
         if not file_offset or file_offset == "":
             return False, "File offset not set yet"
         
-        # NEW: Check if game folder is set (required for template)
+        # Check if game folder is set (required for template)
         game_folder = current_build.GetGameFolder()
         if not game_folder or not os.path.exists(game_folder):
             return False, "Game folder not set yet"
@@ -471,10 +435,6 @@ void ModMain(void) {
 # ==================== GUI Integration ====================
 
 def callback_add_ps1_header_codecave(sender, app_data, current_project_data: ProjectData):
-    """
-    Callback for "Add PS1 Header Codecave" button in codecaves tab.
-    Only visible for PS1 projects.
-    """
     from gui import gui_messagebox as messagebox
     
     template_service = TemplateService(current_project_data)
@@ -527,10 +487,6 @@ def callback_add_ps1_header_codecave(sender, app_data, current_project_data: Pro
 
 
 def callback_apply_ps1_template(sender, app_data, current_project_data: ProjectData):
-    """
-    Callback for "Apply PS1 Template" prompt.
-    Shows after extracting PS1 game for new projects.
-    """
     from gui import gui_messagebox as messagebox
     from gui.gui_loading_indicator import LoadingIndicator
     
@@ -585,10 +541,6 @@ def callback_apply_ps1_template(sender, app_data, current_project_data: ProjectD
 
 
 def show_ps1_template_prompt(current_project_data: ProjectData):
-    """
-    Show modal dialog asking if user wants to apply PS1 template.
-    Only shown when conditions are met.
-    """
     import dearpygui.dearpygui as dpg
     from gui import gui_messagebox as messagebox
     

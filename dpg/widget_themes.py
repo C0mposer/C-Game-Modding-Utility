@@ -44,6 +44,15 @@ def InitWidgetThemes():
             dpg.add_theme_color(dpg.mvThemeCol_Button, (70, 10, 100))
             dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (100, 20, 150))
             dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (60, 10, 70))
-    
+
+    # Blue compile button theme
+    my_widget_themes.AddTheme("blue_compile_button_theme")
+    with dpg.theme(tag="blue_compile_button_theme"):
+        with dpg.theme_component(dpg.mvButton):
+            dpg.add_theme_color(dpg.mvThemeCol_Button, (30, 90, 180))
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (40, 110, 210))
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (20, 70, 150))
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 3)
+
 def SetLastItemsTheme(theme: str):
     dpg.bind_item_theme(dpg.last_item(), str)

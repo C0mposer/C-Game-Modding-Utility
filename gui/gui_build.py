@@ -23,19 +23,16 @@ emulator_options = ["Dolphin    (Default)", "RetroArch (Citra)", "RPCS3", "Cemu"
 selected_emulator = emulator_options[0]
 is_compilation_successful = False
 
-# Get tool directory - initialized lazily to handle PyInstaller bundling
 _tool_dir = None
 mod_data = None
 
 def _get_tool_dir():
-    """Get the tool directory, handling PyInstaller bundling."""
     global _tool_dir
     if _tool_dir is None:
         _tool_dir = get_application_directory()
     return _tool_dir
 
 def _get_mod_data():
-    """Get or create the ModBuilder instance with correct tool_dir."""
     global mod_data
     if mod_data is None:
         mod_data = ModBuilder(tool_dir=_get_tool_dir())
@@ -44,32 +41,26 @@ def _get_mod_data():
 # Check if verbose mode is enabled
 VERBOSE_MODE = '-verbose' in sys.argv or '--verbose' in sys.argv
 
-# No warnings mode (can be toggled via GUI checkbox)
 NO_WARNINGS_MODE = False
 
-# Per-project "don't ask again" flag for opening folder after build
-_dont_ask_open_folder = False
+_dont_ask_open_folder = False # "don't ask again" flag for opening folder after build
 
 def _keep_on_top(window):
-    """Keep window on top and focused"""
     if window.winfo_exists():
         window.lift()
         window.focus_force()
         window.after(100, lambda: _keep_on_top(window))
 
 
+# There is probably a better way to do this lol. But this works for now
 def askyesno_with_checkbox(title, message, checkbox_text="Don't ask me again"):
-    """
-    Simple yes/no dialog with checkbox, using messagebox style.
-    Returns tuple: (yes/no response, checkbox state)
-    """
     result = {'response': False, 'dont_ask': False}
 
-    # Create hidden root if needed
+    # Create hidden root
     root = tk.Tk()
     root.withdraw()
 
-    # Create dialog
+    # Dialog
     dialog = tk.Toplevel(root)
     dialog.title(title)
     dialog.resizable(False, False)
@@ -115,7 +106,6 @@ def askyesno_with_checkbox(title, message, checkbox_text="Don't ask me again"):
 
     dialog.geometry(f'+{x}+{y}')
 
-    # Start focus monitoring
     _keep_on_top(dialog)
 
     dialog.grab_set()
@@ -124,32 +114,22 @@ def askyesno_with_checkbox(title, message, checkbox_text="Don't ask me again"):
     return result['response'], result['dont_ask']
 
 def reset_build_preferences():
-    """Reset ALL build-related state when project closes"""
     global _dont_ask_open_folder, compiler_output_value, is_compilation_successful, mod_data
 
     _dont_ask_open_folder = False
     compiler_output_value = "Ready for compilation..."
     is_compilation_successful = False
-    mod_data = ModBuilder(tool_dir=_get_tool_dir())  # Create fresh ModBuilder instance
+    mod_data = ModBuilder(tool_dir=_get_tool_dir())
 
-    # Reset compiler output textbox if it exists
     if dpg.does_item_exist("compiler_output_textbox"):
         dpg.set_value("compiler_output_textbox", compiler_output_value)
 
 def update_build_status(message: str, status: str = "normal"):
-    """
-    Update the build status label with a message and color.
-
-    Args:
-        message: Status message to display
-        status: Status type - "normal", "compiling", "success", "error"
-    """
     if not dpg.does_item_exist("build_status_label"):
         return
 
     dpg.set_value("build_status_label", message)
 
-    # Set color based on status
     if status == "success":
         color = (100, 255, 100)  # Green
     elif status == "error":
@@ -157,16 +137,16 @@ def update_build_status(message: str, status: str = "normal"):
     elif status == "compiling":
         color = (200, 200, 100)  # Yellow
     else:
-        color = (200, 200, 200)  # Gray (normal)
+        color = (200, 200, 200)  # Gray
 
-    dpg.bind_item_theme("build_status_label", 0)  # Clear theme first
+    dpg.bind_item_theme("build_status_label", 0)  # Clear theme
     with dpg.theme() as status_theme:
         with dpg.theme_component(dpg.mvText):
             dpg.add_theme_color(dpg.mvThemeCol_Text, color, category=dpg.mvThemeCat_Core)
     dpg.bind_item_theme("build_status_label", status_theme)
 
 def update_size_analysis_visual(analyzer):
-    """Update the visual code size analysis display with progress bars"""
+    
     # Clear previous content
     if dpg.does_item_exist("size_analysis_container"):
         dpg.delete_item("size_analysis_container", children_only=True)
@@ -185,11 +165,11 @@ def update_size_analysis_visual(analyzer):
     amount_of_rows = 3
     current_row = None
     for i, result in enumerate(results):
-        # Create a new horizontal row group every 4 items
+        # Create a new horizontal row group every 4 items (I want to figure out a way to change this based on viewport size eventually. Honestly a rewrite for resizing elements will be quite tough.)
         if i % amount_of_rows == 0:
             current_row = dpg.add_group(parent="size_analysis_container", horizontal=True)
 
-        # Create vertical group for each item (column)
+        # cloumn
         with dpg.group(parent=current_row, horizontal=False):
             # Section name and type
             type_str = result.injection_type.replace('_', ' ').title()
@@ -204,14 +184,6 @@ def update_size_analysis_visual(analyzer):
             
             with dpg.group(horizontal=True):
                 dpg.add_text(f"  {used_hex} / {allocated_hex} ({percentage:.1f}%)")
-                # if result.is_overflow:
-                #     dpg.add_text("OVERFLOW", color=(255, 100, 100))
-                # elif result.warning_level == "critical":
-                #     bytes_left_color = (255, 50, 0)
-                # elif result.warning_level == "warning":
-                #     bytes_left_color = (255, 200, 50)
-                # else:
-                #     dpg.add_text("OK", color=bytes_left_color)
                 
                 bytes_left_color = (255, 255, 220)
                 dpg.add_text(f" {bytes_left_hex} bytes left", color=bytes_left_color)
@@ -225,22 +197,21 @@ def update_size_analysis_visual(analyzer):
                 overlay=f"{percentage:.1f}%"
             )
 
-        # Add spacing between rows
+        # Spacing
         if (i + 1) % amount_of_rows == 0 and i < len(results) - 1:
             dpg.add_spacer(parent="size_analysis_container", height=10)
 
 def display_linker_overflow_visual(overflow_errors):
-    """Display linker overflow errors in the size analysis area"""
     if not overflow_errors:
         return
 
-    # Clear previous content
+    # Clear
     if dpg.does_item_exist("size_analysis_container"):
         dpg.delete_item("size_analysis_container", children_only=True)
     else:
         return
 
-    # Show the header
+    # Show header
     if dpg.does_item_exist("size_analysis_header"):
         dpg.configure_item("size_analysis_header", show=True)
 
@@ -258,9 +229,8 @@ def display_linker_overflow_visual(overflow_errors):
                 dpg.add_text(f"  Overflowed by: {overflow_bytes}", color=(255, 200, 200))
                 dpg.add_spacer(height=10)
 
-# Text wrapping helper
+
 def wrap_text(text: str, max_width: int = 120) -> str:
-    """Wrap text to fit within a certain character width"""
     lines = text.split('\n')
     wrapped_lines = []
     
@@ -270,7 +240,7 @@ def wrap_text(text: str, max_width: int = 120) -> str:
         else:
             # Wrap long lines
             while len(line) > max_width:
-                # Try to break at a space
+                # Break at a space
                 break_point = line[:max_width].rfind(' ')
                 if break_point == -1:
                     break_point = max_width
@@ -283,12 +253,12 @@ def wrap_text(text: str, max_width: int = 120) -> str:
     
     return '\n'.join(wrapped_lines)
 
-# --- GUI Layout Function for Compiler & Emulator ---
+# --- Main Layout ---
 def CreateCompileAndBuildGui(current_project_data: ProjectData):
     
     dpg.add_spacer(height=10)
 
-    # --- Compiler Section ---
+    #! --- Compiler Section ---
     dpg.add_text("Compiler Settings", tag="compiler_settings_text")
     dpg.add_separator(tag="compiler_separator")
     
@@ -325,16 +295,17 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
         label="Compile",
         tag="compile_button",
         width=-1,
+        height=45,
         callback=callback_compile,
         user_data=current_project_data
     )
+    dpg.bind_item_theme("compile_button", "blue_compile_button_theme")
 
     dpg.add_spacer(height=10)
 
-    # Compiler Output (WITH WORD WRAP AND SELECTABLE TEXT!)
+    # Compiler Output
     dpg.add_text("Output:", tag="compiler_output_label")
 
-    # Compiler output text area
     dpg.add_input_text(
         default_value=compiler_output_value,
         tag="compiler_output_textbox",
@@ -345,10 +316,10 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
         tab_input=True
     )
 
-    # Status indicator below log
+    # Status indicator
     dpg.add_text("", tag="build_status_label")
 
-    # Code Size Visualization (initially hidden)
+    # Code Size Visualization
     with dpg.collapsing_header(label="Code Size Analysis", tag="size_analysis_header", default_open=True, show=False):
         with dpg.group(tag="size_analysis_container"):
             pass  # Will be populated dynamically
@@ -356,17 +327,18 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
 
         dpg.add_spacer(height=20)
 
-    # Emulator / Build / Export Cheats Section 
+    #! --- Emulator / Build / Export Cheats Section ---
     with dpg.group(tag="emulator_iso_buttons_group_container", show=False):
         dpg.add_text("Emulator / Build / Export")
         dpg.add_separator()
 
-        column_width = 320  # Adjusted for 1024px viewport (was 484 for 1500px)
+        # This is based on the default viewport. I'd like to resize this dynamically too eventually, but it'd be difficult. This is fine for now.
+        column_width = 320
         child_height = 220
 
         with dpg.group(horizontal=True, tag="emulator_iso_buttons_row_group"):
 
-            # ===== LEFT: Emulator Injection =====
+            #! Emulator Injection
             with dpg.child_window(
                 tag="emulator_child_window",
                 border=True,
@@ -376,7 +348,7 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                 dpg.add_text("Emulator Injection")
                 dpg.add_separator()
 
-                # Emulator Options Dropdown with Refresh
+                # Emulator Options
                 with dpg.group(horizontal=True):
                     dpg.add_text("Select Emulator:", tag="select_emulator_label")
                     dpg.add_button(
@@ -404,7 +376,7 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                     user_data=current_project_data
                 )
 
-            # ===== MIDDLE: Build Options =====
+            #! Build ISO Options
             with dpg.child_window(
                 tag="build_options_child_window",
                 border=True,
@@ -475,7 +447,7 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                     user_data=current_project_data
                 )
 
-            # ===== RIGHT: Export Cheats =====
+            #! Export Cheats
             with dpg.child_window(
                 tag="export_cheats_child_window",
                 border=True,
@@ -547,7 +519,7 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                     dpg.add_button(
                         label="Generate Action Replay Code",
                         width=-1,
-                        callback=callback_generate_wii_ar,
+                        callback=callback_generate_gc_ar,
                         user_data=current_project_data
                     )
                     
@@ -556,7 +528,7 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                     dpg.add_button(
                         label="Generate Gecko Code",
                         width=-1,
-                        callback=callback_generate_wii_gecko,
+                        callback=callback_generate_gc_gecko,
                         user_data=current_project_data
                     )
                     
@@ -569,8 +541,6 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
                         user_data=current_project_data
                     )
                     
-                    
-
                 else:
                     dpg.add_text("Cheat export not yet implemented for this platform.")
                     dpg.add_spacer(height=5)
@@ -580,30 +550,25 @@ def CreateCompileAndBuildGui(current_project_data: ProjectData):
 
 
 
-# --- Validation Function ---
 def validate_project_for_compilation(current_project_data: ProjectData) -> Tuple[bool, str]:
-    """Validate that project is ready for compilation"""
     
     # Check if there are any codecaves or hooks
     if (not current_project_data.GetCurrentBuildVersion().GetCodeCaves() and 
         not current_project_data.GetCurrentBuildVersion().GetHooks()):
-        return False, "No codecaves or hooks defined. Add code to compile."
+        return False, "No codecaves or hooks defined. Create at least one first."
     
-    # Check if codecaves have source files
     for cave in current_project_data.GetCurrentBuildVersion().GetCodeCaves():
         if not cave.GetCodeFilesPaths():
             return False, f"Codecave '{cave.GetName()}' has no source files."
         if not cave.GetMemoryAddress():
             return False, f"Codecave '{cave.GetName()}' has no memory address set."
-    
-    # Check if hooks have source files  
+     
     for hook in current_project_data.GetCurrentBuildVersion().GetHooks():
         if not hook.GetCodeFilesPaths():
             return False, f"Hook '{hook.GetName()}' has no source files."
         if not hook.GetMemoryAddress():
             return False, f"Hook '{hook.GetName()}' has no memory address set."
         
-    # Check binary patches
     for patch in current_project_data.GetCurrentBuildVersion().GetBinaryPatches():
         if not patch.GetCodeFilesPaths():
             return False, f"Binary patch '{patch.GetName()}' has no binary file selected."
@@ -611,8 +576,6 @@ def validate_project_for_compilation(current_project_data: ProjectData) -> Tuple
             return False, f"Binary patch '{patch.GetName()}' has no memory address set."
     
     # Check if symbols file exists
-    project_folder = current_project_data.GetProjectFolder()
-    build_name = current_project_data.GetCurrentBuildVersion().GetBuildName()
     symbols_file = current_project_data.GetCurrentBuildVersion().GetSymbolsFile()
     
     if not symbols_file:
@@ -621,19 +584,13 @@ def validate_project_for_compilation(current_project_data: ProjectData) -> Tuple
     return True, "Validation passed"
 
 
-# --- Callbacks for the GUI Elements ---
-
+# Callbacks
 def callback_compile(sender, app_data, current_project_data):
-    """
-    Callback function for the 'Compile' button.
-    Uses the new CompilationService with verbose mode detection.
-    """
     global is_compilation_successful, mod_data
 
     verbose_print("Compile button pressed!")
     
-    # Validate before compiling
-    is_valid, message = validate_project_for_compilation(current_project_data)
+    is_valid, message = validate_project_for_compilation(current_project_data) # Validate before compiling
     if not is_valid:
         messagebox.showerror("Validation Failed", message)
         dpg.set_value("compiler_output_textbox", f"Validation failed: {message}\n")
@@ -643,7 +600,6 @@ def callback_compile(sender, app_data, current_project_data):
     dpg.set_value("compiler_output_textbox", "")
     update_build_status("Compiling...", "compiling")
 
-    # Create compilation service with verbose mode
     from services.compilation_service import CompilationService
 
     compilation_service = CompilationService(current_project_data, _get_mod_data(), verbose=VERBOSE_MODE, no_warnings=NO_WARNINGS_MODE)
@@ -682,35 +638,38 @@ def callback_compile(sender, app_data, current_project_data):
     # Show/hide emulator buttons based on success
     dpg.configure_item("emulator_iso_buttons_group_container", show=result.success)
 
-    # Check if emulators were already scanned (from other windows) and populate dropdown
+    # Check if emulators were already scanned and populate dropdown
     if result.success:
         manager = get_emulator_manager()
         if manager.available_emulators:
+            current_selection = dpg.get_value("emulator_dropdown")
             dpg.configure_item("emulator_dropdown", items=manager.available_emulators)
-            dpg.set_value("emulator_dropdown", manager.available_emulators[0])
-            print(f"[Build] Restored {len(manager.available_emulators)} emulators from cache")
 
-    # ALWAYS show size analysis on successful compilation
+            # Keep previous emulator selected
+            if current_selection in manager.available_emulators:
+                dpg.set_value("emulator_dropdown", current_selection)
+            else:
+                dpg.set_value("emulator_dropdown", manager.available_emulators[0])
+            verbose_print(f"[Build] Restored {len(manager.available_emulators)} emulators from cache")
+
+    # Show size analysis on successful compilation
     if result.success:
         from services.size_analyzer_service import SizeAnalyzerService
         analyzer = SizeAnalyzerService(current_project_data)
 
         display_size_analysis_console(analyzer)
 
-        # Update visual size analysis display (progress bars below status)
+        # Update visual size analysis display
         update_size_analysis_visual(analyzer)
 
-        # Build shared banner strings
         banner_top = "\n" + "=" * 60
         banner_msg = f"COMPILATION SUCCESSFUL! (Took {elapsed_time:.2f}s)"
         banner_bottom = "=" * 60
 
-        # Show success message after size analysis in the log window
         on_progress(banner_top)
         on_progress(banner_msg)
         on_progress(banner_bottom)
 
-        # Also print the same banner to the command line / terminal
         print(banner_top)
         print(banner_msg)
         print(banner_bottom)
@@ -730,9 +689,7 @@ def callback_compile(sender, app_data, current_project_data):
                 dpg.configure_item("size_analysis_header", show=False)
 
 
-# ========== NEW FUNCTION: Console output with full formatting ==========
 def display_size_analysis_console(analyzer):
-    """Display detailed code size analysis to Windows console with progress bars"""
     from services.size_analyzer_service import SizeAnalyzerService
     
     results = analyzer.analyze_all()
@@ -746,7 +703,6 @@ def display_size_analysis_console(analyzer):
     print("=" * 60)
     
     for result in results:
-        # Format type
         type_str = result.injection_type.replace('_', ' ').title()
         
         # Format sizes
@@ -754,22 +710,11 @@ def display_size_analysis_console(analyzer):
         allocated_hex = f"0x{result.allocated_bytes:X}"
         percentage = result.percentage_used
         
-        # Create progress bar (full Unicode for console)
+        # Create CLI progress bar
         bar_width = 30
         filled = int((percentage / 100.0) * bar_width)
         bar = "█" * filled + "░" * (bar_width - filled)
         
-        # Color/symbol based on warning level
-        # if result.warning_level == "overflow":
-        #     status = "🔴 OVERFLOW"
-        # elif result.warning_level == "critical":
-        #     status = "🟠 CRITICAL"
-        # elif result.warning_level == "warning":
-        #     status = "🟡 WARNING"
-        # else:
-        #     status = "🟢 OK"
-        
-        # Build output line
         print(f"\n{type_str}: {result.name}")
         print(f"  Used: {used_hex} of {allocated_hex} ({percentage:.1f}%)")
         print(f"  [{bar}]")
@@ -786,25 +731,11 @@ def display_size_analysis_console(analyzer):
     print(f"  Total Used: 0x{summary['total_used']:X} bytes")
     print(f"  Total Allocated: 0x{summary['total_allocated']:X} bytes")
     print(f"  Overall: {summary['percentage_used']:.1f}% used")
-    
-    if summary['overflow_count'] > 0:
-        print(f"  🔴 {summary['overflow_count']} OVERFLOW(S)!")
-    if summary['critical_count'] > 0:
-        print(f"  🟠 {summary['critical_count']} at >90% capacity")
-    if summary['warning_count'] > 0:
-        print(f"  🟡 {summary['warning_count']} at >75% capacity")
 
     print("=" * 60)
 
-    # # Show compilation success message
-    # print("\n" + "=" * 60)
-    # print("COMPILATION SUCCESSFUL!")
-    # print("=" * 60)
 
-
-# ========== NEW FUNCTION: Simple console output for non-verbose mode ==========
 def display_size_analysis_console_simple(analyzer):
-    """Display simple code size analysis to console (non-verbose mode)"""
     from services.size_analyzer_service import SizeAnalyzerService
     
     results = analyzer.analyze_all()
@@ -815,7 +746,6 @@ def display_size_analysis_console_simple(analyzer):
     print("\nCode Size Analysis:")
     
     for result in results:
-        # Format type
         type_str = result.injection_type.replace('_', ' ').title()
         
         # Format sizes
@@ -831,7 +761,6 @@ def display_size_analysis_console_simple(analyzer):
         else:
             status_symbol = "[+]"
         
-        # Simple one-line output
         print(f"  {status_symbol} {result.name}: {percentage:.1f}% used")
         
         if result.is_overflow:
@@ -845,9 +774,7 @@ def display_size_analysis_console_simple(analyzer):
     print("")
 
 
-# ========== NEW FUNCTION: GUI output without Unicode chars ==========
 def display_size_analysis_gui(analyzer, log_func):
-    """Display simplified code size analysis in DearPyGUI window (ASCII only)"""
     from services.size_analyzer_service import SizeAnalyzerService
     
     results = analyzer.analyze_all()
@@ -855,16 +782,13 @@ def display_size_analysis_gui(analyzer, log_func):
     if not results:
         if VERBOSE_MODE:
             log_func("\n[DEBUG] No size analysis results available")
-        return  # Don't show "No size data" in non-verbose mode
+        return 
     
-    # ALWAYS show size analysis header
     log_func("\n" + "=" * 60)
     log_func("CODE SIZE ANALYSIS")
     log_func("=" * 60)
     
-    # ALWAYS show ALL sections
     for result in results:
-        # Format type
         type_str = result.injection_type.replace('_', ' ').title()
         
         # Format sizes
@@ -872,12 +796,11 @@ def display_size_analysis_gui(analyzer, log_func):
         allocated_hex = f"0x{result.allocated_bytes:X}"
         percentage = result.percentage_used
         
-        # Create ASCII progress bar (no Unicode)
+        # Create ASCII progress bar
         bar_width = 30
         filled = int((percentage / 100.0) * bar_width)
         bar = "#" * filled + "-" * (bar_width - filled)
-        
-        # Status based on warning level
+
         if result.warning_level == "overflow":
             status = "OVERFLOW"
             status_symbol = "[X]"
@@ -902,7 +825,7 @@ def display_size_analysis_gui(analyzer, log_func):
         elif result.remaining_bytes < 16:
             log_func(f"  WARNING: Only 0x{result.remaining_bytes:X} bytes remaining")
     
-    # ALWAYS show summary
+    # Summary
     summary = analyzer.get_summary()
     log_func("\n" + "-" * 60)
     log_func(f"SUMMARY: {summary['total_count']} target(s)")
@@ -921,39 +844,25 @@ def display_size_analysis_gui(analyzer, log_func):
 
 
 def callback_select_emulator(sender, app_data, user_data):
-    """
-    Callback function for the 'Emulator Options' dropdown.
-    Updates the global selected emulator.
-    """
     global selected_emulator
     selected_emulator = app_data
     print(f"Selected emulator: {selected_emulator}")
 
 
-# Replace the callback_inject_emulator function:
-
 def callback_inject_emulator(sender, app_data, current_project_data):
-    """
-    Callback function for the 'Inject into Emulator' button.
-    Injects compiled code into the selected running emulator.
-    """
     global is_compilation_successful
-
-    #print("Inject into Emulator button pressed!")
     
     if not is_compilation_successful:
         messagebox.showerror("Injection Failed", "Compilation was not successful. Cannot inject.")
         print("Injection failed: Compilation errors present.")
         return
 
-    # Get selected emulator
     selected_emulator = dpg.get_value("emulator_dropdown")
     
     if not selected_emulator or selected_emulator == "No emulators detected":
         messagebox.showerror("No Emulator", "No emulator selected or detected.")
         return
     
-    # Create emulator service
     emu_service = EmulatorService(current_project_data)
     
     # Clear output
@@ -968,7 +877,7 @@ def callback_inject_emulator(sender, app_data, current_project_data):
     log_message("=" * 60)
     update_build_status("Injecting...", "compiling")
 
-    # Perform injection with timing
+    # Perform injection with timing (Honestly might remove because it's usually instant?)
     start_time = time.time()
     result = emu_service.inject_into_emulator(selected_emulator)
     elapsed_time = time.time() - start_time
@@ -977,7 +886,6 @@ def callback_inject_emulator(sender, app_data, current_project_data):
     if result.success:
         log_message(f"{result.message} (Took {elapsed_time:.2f}s)")
         update_build_status(f"Injected into {selected_emulator}! ({elapsed_time:.2f}s)", "success")
-        #messagebox.showinfo("Injection Success", result.message)
     else:
         log_message("" + result.message)
         update_build_status(f"Failed to inject into {selected_emulator}!", "error")
@@ -985,15 +893,12 @@ def callback_inject_emulator(sender, app_data, current_project_data):
 
 
 def callback_refresh_emulators(sender, app_data, current_project_data):
-    """Refresh the list of available emulators using centralized manager"""
     from gui.gui_loading_indicator import LoadingIndicator
 
-    # Show loading indicator
     LoadingIndicator.show("Scanning for emulators...")
 
     def scan_async():
         try:
-            # Use centralized manager (will notify all registered callbacks)
             manager = get_emulator_manager()
             manager.set_project_data(current_project_data)
             available = manager.scan_emulators()
@@ -1005,7 +910,6 @@ def callback_refresh_emulators(sender, app_data, current_project_data):
                     dpg.set_value("emulator_dropdown", available[0])
                     print(f"Found {len(available)} running emulator(s): {', '.join(available)}")
 
-                    # Log to output window
                     current = dpg.get_value("compiler_output_textbox")
                     dpg.set_value("compiler_output_textbox",
                         current + f"\nFound emulators: {', '.join(available)}\n")
@@ -1014,18 +918,15 @@ def callback_refresh_emulators(sender, app_data, current_project_data):
                     dpg.set_value("emulator_dropdown", "No emulators detected")
                     print("No compatible emulators detected")
 
-                    # Log to output window
                     current = dpg.get_value("compiler_output_textbox")
                     dpg.set_value("compiler_output_textbox",
                         current + "\nNo compatible emulators detected\n")
 
-                    # Show error popup
                     from gui import gui_messagebox as messagebox
                     messagebox.showerror("No Emulators Found", "Could not find any emulators.\n\nPlease make sure your emulator is running.")
 
                 LoadingIndicator.hide()
 
-            # Schedule UI update on main thread
             dpg.split_frame()
             update_ui()
 
@@ -1038,16 +939,9 @@ def callback_refresh_emulators(sender, app_data, current_project_data):
     thread.start()
     
 def refresh_build_panel_ui(current_project_data: ProjectData):
-    """
-    Rebuild the 'Build Options' and 'Export Cheats' panels so they always
-    reflect the CURRENT build version & platform.
-    """
-    # If the container for these child windows doesn't exist yet (e.g. build tab
-    # not created or we are in CLI mode), just bail out.
     if not dpg.does_item_exist("emulator_iso_buttons_group_container"):
         return
 
-    # Try to keep the same width / height as the existing windows if they exist
     column_width = None
     child_height = None
 
@@ -1063,16 +957,13 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
             child_height = dpg.get_item_height("export_cheats_child_window")
         dpg.delete_item("export_cheats_child_window")
 
-    # Fallback to the same logic used in CreateCompileAndBuildGui
     if column_width is None:
         group_width = dpg.get_item_width("emulator_iso_buttons_group_container")
         column_width = max(int(group_width / 3) - 5, 0)
 
     if child_height is None:
-        # Same default you used when originally creating these
         child_height = 230
 
-    # --- MIDDLE: Build Options ---
     with dpg.child_window(
         tag="build_options_child_window",
         parent="emulator_iso_buttons_row_group",
@@ -1087,7 +978,6 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
         dpg.add_text("Build Options")
         dpg.add_separator()
 
-        # Only space the GUI if there are no ISO options (PS1/PS2)
         if platform == "PS1" or platform == "PS2":
             dpg.add_spacer(height=20)
 
@@ -1140,7 +1030,6 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
             user_data=current_project_data
         )
 
-    # --- RIGHT: Export Cheats ---
     with dpg.child_window(
         tag="export_cheats_child_window",
         parent="emulator_iso_buttons_row_group",
@@ -1154,7 +1043,6 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
         current_build = current_project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
 
-        # Normalize platform
         platform_norm = (platform or "").strip().upper()
 
         if platform_norm in ("PS1", "PSX"):
@@ -1211,7 +1099,7 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
             dpg.add_button(
                 label="Generate Action Replay Code",
                 width=-1,
-                callback=callback_generate_wii_ar,
+                callback=callback_generate_gc_ar,
                 user_data=current_project_data
             )
 
@@ -1220,7 +1108,7 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
             dpg.add_button(
                 label="Generate Gecko Code",
                 width=-1,
-                callback=callback_generate_wii_gecko,
+                callback=callback_generate_gc_gecko,
                 user_data=current_project_data
             )
 
@@ -1238,11 +1126,8 @@ def refresh_build_panel_ui(current_project_data: ProjectData):
             dpg.add_text(f"Platform: {platform_norm}")
 
 
+
 def callback_build_iso(sender, app_data, user_data):
-    """
-    Callback function for the 'Build ISO' button.
-    Builds complete ISO with all patches, or patches single file.
-    """
     from gui.gui_loading_indicator import LoadingIndicator
     global is_compilation_successful
 
@@ -1263,7 +1148,7 @@ def callback_build_iso(sender, app_data, user_data):
     current_build = current_project_data.GetCurrentBuildVersion()
     
     if current_build.IsSingleFileMode():
-        # Single file mode - just patch the file
+        # Just patch the single file
         main_exe = current_build.GetMainExecutable()
         project_folder = current_project_data.GetProjectFolder()
         
@@ -1272,7 +1157,6 @@ def callback_build_iso(sender, app_data, user_data):
         
         def patch_async():
             try:
-                # Create ISO service and patch
                 iso_service = ISOService(current_project_data, verbose=False, tool_dir=_tool_dir)
                 
                 # Clear output
@@ -1373,7 +1257,6 @@ def callback_build_iso(sender, app_data, user_data):
             result = iso_service.full_build()
             elapsed_time = time.time() - start_time
 
-            # Update UI on main thread
             def update_ui():
                 LoadingIndicator.hide()
 
@@ -1388,7 +1271,7 @@ def callback_build_iso(sender, app_data, user_data):
                     output_path_split = result.output_path.split("\\")
                     output_path_short = output_path_split[-3] + "\\" + output_path_split[-2] + "\\" + output_path_split[-1] # Get only the path starting from the project folder
                     
-                    # Ask user if they want to open the folder, unless checkbox has been checked to not show again
+                    # Ask user if they want to open the folder
                     global _dont_ask_open_folder
                     if not _dont_ask_open_folder:
                         response, dont_ask = askyesno_with_checkbox(
@@ -1396,7 +1279,6 @@ def callback_build_iso(sender, app_data, user_data):
                             f"ISO built successfully!\n\n{output_path_short}\n\nOpen folder in explorer?"
                         )
 
-                        # Save preference
                         if dont_ask:
                             _dont_ask_open_folder = True
 
@@ -1446,15 +1328,13 @@ def callback_generate_xdelta(sender, app_data, user_data):
     # Check if we need to prompt for original file
     original_file = None
 
-    # For single file mode, we don't need to prompt - the service will use single_file_path
-    # For ISO mode from folder, we need to prompt
+    # For single file mode, don't prompt
     is_single_file = current_build.IsSingleFileMode()
-
     if not is_single_file:
         source_path = current_build.GetSourcePath()
 
         if not source_path:
-            # No source path set - prompt user
+            # No source path set
             messagebox.showinfo(
                 "Select Original File",
                 "Please select the original (unmodded) ISO/file to compare against."
@@ -1467,7 +1347,7 @@ def callback_generate_xdelta(sender, app_data, user_data):
                 print("User cancelled file selection")
                 return
         elif os.path.isdir(source_path):
-            # Source is a directory (extracted folder) - need to prompt
+            # Source is a directory (extracted folder), must have original game selected. (I didn't consider this when allowing extracted folders to make projects. In the future, it might be good to tell the user if the make a project with an extracted game folder, xdelta will still need the original game file.)
             messagebox.showinfo(
                 "Select Original File",
                 "This project was created from an extracted folder.\n\n"
@@ -1518,7 +1398,7 @@ def callback_generate_xdelta(sender, app_data, user_data):
                     # Update status indicator
                     update_build_status(f"Patch Generated! ({elapsed_time:.2f}s)", "success")
 
-                    # Ask if user wants to open folder
+                    # Ask if user wants to open in folder
                     global _dont_ask_open_folder
                     if not _dont_ask_open_folder:
                         response, dont_ask = askyesno_with_checkbox(
@@ -1546,7 +1426,6 @@ def callback_generate_xdelta(sender, app_data, user_data):
 
                     messagebox.showerror("Patch Failed", f"Failed to generate patch:\n{result.message}")
             
-            # Schedule UI update on main thread
             dpg.split_frame()
             update_ui()
             
@@ -1561,20 +1440,17 @@ def callback_generate_xdelta(sender, app_data, user_data):
     thread.start()
 
 def callback_compiler_flags_changed(sender, app_data, current_project_data: ProjectData):
-    """Save compiler flags when user changes them"""
     current_project_data.GetCurrentBuildVersion().SetCompilerFlags(app_data)
 
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
 
 def callback_no_warnings_changed(sender, app_data):
-    """Update global NO_WARNINGS_MODE when checkbox is toggled"""
     global NO_WARNINGS_MODE
     NO_WARNINGS_MODE = app_data
     
     
 def callback_generate_ps1_gameshark(sender, app_data, current_project_data: ProjectData):
-    """Generate PS1 GameShark codes from compiled bins and copy to clipboard."""
     global is_compilation_successful
 
     if not is_compilation_successful:
@@ -1588,7 +1464,8 @@ def callback_generate_ps1_gameshark(sender, app_data, current_project_data: Proj
         # Show in compiler output textbox
         dpg.set_value("compiler_output_textbox", code)
 
-        pyperclip.copy(code)
+        pyperclip.copy(code) # Copy to clipboard
+        
         messagebox.showinfo("Cheats Generated", "PS1 GameShark codes generated and copied to clipboard.")
 
 
@@ -1606,7 +1483,6 @@ def callback_generate_ps1_gameshark(sender, app_data, current_project_data: Proj
 
 
 def callback_generate_ps2_ps2rd(sender, app_data, current_project_data: ProjectData):
-    """Generate PS2 PS2RD codes from compiled bins and copy to clipboard."""
     global is_compilation_successful
 
     if not is_compilation_successful:
@@ -1619,7 +1495,8 @@ def callback_generate_ps2_ps2rd(sender, app_data, current_project_data: ProjectD
 
         dpg.set_value("compiler_output_textbox", code)
 
-        pyperclip.copy(code)
+        pyperclip.copy(code) # Copy to clipboard
+        
         messagebox.showinfo("Cheats Generated", "PS2 PS2RD codes generated and copied to clipboard.")
 
     except FileNotFoundError as e:
@@ -1636,7 +1513,6 @@ def callback_generate_ps2_ps2rd(sender, app_data, current_project_data: ProjectD
 
 
 def callback_generate_ps2_pnach(sender, app_data, current_project_data: ProjectData):
-    """Generate PCSX2 .pnach, copy to clipboard, and save via Tk file dialog."""
     global is_compilation_successful
 
     if not is_compilation_successful:
@@ -1655,9 +1531,9 @@ def callback_generate_ps2_pnach(sender, app_data, current_project_data: ProjectD
         dpg.set_value("compiler_output_textbox", pnach_text)
 
         # Copy to clipboard
-        pyperclip.copy(pnach_text)
+        pyperclip.copy(pnach_text) # Copy to clipboard
 
-        # Build a reasonable default filename
+        # Build a default filename
         build = current_project_data.GetCurrentBuildVersion()
         project_folder = current_project_data.GetProjectFolder()
 
@@ -1677,7 +1553,7 @@ def callback_generate_ps2_pnach(sender, app_data, current_project_data: ProjectD
         else:
             default_name = f"{proj_name}.pnach"
 
-        # Tkinter "Save As" dialog
+        # Save pnatch as file
         file_path = filedialog.asksaveasfilename(
             title="Save PCSX2 .pnach file",
             defaultextension=".pnach",
@@ -1696,7 +1572,6 @@ def callback_generate_ps2_pnach(sender, app_data, current_project_data: ProjectD
                 f"and saved to:\n{file_path}"
             )
         else:
-            # User cancelled save dialog, but generation still succeeded
             messagebox.showinfo(
                 "pnach Generated",
                 "PCSX2 .pnach generated and copied to clipboard.\n\n"
@@ -1745,7 +1620,7 @@ def callback_generate_gc_ar(sender, app_data, current_project_data: ProjectData)
         print_error(f"Error generating GameCube AR codes:\n{e}\n\n{traceback.format_exc()}")
 
 
-def callback_generate_wii_ar(sender, app_data, current_project_data: ProjectData):
+def callback_generate_wii_ar(sender, app_data, current_project_data: ProjectData): # This is the same as GC AR, I should combine them, but I was lazy lol
     global is_compilation_successful
 
     if not is_compilation_successful:
@@ -1784,11 +1659,10 @@ def callback_generate_gc_gecko(sender, app_data, current_project_data: ProjectDa
     service = CheatCodeService(current_project_data)
 
     try:
-        # CheatCodeService should default to one_shot=True internally
         code_and_name = service.generate_gc_gecko()
         codes_only = _codes_strip_name(code_and_name)
         
-        #generate seperate non one-shot version for .gct file. Strangely doesn't work on console if one shot?
+        #generate seperate non one-shot version for .gct file. Strangely doesn't work on console if one shot? not sure why. maybe the handler checks extremely early in the game boot process, that the .dol file isn't even in ram yet
         code_and_name_gct = service.generate_gc_gecko(one_shot=False)
         codes_only_gct = _codes_strip_name(code_and_name_gct)
         
@@ -1866,7 +1740,6 @@ def callback_generate_wii_gecko(sender, app_data, current_project_data: ProjectD
     service = CheatCodeService(current_project_data)
 
     try:
-        # CheatCodeService should default to one_shot=True internally
         code_and_name = service.generate_wii_gecko()
         codes_only = _codes_strip_name(code_and_name)
         
@@ -1932,23 +1805,15 @@ def callback_generate_wii_gecko(sender, app_data, current_project_data: ProjectD
 
     
 def _codes_strip_name(full_text: str) -> str:
-    """
-    Strip the first two lines (usually title + 'Mod' / header) before copying
-    to clipboard. Returns only the actual code lines.
-    """
     lines = full_text.splitlines()
     if len(lines) <= 2:
-        # Nothing (or almost nothing) to strip
         return full_text.strip()
     
-    # Drop the first two lines, keep the rest
+    # Drop the first two lines, which is the name of the mod
     codes_only = "\n".join(lines[2:])
     return codes_only.strip()
 
 def show_gecko_length_warning_popup(line_count: int, max_lines: int):
-    """
-    Modal popup telling the user the Gecko code exceeds the handler limit.
-    """
     popup_tag = "gecko_length_warning_popup"
 
     if dpg.does_item_exist(popup_tag):
@@ -1962,13 +1827,13 @@ def show_gecko_length_warning_popup(line_count: int, max_lines: int):
         no_resize=True,
         no_collapse=True,
         autosize=True,
-        pos=(200, 200),  # tweak as you like
+        pos=(200, 200),
     ):
         dpg.add_text(
             f"This Gecko code has {line_count} lines.\n\n"
-            f"Typical Gecko/Ocarina handlers only support up to "
+            f"Typical Gecko handlers only support up to "
             f"{max_lines} lines per code list.\n"
-            "Lines beyond this limit may be ignored on hardware / loaders."
+            "Lines beyond this limit may be ignored on hardware/dolphin."
         )
         dpg.add_spacer(height=8)
         dpg.add_button(
@@ -1978,7 +1843,6 @@ def show_gecko_length_warning_popup(line_count: int, max_lines: int):
         )
 
 def update_build_button_label(current_project_data: ProjectData):
-    """Update the build button label based on single file mode"""
     import dearpygui.dearpygui as dpg
     
     if not dpg.does_item_exist("build_iso_button"):
@@ -1992,19 +1856,8 @@ def update_build_button_label(current_project_data: ProjectData):
         dpg.set_item_label("build_iso_button", "Build ISO")
         
 def callback_generate_riivolution_xml(sender, app_data, current_project_data: ProjectData):
-    """
-    Generate a Riivolution XML file based on the current build's injection files.
-
-    - Uses CheatCodeService.generate_wii_riivolution_file_patches()
-      (works for both GameCube and Wii projects).
-    - Shows XML in the compiler output textbox.
-    - Copies XML to clipboard.
-    - Prompts user to save as a .xml file in a /riivolution folder.
-    """
     global is_compilation_successful
 
-    # You *could* allow this without compilation, but keeping it consistent
-    # with other exports for now.
     if not is_compilation_successful:
         messagebox.showerror(
             "Riivolution Export Failed",
@@ -2014,7 +1867,6 @@ def callback_generate_riivolution_xml(sender, app_data, current_project_data: Pr
 
     try:
         service = CheatCodeService(current_project_data)
-        # This function supports both GC and Wii (name says Wii, but logic checks platform)
         xml_text = service.generate_wii_riivolution_file_patches()
 
         # Show in DPG output box
@@ -2023,14 +1875,12 @@ def callback_generate_riivolution_xml(sender, app_data, current_project_data: Pr
         # Copy to clipboard
         pyperclip.copy(xml_text)
 
-        # Build default save path & filename
         build = current_project_data.GetCurrentBuildVersion()
         project_folder = current_project_data.GetProjectFolder()
 
         get_proj_name = getattr(current_project_data, "GetProjectName", None)
         proj_name = get_proj_name() if callable(get_proj_name) else "RiivolutionMod"
 
-        # Use project/build name for a sensible default
         build_name = getattr(build, "GetBuildName", lambda: "default")()
         default_name = f"{proj_name}_{build_name}_riivolution.xml"
 

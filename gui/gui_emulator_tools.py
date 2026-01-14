@@ -1,7 +1,3 @@
-"""
-Emulator Tools - Runtime memory analysis and verification
-"""
-
 import dearpygui.dearpygui as dpg
 import os
 import threading
@@ -12,19 +8,17 @@ from services.emulator_service import EmulatorService
 from services.emulator_connection_manager import get_emulator_manager
 from gui.gui_loading_indicator import LoadingIndicator
 from services.project_serializer import ProjectSerializer
+from functions.verbose_print import verbose_print
 
-# Wrapper functions to maintain compatibility while using centralized manager
+# Wrapper functions
 def _get_or_establish_connection(emulator_name: str, emu_service: EmulatorService):
-    """Wrapper that uses the centralized manager"""
     manager = get_emulator_manager()
     # Ensure manager has project data
     if hasattr(emu_service, 'project_data'):
         manager.set_project_data(emu_service.project_data)
     return manager.get_or_establish_connection(emulator_name)
 
-# Wrapper class to maintain compatibility with existing _emulator_connection references
 class _EmulatorConnectionWrapper:
-    """Wrapper that delegates to the centralized manager's connection"""
     @property
     def is_valid(self):
         conn = get_emulator_manager().get_current_connection()
@@ -51,14 +45,12 @@ class _EmulatorConnectionWrapper:
 
 _emulator_connection = _EmulatorConnectionWrapper()
 
-# Module-level callback for emulator scans
+# Callback for emulator scans
 def _on_emulators_scanned_callback(available: list):
-    """Update UI when emulators are scanned from other windows"""
-    print(f"[EmulatorTools] _on_emulators_scanned_callback called with: {available}")
+    verbose_print(f"[EmulatorTools] _on_emulators_scanned_callback called with: {available}")
 
-    # Update UI directly - DearPyGUI is thread-safe for these operations
     if dpg.does_item_exist("emu_tools_emulator_combo"):
-        print(f"[EmulatorTools] Updating UI with emulators: {available}")
+        verbose_print(f"[EmulatorTools] Updating UI with emulators: {available}")
         if available:
             dpg.configure_item("emu_tools_emulator_combo", items=available)
             current_value = dpg.get_value("emu_tools_emulator_combo")
@@ -74,12 +66,10 @@ def _on_emulators_scanned_callback(available: list):
             dpg.set_value("emu_tools_connection_status", "No compatible emulators detected")
             dpg.configure_item("emu_tools_connection_status", color=(255, 100, 100))
     else:
-        print(f"[EmulatorTools] Window doesn't exist, skipping UI update")
+        verbose_print(f"Skipping UI update")
 
 def show_emulator_tools_window(sender, app_data, current_project_data: ProjectData):
-    """Show the emulator tools window"""
-
-    # Delete existing window if it exists
+    # Delete window if it exists
     if dpg.does_item_exist("emulator_tools_window"):
         dpg.delete_item("emulator_tools_window")
 
@@ -142,13 +132,13 @@ def show_emulator_tools_window(sender, app_data, current_project_data: ProjectDa
         dpg.add_separator()
         dpg.add_spacer(height=10)
 
-        # Tab bar for different tools
+        #! Tab bar
         with dpg.tab_bar():
-            # Codecave Verification tab
+            #! Codecave Verification tab
             with dpg.tab(label="Codecave Verification"):
                 _create_codecave_verification_tab(current_project_data)
 
-            # Memory Verification tab
+            #! Memory Verification tab
             with dpg.tab(label="Offset Verification"):
                 _create_memory_verification_tab(current_project_data)
 
@@ -156,14 +146,13 @@ def show_emulator_tools_window(sender, app_data, current_project_data: ProjectDa
     manager = get_emulator_manager()
     manager.set_project_data(current_project_data)
 
-    # Register callback once (manager handles duplicate prevention)
-    # Callback checks if window exists before updating UI
+    # Register callback
     manager.register_scan_callback(_on_emulators_scanned_callback)
 
     # Check if we have an existing connection
     connection = manager.get_current_connection()
     if connection:
-        # Restore connection state in UI
+        # Restore connection state
         dpg.set_value("emu_tools_connection_status", f"Connected to {connection.emulator_name}")
         dpg.configure_item("emu_tools_connection_status", color=(100, 255, 100))
 
@@ -172,21 +161,20 @@ def show_emulator_tools_window(sender, app_data, current_project_data: ProjectDa
             dpg.configure_item("emu_tools_emulator_combo", items=manager.available_emulators, default_value=connection.emulator_name)
             dpg.configure_item("emu_tools_connect_button", enabled=True)
     elif manager.available_emulators:
-        # Use cached scan results from manager (scanned from another window)
+        # Use cached scan results
         dpg.configure_item("emu_tools_emulator_combo", items=manager.available_emulators, default_value=manager.available_emulators[0])
         dpg.set_value("emu_tools_connection_status", f"Found {len(manager.available_emulators)} running emulator(s). Click Connect.")
         dpg.configure_item("emu_tools_connection_status", color=(255, 200, 100))
         dpg.configure_item("emu_tools_connect_button", enabled=True)
         _on_emulator_selected(current_project_data)
     else:
-        # No cached results - show ready state, user must click Refresh
+        # No cached results
         dpg.configure_item("emu_tools_emulator_combo", items=["Click Refresh to scan"], default_value="Click Refresh to scan")
         dpg.set_value("emu_tools_connection_status", "Click Refresh to scan for emulators")
         dpg.configure_item("emu_tools_connection_status", color=(200, 200, 200))
         dpg.configure_item("emu_tools_connect_button", enabled=False)
 
 def _create_codecave_verification_tab(current_project_data: ProjectData):
-    """Create the codecave verification tab"""
     dpg.add_text("Monitor Codecave Memory Regions", color=(100, 200, 255))
     dpg.add_text("Continuously monitors codecave memory to detect any writes during gameplay",
                 color=(150, 150, 150))
@@ -222,7 +210,7 @@ def _create_codecave_verification_tab(current_project_data: ProjectData):
     dpg.add_separator()
     dpg.add_spacer(height=5)
 
-    # Results table
+    # Results
     dpg.add_text("Codecave Verification Results:", color=(100, 200, 255))
     dpg.add_spacer(height=5)
 
@@ -245,7 +233,7 @@ def _create_codecave_verification_tab(current_project_data: ProjectData):
 
     dpg.add_spacer(height=10)
 
-    # Info text
+    # Info
     with dpg.group(horizontal=False):
         dpg.add_text("How to Use:", color=(255, 200, 100))
         dpg.add_text("  1. Connect to emulator using the Connect button above", color=(150, 150, 150))
@@ -255,15 +243,15 @@ def _create_codecave_verification_tab(current_project_data: ProjectData):
         dpg.add_text("  5. You can press \"Fill with Test Bytes\", to ensure changing the codecave data is safe", color=(150, 150, 150))
 
 def _create_memory_verification_tab(current_project_data: ProjectData):
-    """Create the memory verification tab"""
     dpg.add_text("Offset Mapping Tool", color=(100, 200, 255))
     dpg.add_text("Find file offsets from memory or verify existing configurations",
                 color=(150, 150, 150))
     dpg.add_spacer(height=10)
 
-    # Item selector and search direction on same row
+    # Item selector and search direction
     with dpg.group(horizontal=True):
-        # Left side: Item selector
+        
+        # Item selector
         with dpg.group(horizontal=False):
             dpg.add_text("Select Item:")
             with dpg.group(horizontal=True):
@@ -283,7 +271,7 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
 
         dpg.add_spacer(width=20)
 
-        # Right side: Search direction
+        # Search direction
         with dpg.group(horizontal=False):
             dpg.add_text("Search Direction:")
             dpg.add_radio_button(
@@ -295,7 +283,7 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
 
     dpg.add_spacer(height=10)
 
-    # Manual memory address input (shown when "Manual Memory Address" is selected in Memory→File mode)
+    # Manual memory address input
     with dpg.group(tag="manual_memory_address_group", show=False, horizontal=True):
         dpg.add_input_text(
             tag="memory_address_input",
@@ -309,7 +297,7 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
             width=150
         )
 
-    # Manual file offset input (shown when "Manual File Offset" is selected in File→Memory mode)
+    # Manual file offset input
     with dpg.group(tag="manual_file_offset_group", show=False, horizontal=True):
         dpg.add_combo(
             tag="manual_file_combo",
@@ -330,7 +318,7 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
         )
 
 
-    # Verify/Search button (label changes based on mode)
+    # Verify/Search button
     dpg.add_button(
         tag="offset_search_button",
         label="Verify / Find File Offset",
@@ -345,7 +333,7 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
     dpg.add_separator()
     dpg.add_spacer(height=10)
 
-    # Results display
+    # Results
     dpg.add_text("Verification Results:", color=(100, 200, 255))
     dpg.add_spacer(height=5)
 
@@ -354,7 +342,7 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
 
     dpg.add_spacer(height=10)
 
-    # Info text
+    # Info
     with dpg.group(horizontal=False):
         dpg.add_text("How to Use:", color=(255, 200, 100))
         dpg.add_text("  1. Connect to running emulator with game loaded", color=(150, 150, 150))
@@ -363,34 +351,33 @@ def _create_memory_verification_tab(current_project_data: ProjectData):
         dpg.add_text("  4. If data doesn't match, memory will automatically be searched for correct location",
                     color=(150, 150, 150))
 
-    # Initialize item combo with Codecaves (default selection)
+    # Initialize combo with Codecaves
     _on_verify_type_changed(current_project_data)
 
-# ==================== Internal Functions ====================
+
+
 
 def _on_verify_mode_changed(current_project_data: ProjectData):
-    """Update button label and combo items based on search direction"""
     mode = dpg.get_value("memory_verify_mode_radio")
 
     if mode == "Memory to File (Find File Offset)":
         dpg.configure_item("offset_search_button", label="Verify / Find File Offset", show=True)
-        # Update combo items for Memory→File mode
+        # Update combo items for Memory->File mode
         dpg.configure_item("memory_verify_type_combo", items=["Codecave", "Hook", "Manual Memory Address"])
-    else:  # "File to Memory (Verify Config)"
+    else:  # "File to Memory"
         dpg.configure_item("offset_search_button", label="Verify / Find Memory Offset", show=True)
-        # Update combo items for File→Memory mode
+        # Update combo items for File->Memory mode
         dpg.configure_item("memory_verify_type_combo", items=["Codecave", "Hook", "Manual File Offset"])
 
-    # Reset to first option and update UI
+    # Reset
     dpg.set_value("memory_verify_type_combo", dpg.get_item_configuration("memory_verify_type_combo")["items"][0])
     _on_verify_type_changed(current_project_data)
 
 def _perform_offset_search(current_project_data: ProjectData):
-    """Unified search function that routes based on mode and item type"""
     mode = dpg.get_value("memory_verify_mode_radio")
     item_type = dpg.get_value("memory_verify_type_combo")
 
-    # Route to appropriate handler
+
     if item_type == "Manual Memory Address":
         # Manual memory address: Read from memory, search in file
         _find_file_offset_from_memory(current_project_data)
@@ -398,14 +385,13 @@ def _perform_offset_search(current_project_data: ProjectData):
         # Manual file offset: Read from file, search in memory
         _find_memory_offset_from_file(current_project_data)
     elif mode == "Memory to File (Find File Offset)":
-        # Memory → File: Read from configured item's memory address, search/verify in file
+        # Memory -> File
         _find_file_from_configured_memory(current_project_data)
     else:  # "File to Memory (Verify Config)"
-        # File → Memory: Read from configured item's file offset, search/verify in memory
+        # File -> Memory: Read from configured item's file offset, search/verify in memory
         _verify_memory_mapping(current_project_data)
 
 def _find_file_from_configured_memory(current_project_data: ProjectData):
-    """Verify memory→file mapping for configured item, then search if mismatch"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please connect to a running emulator first")
@@ -492,7 +478,7 @@ def _find_file_from_configured_memory(current_project_data: ProjectData):
             _add_verify_result(f"Memory Data: {hex_preview}", (200, 200, 200))
             _add_verify_result("", (255, 255, 255))
 
-            # Check if file offset is configured - if so, VERIFY first
+            # Check if file offset is configured
             if file_offset_str and game_file:
                 file_offset = int(file_offset_str, 16)
                 game_file_path = current_build.FindFileInGameFolder(game_file)
@@ -518,14 +504,14 @@ def _find_file_from_configured_memory(current_project_data: ProjectData):
                         LoadingIndicator.hide()
                         _add_verify_result("VERIFICATION SUCCESSFUL", (100, 255, 100))
                         _add_verify_result("Memory data matches configured file offset!", (100, 255, 100))
-                        return  # Success! No need to search
+                        return  # Success, don't serch
 
                     else:
                         _add_verify_result("VERIFICATION FAILED", (255, 200, 100))
                         _add_verify_result("Memory data does NOT match configured file offset", (255, 200, 100))
                         _add_verify_result("", (255, 255, 255))
 
-            # Verification failed or not configured - search for correct offset
+            # Verification failed, search for correct offset
             LoadingIndicator.update_message("Searching for pattern in game files...")
 
             game_files = current_build.GetInjectionFiles()
@@ -608,7 +594,6 @@ def _find_file_from_configured_memory(current_project_data: ProjectData):
     threading.Thread(target=verify_thread, daemon=True).start()
 
 def _find_memory_offset_from_file(current_project_data: ProjectData):
-    """Find memory offset by reading from file offset and searching in memory"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please connect to a running emulator first")
@@ -650,7 +635,7 @@ def _find_memory_offset_from_file(current_project_data: ProjectData):
         messagebox.showerror("Invalid Input", "Invalid file offset or size format")
         return
 
-    # Show loading indicator with cancel button
+    # Show loading
     LoadingIndicator.show("Reading from game file...", allow_cancel=True)
 
     def search_thread():
@@ -680,7 +665,7 @@ def _find_memory_offset_from_file(current_project_data: ProjectData):
             LoadingIndicator.update_message("Searching for pattern in memory...")
             emu_service = EmulatorService(current_project_data)
 
-            # If pattern is small, expand it with surrounding context
+            # If pattern is small, expand it with surrounding bytes so we don't get a bajillion false positives
             search_pattern = file_data
             pattern_offset_in_search = 0
 
@@ -699,7 +684,7 @@ def _find_memory_offset_from_file(current_project_data: ProjectData):
                         search_pattern = bytes_before + file_data + bytes_after
                         pattern_offset_in_search = len(bytes_before)
                 except Exception:
-                    pass  # Use original pattern if expansion fails
+                    pass 
 
             matches = _search_memory(emu_service, _emulator_connection.handle, _emulator_connection.main_ram,
                                     search_pattern, _emulator_connection.emu_info)
@@ -707,7 +692,7 @@ def _find_memory_offset_from_file(current_project_data: ProjectData):
             LoadingIndicator.hide()
             dpg.delete_item("memory_verify_results", children_only=True)
 
-            # Display results
+            # Display
             _add_verify_result(f"File Offset Search: 0x{file_offset:X}", (255, 200, 100))
             _add_verify_result(f"File: {selected_file}", (200, 200, 200))
             _add_verify_result(f"Pattern Size: {size} bytes", (200, 200, 200))
@@ -728,7 +713,7 @@ def _find_memory_offset_from_file(current_project_data: ProjectData):
                 corrected_offset = found_address - _emulator_connection.main_ram
                 corrected_memory_addr = f"0x80{corrected_offset:06X}"
 
-                _add_verify_result("FOUND!", (100, 255, 100))
+                _add_verify_result("FOUND", (100, 255, 100))
                 _add_verify_result(f"Memory Address: {corrected_memory_addr}", (100, 255, 100))
                 #_add_verify_result(f"RAM Address: 0x{found_address:X}", (100, 255, 100))
             else:
@@ -751,7 +736,6 @@ def _find_memory_offset_from_file(current_project_data: ProjectData):
     threading.Thread(target=search_thread, daemon=True).start()
 
 def _find_file_offset_from_memory(current_project_data: ProjectData):
-    """Find file offset by reading from memory address and searching in file"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please connect to a running emulator first")
@@ -854,7 +838,7 @@ def _find_file_offset_from_memory(current_project_data: ProjectData):
             if len(memory_data) > 32:
                 hex_preview += "..."
             _add_verify_result(f"Memory Data: {hex_preview}", (200, 200, 200))
-            _add_verify_result("", (255, 255, 255))  # Spacer
+            _add_verify_result("", (255, 255, 255))
 
             if not found_offsets:
                 _add_verify_result("Pattern not found in any game file", (255, 100, 100))
@@ -864,7 +848,7 @@ def _find_file_offset_from_memory(current_project_data: ProjectData):
                 _add_verify_result("FOUND!", (100, 255, 100))
                 _add_verify_result(f"File: {file_name}", (100, 255, 100))
                 _add_verify_result(f"File Address: 0x{file_offset:X}", (100, 255, 100))
-                _add_verify_result("", (255, 255, 255))  # Spacer
+                _add_verify_result("", (255, 255, 255))
                 _add_verify_result("You can use this file address to configure your hook/patch", (255, 200, 100))
             else:
                 _add_verify_result(f"Found {len(found_offsets)} matches:", (255, 200, 100))
@@ -874,7 +858,7 @@ def _find_file_offset_from_memory(current_project_data: ProjectData):
                 if len(found_offsets) > 10:
                     _add_verify_result(f"  ... and {len(found_offsets) - 10} more", (200, 200, 200))
 
-                _add_verify_result("", (255, 255, 255))  # Spacer
+                _add_verify_result("", (255, 255, 255)) 
                 _add_verify_result("Multiple matches - try increasing the pattern size", (255, 200, 100))
 
         except Exception as e:
@@ -885,25 +869,21 @@ def _find_file_offset_from_memory(current_project_data: ProjectData):
             _add_verify_result(traceback.format_exc(), (150, 150, 150))
             messagebox.showerror("Error", f"Error during search:\n\n{str(e)}")
 
-    # Start background thread
     threading.Thread(target=search_thread, daemon=True).start()
 
 def _refresh_emulator_list(current_project_data: ProjectData):
-    """Refresh the list of available emulators using centralized manager"""
-    # Show loading indicator
+
+    # Show loading
     LoadingIndicator.show("Scanning for emulators...")
 
     def refresh_thread():
         try:
-            # Use centralized manager (will notify all registered callbacks)
             manager = get_emulator_manager()
             manager.set_project_data(current_project_data)
             available = manager.scan_emulators()
 
-            # Hide loading indicator
             LoadingIndicator.hide()
 
-            # UI updates are handled by the callback, but we still update locally for immediate feedback
             if available:
                 dpg.configure_item("emu_tools_emulator_combo", items=available, default_value=available[0])
                 dpg.set_value("emu_tools_connection_status", f"Found {len(available)} running emulator(s). Click Connect.")
@@ -918,11 +898,9 @@ def _refresh_emulator_list(current_project_data: ProjectData):
             LoadingIndicator.hide()
             messagebox.showerror("Error", f"Error scanning for emulators:\n\n{str(e)}")
 
-    # Run in background thread
     threading.Thread(target=refresh_thread, daemon=True).start()
 
 def _on_emulator_selected(current_project_data: ProjectData):
-    """Handle emulator selection"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
 
     if emulator_name == "No emulators running":
@@ -934,40 +912,31 @@ def _on_emulator_selected(current_project_data: ProjectData):
     dpg.configure_item("emu_tools_connect_button", enabled=True)
     dpg.set_value("emu_tools_connection_status", f"Ready to connect to {emulator_name}")
 
-    # Refresh item lists for verification tab
+    # Refresh lists for verification tab
     _on_verify_type_changed(current_project_data)
 
 def _connect_to_emulator(current_project_data: ProjectData):
-    """Establish connection to selected emulator"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
 
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please select a running emulator first")
         return
 
-    # Show loading indicator BEFORE starting thread (critical for immediate feedback)
     LoadingIndicator.show("Connecting to emulator...")
 
     def connect_thread():
         try:
-            # Get emulator service
             emu_service = EmulatorService(current_project_data)
 
-            # Establish connection (will be cached)
+            # Establish connection, and cache it
             handle, main_ram, kernel32 = _get_or_establish_connection(emulator_name, emu_service)
-
-            # Hide loading indicator
+            
             LoadingIndicator.hide()
 
             if not handle or not main_ram:
                 dpg.set_value("emu_tools_connection_status", "Connection failed")
                 dpg.configure_item("emu_tools_connection_status", color=(255, 100, 100))
-                messagebox.showerror("Connection Failed",
-                    f"Could not connect to {emulator_name}.\n\n"
-                    "Make sure:\n"
-                    "• Emulator is running\n"
-                    "• A game is loaded\n"
-                    "• Run as Administrator if needed")
+                messagebox.showerror("Connection Failed", f"Could not connect to {emulator_name}.\n\n")
                 return
 
             # Success
@@ -981,16 +950,13 @@ def _connect_to_emulator(current_project_data: ProjectData):
             dpg.configure_item("emu_tools_connection_status", color=(255, 100, 100))
             messagebox.showerror("Error", f"Connection error:\n\n{str(e)}\n\n{traceback.format_exc()}")
 
-    # Run in background thread
     threading.Thread(target=connect_thread, daemon=True).start()
 
 def _on_verify_type_changed(current_project_data: ProjectData):
-    """Update item list when verify type changes and show/hide manual input groups"""
     verify_type = dpg.get_value("memory_verify_type_combo") if dpg.does_item_exist("memory_verify_type_combo") else "Codecave"
 
-    # Show/hide appropriate controls based on selection
+
     if verify_type == "Manual Memory Address":
-        # Hide item combo, show manual memory address input
         if dpg.does_item_exist("memory_verify_item_combo"):
             dpg.configure_item("memory_verify_item_combo", show=False)
         if dpg.does_item_exist("manual_memory_address_group"):
@@ -998,7 +964,6 @@ def _on_verify_type_changed(current_project_data: ProjectData):
         if dpg.does_item_exist("manual_file_offset_group"):
             dpg.configure_item("manual_file_offset_group", show=False)
     elif verify_type == "Manual File Offset":
-        # Hide item combo, show manual file offset input
         if dpg.does_item_exist("memory_verify_item_combo"):
             dpg.configure_item("memory_verify_item_combo", show=False)
         if dpg.does_item_exist("manual_memory_address_group"):
@@ -1039,26 +1004,22 @@ def _on_verify_type_changed(current_project_data: ProjectData):
                 dpg.configure_item("memory_verify_item_combo", items=["No items"], default_value="No items")
 
 def _scan_all_codecaves(current_project_data: ProjectData):
-    """Scan all codecaves to verify they're unused (runs in background thread with loading indicator)"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please connect to a running emulator first")
         return
 
-    # Clear previous results
+    # Clear
     children = dpg.get_item_children("codecave_verification_table", slot=1)
     if children:
         for child in children:
             dpg.delete_item(child)
 
-    # Show loading indicator BEFORE starting thread
     LoadingIndicator.show("Connecting to emulator...")
     dpg.set_value("codecave_scan_status", "")
 
-    # Run scan in background thread
     def scan_thread():
         try:
-            # Get emulator service
             emu_service = EmulatorService(current_project_data)
 
             # Get or establish cached connection
@@ -1067,12 +1028,7 @@ def _scan_all_codecaves(current_project_data: ProjectData):
             if not handle or not main_ram:
                 LoadingIndicator.hide()
                 dpg.set_value("codecave_scan_status", "Connection failed")
-                messagebox.showerror("Error",
-                    f"Could not connect to {emulator_name}.\n\n"
-                    "Make sure:\n"
-                    "• Emulator is running\n"
-                    "• A game is loaded\n"
-                    "• Run as Administrator if needed")
+                messagebox.showerror("Error", f"Could not connect to {emulator_name}.\n\n")
                 return
 
             LoadingIndicator.update_message("Scanning codecaves...")
@@ -1121,7 +1077,6 @@ def _scan_all_codecaves(current_project_data: ProjectData):
                 _add_codecave_result(codecave.GetName(), memory_addr, size, status, details, color)
                 scanned_count += 1
 
-            # Hide loading indicator and show success
             LoadingIndicator.hide()
             dpg.set_value("codecave_scan_status", f"Scanned {scanned_count} codecave(s)")
 
@@ -1131,11 +1086,9 @@ def _scan_all_codecaves(current_project_data: ProjectData):
             dpg.set_value("codecave_scan_status", "Scan failed")
             messagebox.showerror("Error", f"Error during scan:\n\n{str(e)}\n\n{traceback.format_exc()}")
 
-    # Start background thread
     threading.Thread(target=scan_thread, daemon=True).start()
 
 def _add_codecave_result(name: str, address: str, size: str, status: str, details: str, color: tuple):
-    """Add a codecave verification result to the table"""
     with dpg.table_row(parent="codecave_verification_table"):
         dpg.add_text(name)
         dpg.add_text(f"0x{address}")
@@ -1144,12 +1097,9 @@ def _add_codecave_result(name: str, address: str, size: str, status: str, detail
         dpg.add_text(details, color=(200, 200, 200))
 
 def _add_verify_result(text: str, color: tuple):
-    """Add a result line to the memory verification results window"""
     dpg.add_text(text, color=color, parent="memory_verify_results", wrap=900)
 
 def _search_memory(emu_service: EmulatorService, handle, main_ram: int, pattern: bytes, emu_info) -> List[int]:
-    """Search memory for a byte pattern and return list of matching addresses.
-    Returns None if search was cancelled."""
     matches = []
 
     # Determine RAM size based on emulator
@@ -1157,7 +1107,7 @@ def _search_memory(emu_service: EmulatorService, handle, main_ram: int, pattern:
         ram_size = 0x1800000  # 24 MB for GameCube
     elif emu_info.name == "PCSX2":
         ram_size = 0x2000000  # 32 MB for PS2
-    elif emu_info.name == "Duckstation":
+    elif emu_info.name == "Duckstation" or emu_info.name == "Bizhawk": # Make sure to add redux here when it's supported in this view! Might need to add a get_platform_emulators method eventually
         ram_size = 0x200000   # 2 MB for PS1
     else:
         ram_size = 0x2000000  # Default 32 MB
@@ -1191,7 +1141,7 @@ def _search_memory(emu_service: EmulatorService, handle, main_ram: int, pattern:
         # Update progress
         LoadingIndicator.update_message(f"Searching memory... {chunk_num}/{total_chunks} chunks")
 
-        # Read chunk with overlap to catch patterns at chunk boundaries
+        # Read chunk with overlap
         read_size = min(chunk_size + pattern_len, ram_size - offset)
 
         # Use PINE for PS2, otherwise Windows API
@@ -1223,7 +1173,6 @@ def _search_memory(emu_service: EmulatorService, handle, main_ram: int, pattern:
     return matches
 
 def _verify_memory_mapping(current_project_data: ProjectData):
-    """Verify that file offset maps correctly to memory (runs in background thread with loading indicator)"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please connect to a running emulator first")
@@ -1240,31 +1189,22 @@ def _verify_memory_mapping(current_project_data: ProjectData):
     # Clear previous results
     dpg.delete_item("memory_verify_results", children_only=True)
 
-    # Show loading indicator BEFORE starting thread
     LoadingIndicator.show("Connecting to emulator...")
 
-    # Run verification in background thread
     def verify_thread():
         try:
-            # Get emulator service
             emu_service = EmulatorService(current_project_data)
 
-            # Get or establish cached connection
+            # Get or establish connection
             handle, main_ram, kernel32 = _get_or_establish_connection(emulator_name, emu_service)
 
             if not handle or not main_ram:
                 LoadingIndicator.hide()
                 dpg.delete_item("memory_verify_results", children_only=True)
                 _add_verify_result("Connection failed", (255, 100, 100))
-                messagebox.showerror("Error",
-                    f"Could not connect to {emulator_name}.\n\n"
-                    "Make sure:\n"
-                    "• Emulator is running\n"
-                    "• A game is loaded\n"
-                    "• Run as Administrator if needed")
+                messagebox.showerror("Error", f"Could not connect to {emulator_name}.\n\n")
                 return
 
-            # Update loading message
             LoadingIndicator.update_message(f"Reading file data from {verify_type}...")
 
             # Get item data based on type
@@ -1326,7 +1266,7 @@ def _verify_memory_mapping(current_project_data: ProjectData):
 
                 file_offset = int(file_offset_str, 16)
 
-                # Hooks are typically 4 bytes (branch instruction)
+                # Hooks should be 4 bytes on all currently supported platforms
                 size_int = 4
 
                 # Get the file from the hook
@@ -1393,7 +1333,7 @@ def _verify_memory_mapping(current_project_data: ProjectData):
             # Update loading message
             LoadingIndicator.update_message(f"Reading from emulator memory...")
 
-            # Read memory at expected location - use PINE for PS2
+            # Read memory at expected location
             from services.emulator_service import EMULATOR_CONFIGS
             emu_info = EMULATOR_CONFIGS.get(emulator_name)
 
@@ -1435,7 +1375,7 @@ def _verify_memory_mapping(current_project_data: ProjectData):
                 _add_verify_result("ERROR: Could not read memory", (255, 100, 100))
                 return
 
-            # Hide loading indicator and show results
+
             LoadingIndicator.hide()
             dpg.delete_item("memory_verify_results", children_only=True)
             _add_verify_result(f"Verifying {verify_type}: {item_name}", (255, 200, 100))
@@ -1466,14 +1406,13 @@ def _verify_memory_mapping(current_project_data: ProjectData):
                 _add_verify_result("File data does not match expected memory location", (255, 200, 100))
                 _add_verify_result("", (255, 255, 255))  # Spacer
 
-                # Show loading indicator for search with cancel button
                 LoadingIndicator.show("Searching entire RAM for correct pattern...", allow_cancel=True)
 
-                # If pattern is small, expand it with surrounding context to reduce false positives
+                # If pattern is small, search a larger amount of surrounding bytes
                 search_pattern = expected_data
                 pattern_offset_in_search = 0  # Offset of the actual pattern within the search pattern
 
-                MIN_SEARCH_SIZE = 32  # Minimum search pattern size to avoid too many matches
+                MIN_SEARCH_SIZE = 32  # Minimum search pattern size to avoid a bajillion matches
                 if len(expected_data) < MIN_SEARCH_SIZE:
                     # Read extra context from the file (before and after the pattern)
                     context_size = (MIN_SEARCH_SIZE - len(expected_data)) // 2
@@ -1502,7 +1441,6 @@ def _verify_memory_mapping(current_project_data: ProjectData):
                 # Search entire RAM for the pattern
                 matches = _search_memory(emu_service, handle, main_ram, search_pattern, _emulator_connection.emu_info)
 
-                # Hide loading indicator after search
                 LoadingIndicator.hide()
                 _add_verify_result("", (255, 255, 255))  # Spacer
 
@@ -1568,8 +1506,6 @@ def _verify_memory_mapping(current_project_data: ProjectData):
                     _add_verify_result("", (255, 255, 255))  # Spacer
                     _add_verify_result("Multiple matches found - manual verification needed", (255, 200, 100))
 
-            # Don't close handle - we're caching it for performance
-
         except Exception as e:
             import traceback
             LoadingIndicator.hide()
@@ -1578,10 +1514,11 @@ def _verify_memory_mapping(current_project_data: ProjectData):
             _add_verify_result(traceback.format_exc(), (150, 150, 150))
             messagebox.showerror("Error", f"Error during verification:\n\n{str(e)}")
 
-    # Start background thread
     threading.Thread(target=verify_thread, daemon=True).start()
 
-# ==================== Continuous Codecave Monitoring ====================
+
+
+#! Continuous Codecave Monitoring
 
 # Global monitoring state
 _codecave_monitor_active = False
@@ -1590,7 +1527,6 @@ _codecave_snapshots: Dict[str, bytes] = {}
 _codecave_alerted: Dict[str, bool] = {}  
 
 def _start_codecave_monitoring(current_project_data: ProjectData):
-    """Start continuous monitoring of all codecaves"""
     global _codecave_monitor_active, _codecave_monitor_thread, _codecave_snapshots
 
     if _codecave_monitor_active:
@@ -1693,7 +1629,7 @@ def _start_codecave_monitoring(current_project_data: ProjectData):
                     if current_data != _codecave_snapshots[name]:
                         # Check if we've already alerted for this codecave
                         if name not in _codecave_alerted or not _codecave_alerted[name]:
-                            # FIRST TIME DETECTING CHANGE! Find exact byte offset(s) that changed
+                            # Detected change, find exact byte offset(s) that changed
                             old_snapshot = _codecave_snapshots[name]
                             changed_offsets = []
                             for i in range(min(len(current_data), len(old_snapshot))):
@@ -1743,7 +1679,7 @@ def _start_codecave_monitoring(current_project_data: ProjectData):
                                             _add_codecave_result(cc_name, cc_addr, f"{cc_size:X}",
                                                                 "OK", "No writes detected", (100, 255, 100))
 
-                            # Alert user with exact addresses (ONLY ONCE)
+                            # Alert user with exact addresses
                             if len(changed_addresses) == 1:
                                 addr_info = f"Address written: {changed_addresses[0]}"
                             elif len(changed_addresses) <= 5:
@@ -1759,7 +1695,7 @@ def _start_codecave_monitoring(current_project_data: ProjectData):
                             # Mark this codecave as alerted
                             _codecave_alerted[name] = True
 
-                        # Update snapshot (always update, even if already alerted)
+                        # Update snapshot
                         _codecave_snapshots[name] = current_data
 
         except Exception as e:
@@ -1773,7 +1709,6 @@ def _start_codecave_monitoring(current_project_data: ProjectData):
     _codecave_monitor_thread.start()
 
 def _stop_codecave_monitoring():
-    """Stop continuous monitoring"""
     global _codecave_monitor_active
 
     _codecave_monitor_active = False
@@ -1785,14 +1720,13 @@ def _stop_codecave_monitoring():
     dpg.set_value("codecave_monitor_status", "Monitoring stopped")
     dpg.configure_item("codecave_monitor_status", color=(150, 150, 150))
 
+
 def _fill_codecaves_with_pattern(current_project_data: ProjectData):
-    """Fill all codecaves with test pattern (0xAA) to detect game crashes or weird behavior"""
     emulator_name = dpg.get_value("emu_tools_emulator_combo")
     if emulator_name == "No emulators running":
         messagebox.showerror("No Emulator", "Please connect to a running emulator first")
         return
 
-    # Check if connected
     if not _emulator_connection.is_valid:
         messagebox.showerror("Not Connected", "Please click Connect button first")
         return
@@ -1816,7 +1750,6 @@ def _fill_codecaves_with_pattern(current_project_data: ProjectData):
     if not confirm:
         return
 
-    # Show loading indicator
     LoadingIndicator.show("Filling codecaves with pattern...")
 
     def fill_thread():

@@ -12,21 +12,17 @@ class RecentProject:
     timestamp: float
 
 class RecentProjectsService:
-    """Manages the list of recently opened projects"""
-
     MAX_RECENT = 10
     CONFIG_FILE = os.path.join(os.getcwd(), ".modtool", "recent_projects.json")
 
     @staticmethod
     def _ensure_config_dir():
-        """Ensure config directory exists"""
         config_dir = os.path.dirname(RecentProjectsService.CONFIG_FILE)
         if not os.path.exists(config_dir):
             os.makedirs(config_dir, exist_ok=True)
 
     @staticmethod
     def add_recent_project(file_path: str, project_name: str, platform: str):
-        """Add project to recent list (or move to top if already exists)"""
         projects = RecentProjectsService.get_recent_projects()
 
         # Normalize the path for comparison (absolute + case-normalized)
@@ -51,7 +47,6 @@ class RecentProjectsService:
 
     @staticmethod
     def get_recent_projects() -> List[RecentProject]:
-        """Get list of recent projects, filtered to only existing files"""
         projects = RecentProjectsService._load_projects()
 
         # Filter out non-existent files
@@ -76,7 +71,6 @@ class RecentProjectsService:
 
     @staticmethod
     def remove_recent_project(file_path: str):
-        """Remove specific project from recent list"""
         projects = RecentProjectsService.get_recent_projects()
         normalized_path = os.path.normcase(os.path.abspath(file_path))
         projects = [p for p in projects if os.path.normcase(os.path.abspath(p.path)) != normalized_path]
@@ -84,12 +78,10 @@ class RecentProjectsService:
 
     @staticmethod
     def clear_recent_projects():
-        """Clear all recent projects"""
         RecentProjectsService._save_projects([])
 
     @staticmethod
     def _load_projects() -> List[RecentProject]:
-        """Load projects from JSON file"""
         if not os.path.exists(RecentProjectsService.CONFIG_FILE):
             return []
 
@@ -105,7 +97,6 @@ class RecentProjectsService:
 
     @staticmethod
     def _save_projects(projects: List[RecentProject]):
-        """Save projects to JSON file"""
         RecentProjectsService._ensure_config_dir()
 
         try:

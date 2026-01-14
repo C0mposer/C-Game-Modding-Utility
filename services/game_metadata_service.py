@@ -19,9 +19,6 @@ class GameMetadataService:
 
     @staticmethod
     def get_ps1_game_id(build_version) -> Optional[str]:
-        """
-        SCUS_942.82 -> SCUS-94282
-        """
         main_exe = build_version.GetMainExecutable()
         if main_exe:
             # Format: Replace underscore with dash, remove dots
@@ -31,9 +28,6 @@ class GameMetadataService:
 
     @staticmethod
     def get_ps2_game_id(build_version) -> Optional[str]:
-        """
-        SLUS_123.45 -> SLUS-12345
-        """
         main_exe = build_version.GetMainExecutable()
         if main_exe:
             # Format: Remove underscores and dots
@@ -43,7 +37,6 @@ class GameMetadataService:
 
     @staticmethod
     def get_gamecube_game_id(build_version) -> Optional[str]:
-        """Get GameCube game ID from ISO file or ISO.hdr"""
         # Try single file first
         if build_version.IsSingleFileMode():
             single_file = build_version.GetSingleFilePath()
@@ -87,13 +80,6 @@ class GameMetadataService:
 
     @staticmethod
     def get_wii_game_id(build_version) -> Optional[str]:
-        """
-        Extract Wii game ID from ISO file or boot.bin
-
-        Note: For Wii, sys/boot.bin is the most reliable source after extraction,
-        as the game ID location in a disc file varies depending on the file format (offset 0 for ISO, offset 0x200 for WBFS, etc.)
-        but, it's always at offset 0 in the extracted sys/boot.bin file (from my testing so far)
-        """
         # Try single file first
         if build_version.IsSingleFileMode():
             single_file = build_version.GetSingleFilePath()

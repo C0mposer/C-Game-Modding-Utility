@@ -6,10 +6,9 @@ from services.symbol_map_parser_service import SymbolParserService
 from services.emulator_service import EmulatorService
 from services.emulator_connection_manager import get_emulator_manager
 from functions.verbose_print import verbose_print
+from dpg.address_copy_helper import register_address_widget
 import os
 import threading
-
-# Add this to gui_memory_watch.py at the module level
 
 # Global memory watch service instance
 _global_memory_watch_service = None
@@ -21,15 +20,13 @@ def set_memory_watch_service(service):
     global _global_memory_watch_service
     _global_memory_watch_service = service
 
-# Store reference to current window instance (if any)
+# Store reference to current window instance
 _memory_watch_window_instance = None
 
-# Module-level callback for emulator scans (called even when window isn't open)
+# Callback for emulator scans
 def _on_emulators_scanned_module_callback(available: list):
-    """Update Memory Watch UI when emulators are scanned from other windows"""
     verbose_print(f"[MemoryWatch Module] _on_emulators_scanned called with: {available}")
 
-    # Update instance state if it exists
     if _memory_watch_window_instance:
         _memory_watch_window_instance.available_emulators = available
         # Ensure emu_service is set (needed for connection)
@@ -48,7 +45,6 @@ def _on_emulators_scanned_module_callback(available: list):
                 dpg.set_value("emulator_combo", "No emulators found")
                 dpg.configure_item("connect_button", enabled=False)
 
-    # Schedule on main thread
     try:
         dpg.split_frame()
         update_ui()
@@ -56,12 +52,9 @@ def _on_emulators_scanned_module_callback(available: list):
         update_ui()
 
 def register_memory_watch_callback(manager):
-    """Register the module-level callback with the manager"""
     manager.register_scan_callback(_on_emulators_scanned_module_callback)
 
 class MemoryWatchWindow:
-    """Memory Watch window for real-time RAM monitoring"""
-    
     def __init__(self, project_data: ProjectData):
         global _memory_watch_window_instance
 
@@ -71,35 +64,26 @@ class MemoryWatchWindow:
         self.window_tag = "memory_watch_window"
         self.is_watching = False
 
-        # UI state
-        self.manual_watches: list = []  # List of (entry, row_tags)
-        self.symbol_watches: list = []  # List of (symbol, entry, row_tags)
-        self.all_symbols: list = []  # Store all symbols for filtering
-        self.current_filter: str = "all"  # Current filter: "all", "game", or "mod"
+        self.manual_watches: list = []
+        self.symbol_watches: list = []
+        self.all_symbols: list = [] 
+        self.current_filter: str = "all"
 
-        # Loading modals
         self.loading_modal_tag = "memory_watch_loading_modal"
         self.scanning_modal_tag = "memory_watch_scanning_modal"
 
-        # Available emulators
         self.available_emulators = []
         self.emu_service = None
 
-        # Initialize centralized manager
         self.manager = get_emulator_manager()
         self.manager.set_project_data(project_data)
 
-        # Store instance reference for module-level callback
         _memory_watch_window_instance = self
 
-        # Module-level callback is already registered at project init
-        # Also register instance callback for additional updates
         self.manager.register_scan_callback(self._on_emulators_scanned)
 
-        # Create window
         self._create_window()
 
-        # Set up callbacks
         self.watch_service.on_update = self._on_watch_update
         self.watch_service.on_error = self._on_watch_error
 
@@ -107,7 +91,6 @@ class MemoryWatchWindow:
         self._restore_connection_state()
     
     def _create_window(self):
-        """Create the memory watch window"""
         if dpg.does_item_exist(self.window_tag):
             dpg.show_item(self.window_tag)
             return
@@ -166,14 +149,11 @@ class MemoryWatchWindow:
                 with dpg.tab(label="Symbols"):
                     self._create_symbols_tab()
         
-        # Create loading modal
         self._create_loading_modal()
         
-        # Create scanning modal
         self._create_scanning_modal()
     
     def _create_loading_modal(self):
-        """Create loading modal dialog"""
         with dpg.window(
             label="Connecting to Emulator",
             tag=self.loading_modal_tag,
@@ -191,7 +171,6 @@ class MemoryWatchWindow:
             dpg.add_loading_indicator(style=0, radius=2.0)
     
     def _create_scanning_modal(self):
-        """Create scanning modal dialog"""
         with dpg.window(
             label="Scanning for Emulators",
             tag=self.scanning_modal_tag,
@@ -209,11 +188,9 @@ class MemoryWatchWindow:
             dpg.add_loading_indicator(style=0, radius=2.0)
     
     def _show_scanning_modal(self):
-        """Show the scanning modal"""
         dpg.show_item(self.scanning_modal_tag)
     
     def _create_manual_tab(self):
-        """Create the manual watch tab"""
         dpg.add_text("Add Memory Address:")
         
         with dpg.group(horizontal=True):
@@ -253,9 +230,9 @@ class MemoryWatchWindow:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=150)
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)  # Value (Dec) - fits RGBA
             dpg.add_table_column(width_fixed=True, init_width_or_weight=120)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=120)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=120)  # Actions - more room
             
             with dpg.table_row():
                 dpg.add_text("Name")
@@ -272,7 +249,6 @@ class MemoryWatchWindow:
             pass
     
     def _create_symbols_tab(self):
-        """Create the symbols tab"""
         with dpg.group(horizontal=True):
             dpg.add_button(label="Load Symbols from Map", callback=self._load_symbols)
             dpg.add_text("", tag="symbols_status_text")
@@ -317,20 +293,18 @@ class MemoryWatchWindow:
         # Symbol list header
         with dpg.table(header_row=False, borders_innerH=False, borders_outerH=False,
                       borders_innerV=False, borders_outerV=False):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=110)  # Symbol Type
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=50)   # Symbol Type - shorter
             dpg.add_table_column(width_fixed=True, init_width_or_weight=180)  # Symbol Name
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)  # Address
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=30)   # Size
             dpg.add_table_column(width_fixed=True, init_width_or_weight=80)   # Type
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=100)  # Value (Dec)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)  # Value (Dec) - fits RGBA
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)  # Value (Hex)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=280)  # Actions
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=270)  # Actions - more room for Unwatch
 
             with dpg.table_row():
-                dpg.add_text("Symbol Type")
+                dpg.add_text("Src")
                 dpg.add_text("Symbol Name")
                 dpg.add_text("Address")
-                dpg.add_text("S")
                 dpg.add_text("Type")
                 dpg.add_text("Value (Dec)")
                 dpg.add_text("Value (Hex)")
@@ -343,15 +317,12 @@ class MemoryWatchWindow:
             pass
     
     def _scan_emulators(self):
-        """Scan for available emulators using centralized manager"""
         dpg.show_item(self.scanning_modal_tag)
 
         def scan_thread():
-            # Use manager's scan (will notify all registered callbacks)
             self.available_emulators = self.manager.scan_emulators()
             self.emu_service = EmulatorService(self.project_data)
 
-            # Update UI on main thread
             def update_combo():
                 dpg.hide_item(self.scanning_modal_tag)
 
@@ -371,32 +342,26 @@ class MemoryWatchWindow:
                     dpg.configure_item("connect_button", enabled=True)
                     verbose_print(f"Found {len(self.available_emulators)} emulators: {self.available_emulators}")
 
-            # Schedule on main thread using a simple approach
             import time
-            time.sleep(0.1)  # Small delay to ensure scanning modal shows
+            time.sleep(0.1)  # Small delay to ensure it shows up
 
-            # Update directly (should work since we're just setting values)
             try:
                 update_combo()
             except:
-                # If direct call fails, try again in a moment
+                # If fails, try again after a small time
                 threading.Timer(0.1, update_combo).start()
 
         thread = threading.Thread(target=scan_thread, daemon=True)
         thread.start()
 
     def _on_emulators_scanned(self, available: list):
-        """Callback when emulators are scanned by manager (from other windows)"""
         verbose_print(f"[MemoryWatch] _on_emulators_scanned called with: {available}")
 
-        # Update our local state
         self.available_emulators = available
 
-        # Ensure emu_service is set (needed for connection)
         if not self.emu_service:
             self.emu_service = EmulatorService(self.project_data)
 
-        # Update UI if window exists (must happen on main thread)
         def update_ui():
             if dpg.does_item_exist("emulator_combo"):
                 if available:
@@ -409,37 +374,32 @@ class MemoryWatchWindow:
                     dpg.set_value("emulator_combo", "No emulators found")
                     dpg.configure_item("connect_button", enabled=False)
 
-        # Schedule on main thread
         try:
             dpg.split_frame()
             update_ui()
         except:
-            # If split_frame fails, call directly (already on main thread)
             update_ui()
 
     def _restore_connection_state(self):
-        """Restore connection state if manager has an active connection"""
         connection = self.manager.get_current_connection()
         if connection and dpg.does_item_exist("emulator_combo"):
-            # Update combo with cached emulators
+            # Update dropdown with cached emulators
             if self.manager.available_emulators:
                 self.available_emulators = self.manager.available_emulators
-                self.emu_service = EmulatorService(self.project_data)  # Initialize service for connections
+                self.emu_service = EmulatorService(self.project_data)
                 dpg.configure_item("emulator_combo", items=self.available_emulators)
                 dpg.set_value("emulator_combo", connection.emulator_name)
                 dpg.configure_item("connect_button", enabled=True)
                 verbose_print(f"[MemoryWatch] Restored connection to {connection.emulator_name}")
         elif self.manager.available_emulators and dpg.does_item_exist("emulator_combo"):
-            # Use cached scan results from manager (scanned from another window)
             self.available_emulators = self.manager.available_emulators
-            self.emu_service = EmulatorService(self.project_data)  # Initialize service for connections
+            self.emu_service = EmulatorService(self.project_data)
             dpg.configure_item("emulator_combo", items=self.available_emulators)
             dpg.set_value("emulator_combo", self.available_emulators[0])
             dpg.configure_item("connect_button", enabled=True)
             verbose_print(f"[MemoryWatch] Restored {len(self.available_emulators)} emulators from cache")
     
     def _on_emulator_selected(self):
-        """Called when emulator is selected from combo"""
         selected = dpg.get_value("emulator_combo")
         if selected and selected != "Scan for emulators..." and selected != "No emulators found":
             dpg.configure_item("connect_button", enabled=True)
@@ -447,7 +407,6 @@ class MemoryWatchWindow:
             dpg.configure_item("connect_button", enabled=False)
     
     def _connect_to_emulator(self):
-        """Connect to the selected emulator"""
         selected = dpg.get_value("emulator_combo")
         if not selected or selected == "Scan for emulators..." or selected == "No emulators found":
             return
@@ -480,8 +439,6 @@ class MemoryWatchWindow:
                     dpg.configure_item("emulator_combo", enabled=False)
                     dpg.show_item("stop_watch_button")
                     dpg.configure_item("stop_watch_button", enabled=True)
-                    
-                    #messagebox.showinfo("Connected", f"Connected to {selected} and started watching!")
                 else:
                     messagebox.showerror(
                         "Connection Failed",
@@ -498,7 +455,6 @@ class MemoryWatchWindow:
         thread.start()
     
     def _stop_watching(self):
-        """Stop watching memory"""
         self.watch_service.stop()
         self.is_watching = False
         dpg.set_value("watch_status_text", "Stopped")
@@ -507,12 +463,11 @@ class MemoryWatchWindow:
         dpg.configure_item("scan_button", enabled=True)
         dpg.configure_item("emulator_combo", enabled=True)
         
-        # Re-enable connect button if we have emulators
+        # Re-enable connect button
         if self.available_emulators:
             dpg.configure_item("connect_button", enabled=True)
     
     def _add_manual_watch(self):
-        """Add a manual watch entry"""
         address_str = dpg.get_value("manual_address_input")
         type_str = dpg.get_value("manual_type_combo")
         name = dpg.get_value("manual_name_input")
@@ -542,7 +497,7 @@ class MemoryWatchWindow:
             }
             data_type = type_map.get(type_str, DataType.INT_UNSIGNED)
             
-            # Add to watch service
+            # Add to watch
             entry = self.watch_service.add_watch(address, data_type, name)
             
             # Add to GUI
@@ -557,7 +512,6 @@ class MemoryWatchWindow:
             messagebox.showerror("Invalid Input", f"Invalid address: {address_str}")
     
     def _add_manual_watch_row(self, entry: WatchEntry):
-        """Add a row to the manual watch list"""
         row_tag = f"manual_row_{id(entry)}"
         
         # Create table for this row
@@ -567,9 +521,9 @@ class MemoryWatchWindow:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=150)
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)  # Value (Dec) - fits RGBA
             dpg.add_table_column(width_fixed=True, init_width_or_weight=120)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=120)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=120)  # Actions - more room
             
             name_tag = f"{row_tag}_name"
             addr_tag = f"{row_tag}_addr"
@@ -581,8 +535,9 @@ class MemoryWatchWindow:
             with dpg.table_row():
                 dpg.add_text(entry.name, tag=name_tag)
                 dpg.add_text(f"0x{entry.address:X}", tag=addr_tag)
-                
-                # Type dropdown for switching
+                register_address_widget(addr_tag, f"{entry.address:X}", has_0x_prefix=True)
+
+                # Type dropdown
                 dpg.add_combo(
                     tag=type_tag,
                     items=["u8", "s8", "u16", "s16", "u32", "s32", "rgb", "rgba", "bgr", "bgra"],
@@ -607,7 +562,7 @@ class MemoryWatchWindow:
 
                 dpg.add_text("---", tag=hex_tag)
 
-                # Actions group
+                # Buttons
                 with dpg.group(horizontal=True):
                     # Only add +/- buttons for non-color types
                     if not entry.data_type.is_color:
@@ -624,7 +579,7 @@ class MemoryWatchWindow:
                             width=25
                         )
                     
-                    # Edit button - color it differently for color types
+                    # Edit button
                     if entry.data_type.is_color:
                         dpg.add_button(
                             label="Edit",
@@ -655,18 +610,15 @@ class MemoryWatchWindow:
             'color_swatch': color_swatch_tag
         }))
         
-        # If it's a color type and we're connected, do an immediate read
         if entry.data_type.is_color and self.watch_service.main_ram_address:
             self._immediate_read_value(entry)
 
     def _remove_manual_watch(self, entry: WatchEntry, row_tag: str):
-        """Remove a manual watch"""
         self.watch_service.remove_watch(entry)
         dpg.delete_item(row_tag)
         self.manual_watches = [(e, tags) for e, tags in self.manual_watches if e != entry]
     
     def _change_watch_type(self, entry: WatchEntry, new_type_str: str):
-        """Change the data type of a watch entry"""
         type_map = {
             "u8": DataType.BYTE_UNSIGNED,
             "s8": DataType.BYTE_SIGNED,
@@ -683,15 +635,13 @@ class MemoryWatchWindow:
         old_type = entry.data_type
         new_type = type_map.get(new_type_str, DataType.INT_UNSIGNED)
 
-        # Check if we need to rebuild (switching to/from color types, or changing alpha support)
+        # Check if we need to rebuild the gui (switching to/from color types, or changing alpha support)
         needs_rebuild = (old_type.is_color != new_type.is_color) or (old_type.has_alpha != new_type.has_alpha)
         
         entry.data_type = new_type
-        verbose_print(f"Changed {entry.name} type to {new_type_str}")
         
         # If switching to/from color types or changing alpha support, rebuild the row
         if needs_rebuild:
-            # Find and rebuild this row in manual watches
             for e, tags in self.manual_watches:
                 if e == entry:
                     row_tag = tags['row']
@@ -734,7 +684,6 @@ class MemoryWatchWindow:
                             )
                             tags['color_swatch'] = color_swatch_tag
 
-                        # Re-add the text
                         dpg.add_text("???", tag=tags['dec'], parent=dec_group_tag)
                     
                     # Re-add buttons based on type
@@ -774,15 +723,13 @@ class MemoryWatchWindow:
                         before=tags['watch_btn']
                     )
 
-                    # Color Edit button for color types
                     if new_type.is_color:
                         dpg.bind_item_theme(f"{row_tag}_edit_btn", "rgb_edit_theme")
                     
                     return
                 
     def _rebuild_symbol_actions(self, symbol, entry, tags, row_tag):
-        """Rebuild action buttons for a symbol watch"""
-        # Clear all existing action buttons
+        # Clear all existing buttons
         if dpg.does_item_exist(f"{row_tag}_dec"):
             dpg.delete_item(f"{row_tag}_dec")
         if dpg.does_item_exist(f"{row_tag}_inc"):
@@ -794,7 +741,6 @@ class MemoryWatchWindow:
         
         # Add color swatch for color types in the dec value column
         if entry.data_type.is_color:
-            # The dec_tag already exists as a text widget, we need to recreate the group
             # Delete the existing dec text and recreate with color swatch
             if dpg.does_item_exist(tags['dec']):
                 parent = dpg.get_item_parent(tags['dec'])
@@ -815,13 +761,13 @@ class MemoryWatchWindow:
                     dpg.add_text("???", tag=tags['dec'])
                     tags['color_swatch'] = color_swatch_tag
         else:
-            # For non-color types, ensure dec is just text
+            # non-color types
             if dpg.does_item_exist(tags['dec']):
                 parent = dpg.get_item_parent(tags['dec'])
                 dpg.delete_item(tags['dec'])
                 dpg.add_text("???", tag=tags['dec'], parent=parent)
 
-        # Add +/- and Edit buttons (not for color types)
+        # Add +/- and Edit buttons
         if not entry.data_type.is_color:
             def make_dec_callback(e):
                 return lambda: self._modify_value(e, -1)
@@ -861,7 +807,6 @@ class MemoryWatchWindow:
         if not self.watch_service.main_ram_address:
             return
 
-        # Reuse the same handle logic the watch loop uses
         handle = self.watch_service._ensure_process_handle()
         if not handle:
             return
@@ -870,10 +815,8 @@ class MemoryWatchWindow:
             color = self.watch_service._read_color_value(handle, entry.address, entry.data_type)
             if color is not None:
                 if entry.data_type.has_alpha:
-                    # RGBA/BGRA -> (r, g, b, a)
                     entry.update_rgba_value(*color)
                 else:
-                    # RGB/BGR -> (r, g, b)
                     entry.update_rgb_value(*color)
             else:
                 verbose_print(f"Warning: Failed to read color value for {entry.name}")
@@ -884,13 +827,11 @@ class MemoryWatchWindow:
             else:
                 verbose_print(f"Warning: Failed to read value for {entry.name}")
 
-        # Update UI immediately
         self._update_entry_ui(entry)
 
     
     
     def _update_entry_ui(self, entry: WatchEntry):
-        """Update UI for a single entry (used for immediate feedback)"""
         dec_val = entry.format_value()
         hex_val = entry.format_hex()
         
@@ -899,7 +840,7 @@ class MemoryWatchWindow:
             if e == entry:
                 dpg.set_value(tags['dec'], dec_val)
                 dpg.set_value(tags['hex'], hex_val)
-                dpg.configure_item(tags['dec'], color=(100, 255, 100))  # Green for instant update
+                dpg.configure_item(tags['dec'], color=(100, 255, 100))
                 dpg.configure_item(tags['hex'], color=(100, 255, 100))
                 
                 # Update color swatch for color types
@@ -934,18 +875,18 @@ class MemoryWatchWindow:
     
     
     def _modify_value(self, entry: WatchEntry, delta: int):
-        """Increment or decrement value by delta"""
         if entry.current_value is None:
             return
         
-        # Handle float type specially
+        # Handle float type
         if entry.data_type == DataType.FLOAT:
             import struct
             try:
                 # Convert stored int to float
                 float_val = struct.unpack('f', entry.current_value.to_bytes(4, byteorder='little'))[0]
-                # Add delta (convert to float delta)
+                
                 new_float = float_val + float(delta)
+                
                 # Write back
                 success = self.watch_service.write_float_value(entry.address, new_float)
                 if success:
@@ -970,7 +911,7 @@ class MemoryWatchWindow:
         # Write to memory
         success = self.watch_service.write_value(entry.address, new_value, entry.data_type)
         if success:
-            # Immediately read back and update the UI for instant feedback
+            # Update the UI 
             self._immediate_read_value(entry)
         else:
             from gui import gui_messagebox as messagebox
@@ -994,7 +935,6 @@ class MemoryWatchWindow:
                         r, g, b = entry.rgb_value
                         dpg.set_value(picker_tag, (r / 255.0, g / 255.0, b / 255.0, 1.0))
                 else:
-                    # Dialog exists but isn't a color dialog anymore (type changed) - rebuild it.
                     dpg.delete_item(dialog_tag)
 
                 if dpg.does_item_exist(dialog_tag):
@@ -1006,7 +946,6 @@ class MemoryWatchWindow:
 
         # Special handling for color types - show color picker
         if entry.data_type.is_color:
-            # Read current value from memory first to ensure we have the latest value
             self._immediate_read_value(entry)
             self._edit_color_dialog(entry, dialog_tag)
             return
@@ -1019,7 +958,7 @@ class MemoryWatchWindow:
                     new_value = float(value_str)
                     success = self.watch_service.write_float_value(entry.address, new_value)
                 else:
-                    # Parse value (supports hex with 0x prefix)
+                    # Parse value as dec or hex
                     if value_str.startswith("0x"):
                         new_value = int(value_str, 16)
                     else:
@@ -1029,7 +968,6 @@ class MemoryWatchWindow:
                     success = self.watch_service.write_value(entry.address, new_value, entry.data_type)
                 
                 if success:
-                    # Immediately read back and update the UI for instant feedback
                     self._immediate_read_value(entry)
                     dpg.delete_item(dialog_tag)
                 else:
@@ -1039,7 +977,7 @@ class MemoryWatchWindow:
                 from gui import gui_messagebox as messagebox
                 messagebox.showerror("Invalid Value", "Please enter a valid number")
         
-        # Get default value for input field
+
         if entry.data_type == DataType.FLOAT:
             default_value = entry.format_value() if entry.current_value is not None else "0.0"
             hint_text = "Enter decimal number (e.g., 3.14159)"
@@ -1074,11 +1012,9 @@ class MemoryWatchWindow:
                 dpg.add_button(label="Cancel", callback=lambda: dpg.delete_item(dialog_tag), width=120)
     
     def _edit_color_dialog(self, entry: WatchEntry, dialog_tag: str):
-        # Delete existing dialog if it exists
         if dpg.does_item_exist(dialog_tag):
             dpg.delete_item(dialog_tag)
         
-        # Force an immediate read from memory to get fresh values
         if not self.watch_service.main_ram_address:
             print("Error: No emulator connection")
             return
@@ -1088,14 +1024,14 @@ class MemoryWatchWindow:
             print("Error: Could not get process handle")
             return
         
-        # Read the color value directly from memory right now
+        # Read the color value directly from memory
         color = self.watch_service._read_color_value(handle, entry.address, entry.data_type)
         if color is not None:
             if entry.data_type.has_alpha:
                 entry.update_rgba_value(*color)
             else:
                 entry.update_rgb_value(*color)
-            verbose_print(f"Successfully read color from memory: {color}")
+            verbose_print(f"Color {color}")
         else:
             print(f"Warning: Could not read color from memory for {entry.name}")
         
@@ -1114,27 +1050,26 @@ class MemoryWatchWindow:
             verbose_print("Warning: Using default white color because read failed")
 
         def on_color_change(sender, app_data):
-            """Called whenever the color picker changes - write immediately"""
             color = dpg.get_value(f"{dialog_tag}_color_picker")
             
             verbose_print(f"Color picker returned: {color}")
 
-            # DearPyGui returns values in 0-255 range
+            # DearPyGui wants 0-255
             r = round(color[0])
             g = round(color[1])
             b = round(color[2])
             a = round(color[3]) if len(color) > 3 else 255
 
-            # Clamp to valid range
+            # Clamp
             r = max(0, min(255, r))
             g = max(0, min(255, g))
             b = max(0, min(255, b))
             a = max(0, min(255, a))
 
-            # Write to memory immediately
+            # Write to memory
             self.watch_service.write_color_value(entry.address, entry.data_type, r, g, b, a)
 
-            # Immediately read back and update the UI for instant feedback
+            # Update UI
             self._immediate_read_value(entry)
 
         def close_dialog():
@@ -1156,7 +1091,6 @@ class MemoryWatchWindow:
             dpg.add_text(f"Type: {type_str} ({byte_count} bytes)")
             dpg.add_spacer(height=10)
 
-            # Color picker with wheel - use 0-255 values, not normalized
             dpg.add_color_picker(
                 tag=f"{dialog_tag}_color_picker",
                 default_value=initial_color,
@@ -1173,7 +1107,6 @@ class MemoryWatchWindow:
             dpg.add_button(label="Close", callback=close_dialog, width=150)
     
     def _load_symbols(self):
-        """Load symbols from memory map"""
         project_folder = self.project_data.GetProjectFolder()
         map_path = os.path.join(project_folder, '.config', 'memory_map', 'MyMod.map')
         
@@ -1202,21 +1135,19 @@ class MemoryWatchWindow:
         self.all_symbols = symbols
         dpg.set_value("symbols_status_text", f"Loaded {len(symbols)} symbols")
 
-        # Populate symbol list with current filter
+        # Populate symbol list
         self._populate_symbols()
 
     def _filter_symbols_by_type(self, filter_type: str):
-        """Filter symbols by type (Game Symbol / Mod Symbol)"""
         self.current_filter = filter_type
         self._populate_symbols()
 
     def _populate_symbols(self):
-        """Populate the symbol watch list based on current filter"""
         # Clear existing
         dpg.delete_item("symbol_watch_list", children_only=True)
         self.symbol_watches.clear()
 
-        # Filter symbols based on current filter
+        # Filter symbols
         filtered_symbols = []
         for symbol in self.all_symbols:
             if self.current_filter == "all":
@@ -1226,31 +1157,28 @@ class MemoryWatchWindow:
             elif self.current_filter == "mod" and symbol.symbol_type == "Mod Symbol":
                 filtered_symbols.append(symbol)
 
-        # Add rows for filtered symbols
+
         for symbol in filtered_symbols:
             self._add_symbol_row(symbol)
     
     def _add_symbol_row(self, symbol):
-        """Add a row for a symbol"""
         row_tag = f"symbol_row_{id(symbol)}"
 
         # Create table for this row
         with dpg.table(parent="symbol_watch_list", tag=row_tag,
                     header_row=False, borders_innerH=False, borders_outerH=False,
                     borders_innerV=False, borders_outerV=False):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=110)  # Symbol Type
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=50)   # Symbol Type - shorter
             dpg.add_table_column(width_fixed=True, init_width_or_weight=180)  # Symbol Name
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)  # Address
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=30)   # Size
             dpg.add_table_column(width_fixed=True, init_width_or_weight=80)   # Type
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=100)  # Value (Dec)
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=200)  # Value (Dec) - fits RGBA
             dpg.add_table_column(width_fixed=True, init_width_or_weight=100)  # Value (Hex)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=280)  # Actions
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=270)  # Actions - more room for Unwatch
 
             symbol_type_tag = f"{row_tag}_symbol_type"
             name_tag = f"{row_tag}_name"
             addr_tag = f"{row_tag}_addr"
-            size_tag = f"{row_tag}_size"
             type_tag = f"{row_tag}_type"
             dec_tag = f"{row_tag}_dec"
             hex_tag = f"{row_tag}_hex"
@@ -1260,16 +1188,24 @@ class MemoryWatchWindow:
             dec_group_tag = f"{row_tag}_dec_group"
 
             with dpg.table_row():
-                # Symbol Type with color coding
+                # Symbol Type
                 symbol_type_text = symbol.symbol_type if hasattr(symbol, 'symbol_type') and symbol.symbol_type else "Unknown"
-                symbol_type_color = (100, 200, 255) if symbol_type_text == "Game Symbol" else (255, 200, 100)
-                dpg.add_text(symbol_type_text, tag=symbol_type_tag, color=symbol_type_color)
+                if symbol_type_text == "Game Symbol":
+                    display_text = "Game"
+                    symbol_type_color = (100, 200, 255)
+                elif symbol_type_text == "Mod Symbol":
+                    display_text = "Mod"
+                    symbol_type_color = (255, 200, 100)
+                else:
+                    display_text = "?"
+                    symbol_type_color = (200, 200, 200)
+                dpg.add_text(display_text, tag=symbol_type_tag, color=symbol_type_color)
 
                 dpg.add_text(symbol.name, tag=name_tag)
                 dpg.add_text(f"0x{symbol.address:X}", tag=addr_tag)
-                dpg.add_text(f"0x{symbol.size:X}", tag=size_tag)
-                
-                # Type dropdown (enabled, auto-watches on selection)
+                register_address_widget(addr_tag, f"{symbol.address:X}", has_0x_prefix=True)
+
+                # Type dropdown
                 dpg.add_combo(
                     tag=type_tag,
                     items=["u8", "s8", "u16", "s16", "u32", "s32", "float", "rgb", "rgba", "bgr", "bgra"],
@@ -1279,13 +1215,13 @@ class MemoryWatchWindow:
                     callback=lambda s, a, u: self._on_symbol_type_changed(symbol, row_tag, a)
                 )
                 
-                # Value column - wrap in group for potential color swatch
+                # Value column
                 with dpg.group(horizontal=True, tag=dec_group_tag):
                     dpg.add_text("---", tag=dec_tag)
                 
                 dpg.add_text("---", tag=hex_tag)
                 
-                # Actions group with buttons
+                # Buttons
                 with dpg.group(horizontal=True, tag=actions_group_tag):
                     dpg.add_button(
                         label="Watch",
@@ -1306,29 +1242,51 @@ class MemoryWatchWindow:
             }))
     
     def _toggle_symbol_watch(self, symbol, row_tag: str):
-        """Toggle watching a symbol"""
         # Find entry in list
         for i, (sym, entry, tags) in enumerate(self.symbol_watches):
             if sym == symbol:
                 if entry is None:
+                    # Check if connected to emulator before watching
+                    if not self.watch_service.main_ram_address:
+                        from gui import gui_messagebox as messagebox
+                        messagebox.showwarning(
+                            "Not Connected",
+                            "Please connect to an emulator first"
+                        )
+                        return
+
+                    # Read the current type from the dropdown
+                    type_str = dpg.get_value(tags['type'])
+                    type_map = {
+                        "u8": DataType.BYTE_UNSIGNED,
+                        "s8": DataType.BYTE_SIGNED,
+                        "u16": DataType.SHORT_UNSIGNED,
+                        "s16": DataType.SHORT_SIGNED,
+                        "u32": DataType.INT_UNSIGNED,
+                        "s32": DataType.INT_SIGNED,
+                        "float": DataType.FLOAT,
+                        "rgb": DataType.RGB,
+                        "rgba": DataType.RGBA,
+                        "bgr": DataType.BGR,
+                        "bgra": DataType.BGRA,
+                    }
+                    data_type = type_map.get(type_str, DataType.INT_UNSIGNED)
+
                     # Add watch
                     entry = self.watch_service.add_watch(
                         symbol.address,
-                        DataType.INT_UNSIGNED,
+                        data_type,
                         symbol.name
                     )
                     self.symbol_watches[i] = (sym, entry, tags)
                     dpg.set_item_label(tags['watch_btn'], "Unwatch")
-                    
-                    # Update type combo to reflect u32
-                    dpg.set_value(tags['type'], "u32")
-                    
-                    # Update type combo callback to change type (not re-watch)
+
+
                     def make_type_callback(e):
                         return lambda s, a, u: self._change_watch_type(e, a)
                     dpg.configure_item(tags['type'], callback=make_type_callback(entry))
 
-                    # Add control buttons
+                    # Add buttons
                     self._add_symbol_control_buttons(entry, tags)
                     
                 else:
@@ -1336,13 +1294,12 @@ class MemoryWatchWindow:
                     self.watch_service.remove_watch(entry)
                     self.symbol_watches[i] = (sym, None, tags)
                     dpg.set_item_label(tags['watch_btn'], "Watch")
-                    # Keep type combo enabled so user can select type before re-watching
+                    # Keep type combo enabled
                     dpg.set_value(tags['dec'], "---")
                     dpg.set_value(tags['hex'], "---")
-                    
-                    # Reset type combo to u32
-                    dpg.set_value(tags['type'], "u32")
-                    
+
+                    dpg.configure_item(tags['type'], callback=lambda s, a, u: self._on_symbol_type_changed(symbol, row_tag, a))
+
                     # Remove inc/dec/edit buttons
                     if dpg.does_item_exist(f"{row_tag}_dec_btn"):
                         dpg.delete_item(f"{row_tag}_dec_btn")
@@ -1350,45 +1307,74 @@ class MemoryWatchWindow:
                         dpg.delete_item(f"{row_tag}_inc_btn")
                     if dpg.does_item_exist(f"{row_tag}_edit_btn"):
                         dpg.delete_item(f"{row_tag}_edit_btn")
-                    
-                    # Remove color swatch if exists
-                    if dpg.does_item_exist(tags.get('color_swatch', '')):
-                        dpg.delete_item(tags['color_swatch'])
+
+                    # Remove color swatch if it exists and rebuild dec_group
+                    dec_group_tag = tags.get('dec_group')
+                    if dpg.does_item_exist(dec_group_tag):
+                        dpg.delete_item(dec_group_tag, children_only=True)
+                        # Re-add just the text (no swatch)
+                        dpg.add_text("---", tag=tags['dec'], parent=dec_group_tag)
                 break
 
     def _add_symbol_control_buttons(self, entry, tags):
-        """Add +/-/Edit buttons for a symbol watch"""
         row_tag = tags['row']
 
-        # Add inc/dec/edit buttons only if they don't exist
-        if not dpg.does_item_exist(f"{row_tag}_dec_btn"):
-            def make_dec_callback(e):
-                return lambda: self._modify_value(e, -1)
-            dpg.add_button(
-                label="-",
-                tag=f"{row_tag}_dec_btn",
-                callback=make_dec_callback(entry),
-                width=25,
-                parent=tags['actions_group'],
-                before=tags['watch_btn']
-            )
+        # For color types, add color swatch to dec_group
+        if entry.data_type.is_color:
+            dec_group_tag = tags.get('dec_group')
+            color_swatch_tag = tags.get('color_swatch')
 
-        if not dpg.does_item_exist(f"{row_tag}_inc_btn"):
-            def make_inc_callback(e):
-                return lambda: self._modify_value(e, 1)
-            dpg.add_button(
-                label="+",
-                tag=f"{row_tag}_inc_btn",
-                callback=make_inc_callback(entry),
-                width=25,
-                parent=tags['actions_group'],
-                before=tags['watch_btn']
-            )
+            # Only add swatch if it doesn't exist
+            if not dpg.does_item_exist(color_swatch_tag):
+                # Clear the dec_group and rebuild with color swatch
+                if dpg.does_item_exist(dec_group_tag):
+                    dpg.delete_item(dec_group_tag, children_only=True)
 
+                    # Add color swatch first
+                    dpg.add_color_button(
+                        tag=color_swatch_tag,
+                        default_value=(0, 0, 0, 255),
+                        width=20,
+                        height=20,
+                        no_alpha=not entry.data_type.has_alpha,
+                        no_drag_drop=True,
+                        parent=dec_group_tag
+                    )
+
+                    # Re-add the dec text
+                    dpg.add_text("???", tag=tags['dec'], parent=dec_group_tag)
+
+        # Add inc/dec/edit buttons only for non-color types
+        if not entry.data_type.is_color:
+            if not dpg.does_item_exist(f"{row_tag}_dec_btn"):
+                def make_dec_callback(e):
+                    return lambda: self._modify_value(e, -1)
+                dpg.add_button(
+                    label="-",
+                    tag=f"{row_tag}_dec_btn",
+                    callback=make_dec_callback(entry),
+                    width=25,
+                    parent=tags['actions_group'],
+                    before=tags['watch_btn']
+                )
+
+            if not dpg.does_item_exist(f"{row_tag}_inc_btn"):
+                def make_inc_callback(e):
+                    return lambda: self._modify_value(e, 1)
+                dpg.add_button(
+                    label="+",
+                    tag=f"{row_tag}_inc_btn",
+                    callback=make_inc_callback(entry),
+                    width=25,
+                    parent=tags['actions_group'],
+                    before=tags['watch_btn']
+                )
+
+        # Always add Edit button
         if not dpg.does_item_exist(f"{row_tag}_edit_btn"):
             def make_edit_callback(e):
                 return lambda: self._edit_value_dialog(e)
-            dpg.add_button(
+            edit_btn = dpg.add_button(
                 label="Edit",
                 tag=f"{row_tag}_edit_btn",
                 callback=make_edit_callback(entry),
@@ -1396,16 +1382,31 @@ class MemoryWatchWindow:
                 parent=tags['actions_group'],
                 before=tags['watch_btn']
             )
+
+            # Color the edit button for color types
+            if entry.data_type.is_color:
+                dpg.bind_item_theme(f"{row_tag}_edit_btn", "rgb_edit_theme")
+
         # If it's a color type and we're connected, do an immediate read
         if entry.data_type.is_color and self.watch_service.main_ram_address:
             self._immediate_read_value(entry)
 
     def _on_symbol_type_changed(self, symbol, row_tag: str, new_type_str: str):
-        """Handle type change in symbols tab - auto-starts watching if not already"""
         # Find the symbol watch entry
         for i, (sym, entry, tags) in enumerate(self.symbol_watches):
             if sym.address == symbol.address and tags['row'] == row_tag:
                 if entry is None:
+                    # Check if connected to emulator before watching
+                    if not self.watch_service.main_ram_address:
+                        from gui import gui_messagebox as messagebox
+                        messagebox.showwarning(
+                            "Not Connected",
+                            "Please connect to an emulator first"
+                        )
+                        # Reset to u32
+                        dpg.set_value(tags['type'], "u32")
+                        return
+
                     # Not being watched yet - start watching with the selected type
                     type_map = {
                         "u8": DataType.BYTE_UNSIGNED,
@@ -1430,17 +1431,20 @@ class MemoryWatchWindow:
                     # Add control buttons
                     self._add_symbol_control_buttons(entry, tags)
                 else:
-                    # Already watching - just change the type
+                    # Already watching - just change type
                     self._change_watch_type(entry, new_type_str)
                 break
-
-    def _change_symbol_watch_type(self, symbol, new_type_str: str):
-        """Change the data type of a symbol watch (deprecated - kept for backward compatibility)"""
-        # This is no longer used but kept in case of old callbacks
-        pass
     
     def _watch_all_symbols(self):
-        """Watch all visible symbols"""
+        # Check if connected to emulator before watching
+        if not self.watch_service.main_ram_address:
+            from gui import gui_messagebox as messagebox
+            messagebox.showwarning(
+                "Not Connected",
+                "Please connect to an emulator first"
+            )
+            return
+
         count = 0
         for i, (symbol, entry, tags) in enumerate(self.symbol_watches):
             if entry is None and dpg.is_item_shown(tags['row']):
@@ -1452,14 +1456,14 @@ class MemoryWatchWindow:
                 self.symbol_watches[i] = (symbol, entry, tags)
                 dpg.set_item_label(tags['watch_btn'], "Unwatch")
                 
-                # Enable type dropdown and set callback
+                # Enable type dropdown
                 dpg.configure_item(tags['type'], enabled=True)
-                # Use closure with default parameter to capture entry correctly
+                
                 def make_type_callback(e):
                     return lambda s, a, u: self._change_watch_type(e, a)
                 dpg.configure_item(tags['type'], callback=make_type_callback(entry))
                 
-                # Add inc/dec/edit buttons only if they don't exist
+                # Add inc/dec/edit buttons if they don't exist
                 row_tag = tags['row']
                 
                 if not dpg.does_item_exist(f"{row_tag}_dec_btn"):
@@ -1503,7 +1507,6 @@ class MemoryWatchWindow:
         verbose_print(f"Added {count} symbol watches")
     
     def _filter_symbols(self):
-        """Filter symbols by search text"""
         filter_text = dpg.get_value("symbol_filter_input").lower()
         
         for symbol, entry, tags in self.symbol_watches:
@@ -1513,7 +1516,6 @@ class MemoryWatchWindow:
                 dpg.hide_item(tags['row'])
     
     def _on_watch_update(self, entries):
-        """Called when watch values update"""
         # Update manual watches
         for entry, tags in self.manual_watches:
             dec_val = entry.format_value()
@@ -1568,24 +1570,16 @@ class MemoryWatchWindow:
                     dpg.configure_item(tags['hex'], color=(255, 255, 255))
     
     def _on_watch_error(self, error_msg: str):
-        """Called when watch encounters an error"""
         dpg.set_value("watch_status_text", f"Error: {error_msg}")
         dpg.configure_item("watch_status_text", color=(255, 100, 100))
     
     def _on_window_close(self):
-        """Called when window is closed - just stop watching, don't reset connection"""
         # Stop watching but keep connection alive
         if self.is_watching:
             self.watch_service.stop()
             self.is_watching = False
-
-        # DON'T unregister scan callback - keep receiving updates even when window is closed
-        # The callback checks if window exists before updating UI
-
-        verbose_print("Memory watch window closed (connection preserved)")
     
     def _reset_window_state(self):
-        """Reset the entire window state - only called when switching projects"""
         # Stop watching service
         self.watch_service.stop()
         self.is_watching = False
@@ -1630,7 +1624,6 @@ class MemoryWatchWindow:
     
     
     def show(self):
-        """Show the window"""
         if dpg.does_item_exist(self.window_tag):
             dpg.show_item(self.window_tag)
         else:
@@ -1643,7 +1636,6 @@ _last_project_data: Optional[ProjectData] = None
 
 
 def get_memory_watch_service():
-    """Get the global memory watch service instance"""
     global _memory_watch_window
     if _memory_watch_window:
         return _memory_watch_window.watch_service
@@ -1651,7 +1643,6 @@ def get_memory_watch_service():
 
 
 def reset_memory_watch_for_project_change():
-    """Reset memory watch when project changes or closes"""
     global _memory_watch_window, _last_project_data
     
     if _memory_watch_window is not None:
@@ -1663,7 +1654,6 @@ def reset_memory_watch_for_project_change():
 
 
 def show_memory_watch_window(project_data: ProjectData):
-    """Show memory watch window"""
     global _memory_watch_window, _last_project_data
     
     # If project changed, fully reset
@@ -1672,7 +1662,7 @@ def show_memory_watch_window(project_data: ProjectData):
         _memory_watch_window._reset_window_state()
         _memory_watch_window = None
     
-    # Create new instance if needed
+    # Create new instance
     if _memory_watch_window is None:
         _memory_watch_window = MemoryWatchWindow(project_data)
     else:

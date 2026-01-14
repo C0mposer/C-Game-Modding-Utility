@@ -1,8 +1,3 @@
-# gui/gui_codecave_finder.py
-"""
-Codecave Finder Tool - Searches for empty space (null bytes) in game files
-"""
-
 import dearpygui.dearpygui as dpg
 import os
 from typing import List, Optional
@@ -10,48 +5,44 @@ from gui import gui_messagebox as messagebox
 from classes.project_data.project_data import ProjectData
 from classes.injection_targets.code_cave import Codecave
 from dpg.widget_themes import SetLastItemsTheme
+from dpg.address_copy_helper import register_address_widget
+from functions.verbose_print import verbose_print
 
 class CodecaveCandidate:
-    """Represents a potential codecave location"""
     def __init__(self, file_offset: int, size: int, memory_address: Optional[int] = None):
         self.file_offset = file_offset
         self.size = size
         self.memory_address = memory_address
 
 class DebugStringGroup:
-    """Represents a continuous group of debug strings"""
     def __init__(self, start_offset: int, end_offset: int, string_count: int, strings: List[dict]):
         self.start_offset = start_offset
         self.end_offset = end_offset
         self.size = end_offset - start_offset
         self.string_count = string_count
-        self.strings = strings  # List of dicts with 'offset', 'text', 'length'
+        self.strings = strings 
         self.memory_address: Optional[int] = None
 
-        self.printf_debug_count = 0   # Number of strings in group that look like debug strings
-        self.is_printf_debug = False  # True if group contains any debug/printf strings
+        self.printf_debug_count = 0   # Number of strings that look like debug strings
+        self.is_printf_debug = False  # True if group contains any debug looking strings
 
         self.total_format_specs = 0      # Total number of printf-like format specifiers in the group
         self.debug_keyword_count = 0     # Number of strings with error/debug keywords
-        self.debug_score = 0             # Weighted score used for sorting
+        self.debug_score = 0
 
+
+# Looks for printf patterns like %d, %s, etc, and words like ("error", "warning" etc etc)
 def _is_printf_debug_string(text: str) -> tuple[bool, int, bool]:
-    """
-    Check if a string is likely a printf format string or an error/debug/log message.
-    Returns (is_debug, format_spec_count, has_debug_keyword).
-
-    NOTE: We deliberately do NOT treat file paths as debug strings anymore.
-    """
     import re
 
     text_lower = text.lower()
 
-    # Match patterns like: %s, %d, %5d, %.2f, %08x, %ld, %lld, %p, etc.
+    # Match patterns like: %s, %d
     printf_pattern = r'%[-+ 0#]*(?:\d+|\*)?(?:\.(?:\d+|\*))?(?:hh|h|l|ll|j|z|t|L)?[sdioxXufFeEgGaAcpn%]'
     format_specs = re.findall(printf_pattern, text)
     format_count = len([f for f in format_specs if f != '%%'])  # Exclude literal %%
 
-    # Check for error/debug keywords
+    # Check for error/debug keywords (I should scroll through some more error logs to try to find some more keywords, but this probably suffices for now)
     debug_keywords = [
         'error', 'fail', 'warning', 'assert', 'debug', 'printf', 'log',
         'exception', 'fatal', 'panic', 'abort', 'trace', 'interrupt', 'timeout'
@@ -64,22 +55,19 @@ def _is_printf_debug_string(text: str) -> tuple[bool, int, bool]:
     return is_debug, format_count, has_debug_keyword
 
 def show_codecave_finder_window(sender, app_data, current_project_data: ProjectData):
-    """Show the codecave finder tool window"""
-
-    # Delete existing window if it exists
+    # Clear data
     if dpg.does_item_exist("codecave_finder_window"):
         dpg.delete_item("codecave_finder_window")
 
     current_build = current_project_data.GetCurrentBuildVersion()
 
-    # Get available game files
     game_files = current_build.GetInjectionFiles()
 
     if not game_files:
         messagebox.showinfo("No Files", "No game files available.\n\nPlease add game files first in the 'Target Game Files' tab.")
         return
 
-    # Calculate centered position for 1024x768 viewport
+    # Positioning
     window_width = 915
     window_height = 700
     viewport_width = 1024
@@ -101,21 +89,18 @@ def show_codecave_finder_window(sender, app_data, current_project_data: ProjectD
         dpg.add_separator()
         dpg.add_spacer(height=10)
 
-        # Tab bar for different finder types
-        # Main tab bar for codecave finder
-    # Tab bar for different finder types
+
+        # Tab bar for different strategies
         with dpg.tab_bar(tag="codecave_finder_tab_bar"):
             # Debug String Finder tab
             with dpg.tab(label="Debug String Finder", tag="debug_string_finder_tab"):
                 _create_debug_string_finder_tab(current_project_data, game_files)
-                
             # Padding Finder tab
             with dpg.tab(label="Padding Finder", tag="padding_finder_tab"):
                 _create_padding_finder_tab(current_project_data, game_files)
 
 
 def _create_padding_finder_tab(current_project_data: ProjectData, game_files: List[str]):
-    """Create the padding finder tab (original codecave finder)"""
     dpg.add_text("Find Padding Byte Regions", color=(100, 200, 255))
     dpg.add_text("Scan for continuous groups of padding (0x00) bytes to repurpose as codecaves",
                 color=(150, 150, 150))
@@ -134,7 +119,7 @@ def _create_padding_finder_tab(current_project_data: ProjectData, game_files: Li
 
     dpg.add_spacer(height=5)
 
-    # Minimum size filter
+    # Minimum search size
     with dpg.group(horizontal=True):
         dpg.add_text("Minimum Size (bytes):")
         dpg.add_input_int(
@@ -162,7 +147,7 @@ def _create_padding_finder_tab(current_project_data: ProjectData, game_files: Li
     dpg.add_separator()
     dpg.add_spacer(height=10)
 
-    # Results section
+    # Results
     dpg.add_text("Found Codecaves:", color=(100, 200, 255))
     dpg.add_text("(Sorted by size, largest first)", color=(150, 150, 150))
     dpg.add_spacer(height=5)
@@ -179,7 +164,6 @@ def _create_padding_finder_tab(current_project_data: ProjectData, game_files: Li
         scrollY=True,
         height=200
     ):
-        # Columns
         dpg.add_table_column(label="#", width_fixed=True, init_width_or_weight=40)
         dpg.add_table_column(label="Size (bytes)", width_fixed=True, init_width_or_weight=100)
         dpg.add_table_column(label="Size (hex)", width_fixed=True, init_width_or_weight=100)
@@ -191,7 +175,7 @@ def _create_padding_finder_tab(current_project_data: ProjectData, game_files: Li
     dpg.add_spacer(height=10)
     dpg.add_separator()
 
-    # Info text
+    # Info text (I could probably either shorten this, or point to the wiki)
     with dpg.group(horizontal=False):
         dpg.add_text("How to Use:", color=(255, 200, 100))
         dpg.add_text("1. Select the game file you want to scan")
@@ -209,7 +193,6 @@ def _create_padding_finder_tab(current_project_data: ProjectData, game_files: Li
                     color=(150, 150, 150))
 
 def _create_debug_string_finder_tab(current_project_data: ProjectData, game_files: List[str]):
-    """Create the debug string finder tab"""
     dpg.add_text("Find Debug String Regions", color=(100, 200, 255))
     dpg.add_text("Scan for continuous groups of debug strings that can be repurposed as codecaves",
                 color=(150, 150, 150))
@@ -226,17 +209,6 @@ def _create_debug_string_finder_tab(current_project_data: ProjectData, game_file
 
     dpg.add_spacer(height=5)
 
-    # # Filter options
-    # with dpg.group(horizontal=True):
-    #     dpg.add_checkbox(
-    #         label="Show only Printf/Debug strings (format specifiers, paths, errors)",
-    #         tag="debug_string_filter_printf",
-    #         default_value=False,
-    #         callback=lambda: _on_debug_string_filter_changed(current_project_data)
-    #     )
-
-    # dpg.add_spacer(height=10)
-
     # Scan button
     with dpg.group(horizontal=True):
         dpg.add_button(
@@ -251,7 +223,7 @@ def _create_debug_string_finder_tab(current_project_data: ProjectData, game_file
     dpg.add_separator()
     dpg.add_spacer(height=10)
 
-    # Results section
+    # Results
     dpg.add_text("Found Debug String Groups:", color=(100, 200, 255))
     dpg.add_text("(Sorted by printf/debug strings first, then by size)", color=(150, 150, 150))
     dpg.add_spacer(height=5)
@@ -268,7 +240,6 @@ def _create_debug_string_finder_tab(current_project_data: ProjectData, game_file
         scrollY=True,
         height=200
     ):
-        # Columns
         dpg.add_table_column(label="#", width_fixed=True, init_width_or_weight=20)
         dpg.add_table_column(label="Debug", width_fixed=True, init_width_or_weight=50)
         dpg.add_table_column(label="Amt", width_fixed=True, init_width_or_weight=30)
@@ -281,7 +252,7 @@ def _create_debug_string_finder_tab(current_project_data: ProjectData, game_file
     dpg.add_spacer(height=10)
     dpg.add_separator()
 
-    # Info text
+    # Info text (Same here, might remove and point to wiki in future)
     with dpg.group(horizontal=False):
         dpg.add_text("How to Use:", color=(255, 200, 100))
         dpg.add_text("1. Select the game file you want to scan")
@@ -296,10 +267,8 @@ def _create_debug_string_finder_tab(current_project_data: ProjectData, game_file
         dpg.add_text("Some strings may look like debug strings, but are actually needed for functionality! Ensure you properly test them.")
 
 def _on_file_selected(sender, app_data, current_project_data: ProjectData):
-    """Handle file selection change"""
     # Clear previous results
     if dpg.does_item_exist("codecave_finder_results_table"):
-        # Clear table contents
         children = dpg.get_item_children("codecave_finder_results_table", slot=1)
         if children:
             for child in children:
@@ -308,8 +277,6 @@ def _on_file_selected(sender, app_data, current_project_data: ProjectData):
     dpg.set_value("codecave_finder_status", "")
 
 def _on_scan_clicked(sender, app_data, current_project_data: ProjectData):
-    """Scan selected file for codecaves"""
-
     filename = dpg.get_value("codecave_finder_file_combo")
     min_size = dpg.get_value("codecave_finder_min_size")
 
@@ -317,7 +284,6 @@ def _on_scan_clicked(sender, app_data, current_project_data: ProjectData):
         messagebox.showerror("No File", "Please select a file to scan")
         return
 
-    # Find file path
     current_build = current_project_data.GetCurrentBuildVersion()
     file_path = current_build.FindFileInGameFolder(filename)
 
@@ -326,7 +292,7 @@ def _on_scan_clicked(sender, app_data, current_project_data: ProjectData):
         messagebox.showerror("File Not Found", f"Could not find file: {filename}")
         return
 
-    # Scan for codecaves
+    # Scan
     try:
         candidates = _scan_file_for_codecaves(file_path, min_size)
 
@@ -351,10 +317,6 @@ def _on_scan_clicked(sender, app_data, current_project_data: ProjectData):
         messagebox.showerror("Scan Error", f"Error scanning file:\n\n{str(e)}\n\n{traceback.format_exc()}")
 
 def _scan_file_for_codecaves(file_path: str, min_size: int) -> List[CodecaveCandidate]:
-    """
-    Scan a file for contiguous blocks of null bytes (0x00).
-    Returns list of candidates sorted by size (largest first).
-    """
     candidates = []
 
     with open(file_path, 'rb') as f:
@@ -362,7 +324,6 @@ def _scan_file_for_codecaves(file_path: str, min_size: int) -> List[CodecaveCand
 
     file_size = len(file_data)
 
-    # Track current run of null bytes
     run_start = None
     run_length = 0
 
@@ -393,13 +354,7 @@ def _scan_file_for_codecaves(file_path: str, min_size: int) -> List[CodecaveCand
 
     return candidates
 
-def _calculate_memory_addresses(candidates: List[CodecaveCandidate],
-                                filename: str,
-                                current_project_data: ProjectData):
-    """
-    Calculate memory addresses for each codecave candidate.
-    Uses section maps if available, otherwise falls back to file offset.
-    """
+def _calculate_memory_addresses(candidates: List[CodecaveCandidate], filename: str, current_project_data: ProjectData):
     current_build = current_project_data.GetCurrentBuildVersion()
 
     # Check if section map exists
@@ -420,7 +375,7 @@ def _calculate_memory_addresses(candidates: List[CodecaveCandidate],
                     candidate.memory_address = section.mem_start + offset_within_section
                     break
     else:
-        # Fallback: Use file offset
+        # Fallback: Use single file offset
         file_offset_str = current_build.GetInjectionFileOffset(filename)
 
         if file_offset_str:
@@ -428,18 +383,12 @@ def _calculate_memory_addresses(candidates: List[CodecaveCandidate],
                 file_offset = int(file_offset_str, 16)
 
                 for candidate in candidates:
-                    # Memory address = file offset in file + base RAM offset
                     candidate.memory_address = candidate.file_offset + file_offset
 
             except ValueError:
                 print(f"Warning: Could not parse file offset: {file_offset_str}")
 
-def _display_results(candidates: List[CodecaveCandidate],
-                     filename: str,
-                     current_project_data: ProjectData,
-                     file_path: str):
-    """Display scan results in the table"""
-
+def _display_results(candidates: List[CodecaveCandidate], filename: str, current_project_data: ProjectData, file_path: str):
     # Clear previous results
     children = dpg.get_item_children("codecave_finder_results_table", slot=1)
     if children:
@@ -462,19 +411,23 @@ def _display_results(candidates: List[CodecaveCandidate],
             dpg.add_text(f"0x{candidate.size:X}")
 
             # File offset
-            dpg.add_text(f"0x{candidate.file_offset:X}", color=(150, 200, 255))
+            file_offset_tag = f"codecave_file_offset_{idx}"
+            dpg.add_text(f"0x{candidate.file_offset:X}", tag=file_offset_tag, color=(150, 200, 255))
+            register_address_widget(file_offset_tag, f"{candidate.file_offset:X}", has_0x_prefix=True)
 
             # Memory address
             if candidate.memory_address is not None:
+                mem_addr_tag = f"codecave_mem_addr_{idx}"
                 if platform in ["PS1", "N64", "Gamecube", "Wii"]:
                     mem_addr_str = f"0x80{candidate.memory_address:06X}"
                 else:
                     mem_addr_str = f"0x{candidate.memory_address:08X}"
-                dpg.add_text(mem_addr_str, color=(150, 255, 150))
+                dpg.add_text(mem_addr_str, tag=mem_addr_tag, color=(150, 255, 150))
+                register_address_widget(mem_addr_tag, mem_addr_str.replace("0x", ""), has_0x_prefix=True)
             else:
                 dpg.add_text("Unknown", color=(150, 150, 150))
 
-            # Section type (if available)
+            # Section type
             if candidate.memory_address is not None:
                 section_info = current_build.GetSectionInfoForAddress(filename, candidate.memory_address)
                 if section_info:
@@ -485,7 +438,7 @@ def _display_results(candidates: List[CodecaveCandidate],
             else:
                 dpg.add_text("No map", color=(150, 150, 150))
 
-            # Action buttons
+            # Buttons
             with dpg.group(horizontal=True):
                 dpg.add_button(
                     label="View Hex",
@@ -504,10 +457,8 @@ def _display_results(candidates: List[CodecaveCandidate],
                 dpg.bind_item_theme(dpg.last_item(), "add_as_cave_theme")
 
 def _on_view_hex_clicked(sender, app_data, user_data):
-    """Show hex viewer for a codecave candidate"""
     candidate, filename, current_project_data, file_path = user_data
 
-    # Create unique window tag
     window_tag = f"hex_viewer_{candidate.file_offset}"
 
     # Delete existing window if it exists
@@ -520,7 +471,7 @@ def _on_view_hex_clicked(sender, app_data, user_data):
 
     file_size = len(file_data)
 
-    # Calculate context range (show 0x100 bytes before and after)
+    # show 0x100 bytes before and after
     context_before = 0x100
     context_after = 0x100
 
@@ -530,7 +481,7 @@ def _on_view_hex_clicked(sender, app_data, user_data):
     # Extract data region
     data_region = file_data[start_offset:end_offset]
 
-    # Calculate codecave boundaries within the displayed region
+    # Calculate boundaries
     codecave_start_in_region = candidate.file_offset - start_offset
     codecave_end_in_region = codecave_start_in_region + candidate.size
 
@@ -549,17 +500,8 @@ def _on_view_hex_clicked(sender, app_data, user_data):
 
     
 
-    with dpg.window(
-        label=f"Hex Viewer - Codecave at 0x{candidate.file_offset:X}",
-        tag=window_tag,
-        width=900,
-        height=700,
-        pos=[50, 10],
-        modal=False,
-        no_close=False,
-        no_move = True
-    ):
-        # Header info
+    with dpg.window(label=f"Hex Viewer - Codecave at 0x{candidate.file_offset:X}", tag=window_tag, width=900, height=700, pos=[50, 10], modal=False, no_close=False, no_move = True):
+        # Header
         dpg.add_text(f"File: {filename}", color=(100, 200, 255))
         dpg.add_text(f"File Offset: 0x{candidate.file_offset:X} | Memory Address: {mem_addr_str} | Size: 0x{candidate.size:X} ({candidate.size} bytes)",
                     color=(150, 200, 150))
@@ -568,7 +510,6 @@ def _on_view_hex_clicked(sender, app_data, user_data):
         dpg.add_separator()
         dpg.add_spacer(height=5)
 
-        # Legend
         with dpg.group(horizontal=True):
             dpg.add_text("Legend:", color=(180, 180, 180))
             dpg.add_text("  0x00", color=(50, 200, 50))
@@ -580,12 +521,10 @@ def _on_view_hex_clicked(sender, app_data, user_data):
         dpg.add_separator()
         dpg.add_spacer(height=5)
 
-        # Hex dump container with scrolling
         with dpg.child_window(height=550, border=True):
             _create_hex_dump(data_region, start_offset, codecave_start_in_region, codecave_end_in_region)
 
 def _create_hex_dump(data: bytes, base_offset: int, codecave_start: int, codecave_end: int):
-    """Create a formatted hex dump with color coding"""
     bytes_per_row = 16
 
     for row_start in range(0, len(data), bytes_per_row):
@@ -605,29 +544,29 @@ def _create_hex_dump(data: bytes, base_offset: int, codecave_start: int, codecav
 
                     # Determine color based on whether this byte is in the codecave
                     if codecave_start <= byte_pos_in_region < codecave_end:
-                        # Inside codecave region - bright green
-                        color = (50, 200, 50)
+                        # Inside codecave region
+                        color = (50, 200, 50) # Green
                     else:
-                        # Outside codecave - normal gray
-                        color = (200, 200, 200)
+                        # Outside codecave
+                        color = (200, 200, 200) # Grey
 
                     dpg.add_text(f"{byte:02X}", color=color)
 
-                    # Add spacing every 4 bytes for readability
+                    # Add spacing every 4 bytess
                     if (i + 1) % 4 == 0 and i + 1 < len(row_data):
                         dpg.add_text(" ", color=(100, 100, 100))
 
             dpg.add_spacer(width=20)
 
-            # ASCII representation
+            # ASCII section
             ascii_str = ""
             for i, byte in enumerate(row_data):
-                if 32 <= byte <= 126:  # Printable ASCII
+                if 32 <= byte <= 126:  # ASCII chars
                     ascii_str += chr(byte)
                 else:
                     ascii_str += "."
 
-            # Color the ASCII section
+            # Color it the same
             byte_pos_in_region = row_start
             if codecave_start <= byte_pos_in_region < codecave_end:
                 ascii_color = (50, 200, 50)
@@ -637,18 +576,15 @@ def _create_hex_dump(data: bytes, base_offset: int, codecave_start: int, codecav
             dpg.add_text(f"| {ascii_str}", color=ascii_color)
 
 def _on_add_codecave_clicked(sender, app_data, user_data):
-    """Add a codecave candidate as an actual codecave"""
     candidate, filename, current_project_data = user_data
     current_build = current_project_data.GetCurrentBuildVersion()
 
-    # Get platform to determine alignment requirements
     platform = current_build.GetPlatform()
 
-    # Get alignment requirement for codecaves
+    # Get alignment requirement
     from functions.alignment_validator import get_platform_alignment
     alignment = get_platform_alignment(platform, "codecave")
 
-    # Calculate aligned file offset and adjust size
     original_file_offset = candidate.file_offset
     original_size = candidate.size
 
@@ -658,24 +594,23 @@ def _on_add_codecave_clicked(sender, app_data, user_data):
     # Calculate how many bytes we lost to alignment
     alignment_offset = aligned_file_offset - original_file_offset
 
-    # Adjust size to account for alignment (reduce size by alignment offset)
+    # Adjust size to account for alignment
     adjusted_size = original_size - alignment_offset
 
-    # If adjusted size is too small, warn user
-    if adjusted_size < 16:  # Minimum reasonable codecave size
+    if adjusted_size < 16:
         messagebox.showwarning("Alignment Issue",
             f"After applying {alignment}-byte alignment for {platform}, "
             f"this codecave would be too small ({adjusted_size} bytes).\n\n"
             "Please select a larger codecave.")
         return
 
-    # Calculate aligned memory address if available
+    # Calculate aligned memory
     aligned_memory_address = None
     if candidate.memory_address is not None:
         # Apply same alignment offset to memory address
         aligned_memory_address = candidate.memory_address + alignment_offset
 
-    # Generate a unique name
+    # Generate a name
     existing_names = current_build.GetCodeCaveNames()
     base_name = "FoundCodecave"
     counter = 1
@@ -694,7 +629,7 @@ def _on_add_codecave_clicked(sender, app_data, user_data):
     new_codecave.SetInjectionFile(filename)
     new_codecave.SetSize(f"{adjusted_size:X}")
 
-    # Set memory address (if available)
+    # Set memory address
     if aligned_memory_address is not None:
         if platform in ["PS1", "N64", "Gamecube", "Wii"]:
             mem_addr_hex = f"80{aligned_memory_address:06X}"
@@ -703,10 +638,12 @@ def _on_add_codecave_clicked(sender, app_data, user_data):
 
         new_codecave.SetMemoryAddress(mem_addr_hex)
 
-    # Set file address (the aligned file offset)
+    # Set file address
     new_codecave.SetInjectionFileAddress(f"{aligned_file_offset:X}")
-    new_codecave.SetAutoCalculateInjectionFileAddress(False)  # We already calculated it
+    new_codecave.SetAutoCalculateInjectionFileAddress(False)
 
+
+    #! This is basically to help the user with a templated first codecave. Maybe in the future, I give them the option?
     # If this is the first codecave, automatically add main.c
     if is_first_codecave:
         import os
@@ -717,7 +654,7 @@ def _on_add_codecave_clicked(sender, app_data, user_data):
             new_codecave.AddCodeFile(main_c_path)
             print(f"  Automatically added main.c to first codecave")
 
-        # For PS2, also create and add syscalls.s
+        # For PS2, also create and add syscalls.s with _print
         if platform == "PS2":
             syscalls_s_path = os.path.join(project_folder, "asm", "syscalls.s")
 
@@ -760,25 +697,26 @@ _print:
     from gui.gui_c_injection import UpdateCodecavesListbox, callback_codecave_selected
     UpdateCodecavesListbox(current_project_data)
 
-    # Switch to the Modifications tab (outer tab bar)
+    # Show it to the user:
+    
+    # Switch to the Modifications tab
     if dpg.does_item_exist("main_tab_bar"):
         dpg.set_value("main_tab_bar", "Modifications")
 
-    # Switch to the C & C++ Injection tab (inner tab bar)
+    # Switch to the inner C & C++ Injection tab
     if dpg.does_item_exist("modifications_tab_bar"):
-        dpg.set_value("modifications_tab_bar", "C & C++ Injection")
+        dpg.set_value("modifications_tab_bar", "code_injection_tab")
 
     # Select the newly added codecave in the listbox
     if dpg.does_item_exist("codecaves_listbox"):
         dpg.set_value("codecaves_listbox", codecave_name)
-        # Trigger the selection callback to load the codecave details
+        # Show the codecave details
         callback_codecave_selected("codecaves_listbox", codecave_name, current_project_data)
 
-    # Trigger auto-save
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
-
-    # Show success message with alignment info
+    
+    # Succeeded
     memory_str = f"0x{aligned_memory_address:X}" if aligned_memory_address is not None else "Unknown"
 
     alignment_msg = ""
@@ -793,7 +731,8 @@ _print:
     if dpg.does_item_exist("codecave_finder_window"):
         dpg.delete_item("codecave_finder_window")
 
-# ==================== Debug String Finder Functions ====================
+
+#! Debug string finding
 
 # Global storage for debug string scan results
 _debug_string_groups: List[DebugStringGroup] = []
@@ -802,7 +741,6 @@ _debug_string_file_path: str = ""
 _debug_string_project_data: Optional[ProjectData] = None
 
 def reset_codecave_finder_state():
-    """Reset gui_codecave_finder global state when project closes"""
     global _debug_string_project_data, _debug_string_filename, _debug_string_file_path, _debug_string_groups
     _debug_string_project_data = None
     _debug_string_filename = ""
@@ -810,13 +748,11 @@ def reset_codecave_finder_state():
     _debug_string_groups = []
 
 def _on_debug_string_filter_changed(current_project_data: ProjectData):
-    """Handle filter checkbox change"""
     global _debug_string_groups, _debug_string_filename, _debug_string_file_path, _debug_string_project_data
 
     if not _debug_string_groups:
         return
 
-    # Re-display with filter applied
     _display_debug_string_results(_debug_string_groups, _debug_string_filename,
                                    _debug_string_project_data, _debug_string_file_path)
 
@@ -830,7 +766,6 @@ def _on_debug_string_scan_clicked(sender, app_data, current_project_data: Projec
         messagebox.showerror("No File", "Please select a file to scan")
         return
 
-    # Find file path
     current_build = current_project_data.GetCurrentBuildVersion()
     file_path = current_build.FindFileInGameFolder(filename)
 
@@ -852,10 +787,9 @@ def _on_debug_string_scan_clicked(sender, app_data, current_project_data: Projec
                 "The file may not contain debug strings.")
             return
 
-        # Calculate memory addresses for groups
         _calculate_debug_string_memory_addresses(groups, filename, current_project_data)
 
-        # Store results globally for filtering
+        # Store results
         _debug_string_groups = groups
         _debug_string_filename = filename
         _debug_string_file_path = file_path
@@ -872,18 +806,12 @@ def _on_debug_string_scan_clicked(sender, app_data, current_project_data: Projec
         messagebox.showerror("Scan Error", f"Error scanning file:\n\n{str(e)}\n\n{traceback.format_exc()}")
 
 def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]:
-    """
-    Scan a file for continuous groups of null-terminated strings.
-    Returns list of groups sorted by:
-      1. Whether they contain at least one debug/printf-style string
-      2. Size (largest first)
-    """
     with open(file_path, 'rb') as f:
         file_data = f.read()
 
     file_size = len(file_data)
 
-    # First, find all individual strings
+    # Find all individual strings
     all_strings = []
     current_string = []
     string_start = None
@@ -893,8 +821,8 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
     while i < file_size:
         byte = file_data[i]
 
-        # Printable ASCII range (plus common whitespace)
-        if (32 <= byte <= 126) or byte in [9, 10, 13]:  # Tab, LF, CR
+        # ASCII range
+        if (32 <= byte <= 126) or byte in [9, 10, 13]:
             if string_start is None:
                 string_start = i
             current_string.append(byte)
@@ -917,7 +845,7 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
             string_start = None
             i += 1
         else:
-            # Non-printable, non-null
+            # Not ascii
             current_string = []
             string_start = None
             i += 1
@@ -928,22 +856,21 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
 
     groups: List[DebugStringGroup] = []
     current_group_strings = [all_strings[0]]
-    max_gap = 16  # Maximum gap between strings to still consider them part of the same group
-                  # This gap includes all null bytes (0x00) between strings
+    max_gap = 16  # Maximum gap between strings to still consider it part of the same group. This gap includes null bytes between strings
 
     for i in range(1, len(all_strings)):
         prev_string = all_strings[i - 1]
         curr_string = all_strings[i]
 
-        # Check gap between this string and previous (includes all null padding bytes)
+        # Check gap between this string and previous
         gap = curr_string['offset'] - prev_string['end_pos']
 
         if gap <= max_gap:
             # Part of same group
             current_group_strings.append(curr_string)
         else:
-            # Start new group (but first save current group if it has multiple strings)
-            if len(current_group_strings) >= 2:  # Only save groups with 2+ strings
+            # Start new group
+            if len(current_group_strings) >= 2:  # Only save groups with more that 1 string. (Maybe increasse this to more in the future? 2 strings isn't really gonna suffice for a codecave, but I want to let the user decide.)
                 first_string = current_group_strings[0]
                 last_string = current_group_strings[-1]
                 groups.append(DebugStringGroup(
@@ -955,7 +882,7 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
 
             current_group_strings = [curr_string]
 
-    # Don't forget the last group
+    # Last group
     if len(current_group_strings) >= 2:
         first_string = current_group_strings[0]
         last_string = current_group_strings[-1]
@@ -966,10 +893,10 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
             strings=current_group_strings.copy()
         ))
 
-    # Categorize each group and compute some stats
+    # Categorize each group
     for group in groups:
         total_format_specs = 0
-        printf_debug_count = 0      # number of debug-ish strings
+        printf_debug_count = 0      # number of debug-ish looking strings
         debug_keyword_count = 0
         debug_score = 0
 
@@ -982,7 +909,7 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
                 if has_keyword:
                     debug_keyword_count += 1
 
-                # Basic scoring
+                # Scoring
                 per_string_score = 1
                 per_string_score += format_count * 2
                 if has_keyword:
@@ -994,12 +921,10 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
         group.debug_keyword_count = debug_keyword_count
         group.debug_score = debug_score
 
-        # "Has at least one debug string" flag
+        # Has at least one debug looking string
         group.is_printf_debug = printf_debug_count > 0
 
-    # Sort by:
-    # Has at least one debug string
-    # Size (largest first)
+    # Sort by: has at least one debug string, then size
     groups.sort(
         key=lambda g: (g.printf_debug_count > 0, g.size),
         reverse=True
@@ -1012,7 +937,7 @@ def _scan_file_for_debug_string_groups(file_path: str) -> List[DebugStringGroup]
 def _calculate_debug_string_memory_addresses(groups: List[DebugStringGroup], filename: str, current_project_data: ProjectData):
     current_build = current_project_data.GetCurrentBuildVersion()
 
-    # Check if section map exists
+    # Check for section map
     has_section_map = filename in current_build.section_maps
 
     if has_section_map:
@@ -1030,7 +955,7 @@ def _calculate_debug_string_memory_addresses(groups: List[DebugStringGroup], fil
                     group.memory_address = section.mem_start + offset_within_section
                     break
     else:
-        # Fallback: Use file offset
+        # Fallback: Use single offset
         file_offset_str = current_build.GetInjectionFileOffset(filename)
 
         if file_offset_str:
@@ -1045,9 +970,7 @@ def _calculate_debug_string_memory_addresses(groups: List[DebugStringGroup], fil
                 print(f"Warning: Could not parse file offset: {file_offset_str}")
 
 def _display_debug_string_results(groups: List[DebugStringGroup], filename: str, current_project_data: ProjectData, file_path: str):
-    """Display debug string group results in the table"""
-
-    # Clear previous results
+    # Clear
     children = dpg.get_item_children("debug_string_finder_results_table", slot=1)
     if children:
         for child in children:
@@ -1056,7 +979,6 @@ def _display_debug_string_results(groups: List[DebugStringGroup], filename: str,
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
 
-    # Apply filter if checked
     filter_printf = dpg.get_value("debug_string_filter_printf") if dpg.does_item_exist("debug_string_filter_printf") else False
 
     if filter_printf:
@@ -1070,7 +992,7 @@ def _display_debug_string_results(groups: List[DebugStringGroup], filename: str,
             # Index
             dpg.add_text(f"{idx}")
 
-            # Printf/Debug count with color coding
+            # Debug count
             if group.printf_debug_count > 0:
                 dpg.add_text(f"{group.printf_debug_count}/{group.string_count}", color=(255, 200, 100))
             else:
@@ -1079,19 +1001,23 @@ def _display_debug_string_results(groups: List[DebugStringGroup], filename: str,
             # String count
             dpg.add_text(f"{group.string_count}")
 
-            # Total size (hex only to match padding finder)
+            # Total size
             dpg.add_text(f"0x{group.size:X}")
 
             # File offset
-            dpg.add_text(f"0x{group.start_offset:X}", color=(150, 200, 255))
+            file_offset_tag = f"debug_file_offset_{idx}"
+            dpg.add_text(f"0x{group.start_offset:X}", tag=file_offset_tag, color=(150, 200, 255))
+            register_address_widget(file_offset_tag, f"{group.start_offset:X}", has_0x_prefix=True)
 
             # Memory address
             if group.memory_address is not None:
+                mem_addr_tag = f"debug_mem_addr_{idx}"
                 if platform in ["PS1", "N64", "Gamecube", "Wii"]:
                     mem_addr_str = f"0x80{group.memory_address:06X}"
                 else:
                     mem_addr_str = f"0x{group.memory_address:08X}"
-                dpg.add_text(mem_addr_str, color=(150, 255, 150))
+                dpg.add_text(mem_addr_str, tag=mem_addr_tag, color=(150, 255, 150))
+                register_address_widget(mem_addr_tag, mem_addr_str.replace("0x", ""), has_0x_prefix=True)
             else:
                 dpg.add_text("Unknown", color=(150, 150, 150))
 
@@ -1101,7 +1027,7 @@ def _display_debug_string_results(groups: List[DebugStringGroup], filename: str,
                 first_string_text = first_string_text[:30] + "..."
             dpg.add_text(f'"{first_string_text}"', color=(200, 200, 150))
 
-            # Action buttons
+            # Buttons
             with dpg.group(horizontal=True):
                 dpg.add_button(
                     label="View Hex",
@@ -1122,16 +1048,13 @@ def _display_debug_string_results(groups: List[DebugStringGroup], filename: str,
                     callback=_on_add_debug_string_codecave_clicked,
                     user_data=(group, filename, current_project_data),
                     small=True,
-                    width=200
-                    
+                    width=200 
                 )
                 dpg.bind_item_theme(dpg.last_item(), "add_as_cave_theme")
                 
 def _on_view_debug_string_hex_clicked(sender, app_data, user_data):
-    """Show hex viewer for a debug string group"""
     group, filename, current_project_data, file_path = user_data
 
-    # Create unique window tag
     window_tag = f"debug_string_hex_viewer_{group.start_offset}"
 
     # Delete existing window if it exists
@@ -1144,7 +1067,7 @@ def _on_view_debug_string_hex_clicked(sender, app_data, user_data):
 
     file_size = len(file_data)
 
-    # Calculate context range (show 0x100 bytes before and after)
+    # Show 0x100 bytes before and after. (Maybe let the user click "Show more" or something in the future? Probably not needed though, tbh.)
     context_before = 0x100
     context_after = 0x100
 
@@ -1154,7 +1077,7 @@ def _on_view_debug_string_hex_clicked(sender, app_data, user_data):
     # Extract data region
     data_region = file_data[start_offset:end_offset]
 
-    # Calculate debug string group boundaries within the displayed region
+    # Calculate debug string boundaries
     group_start_in_region = group.start_offset - start_offset
     group_end_in_region = group_start_in_region + group.size
 
@@ -1164,12 +1087,12 @@ def _on_view_debug_string_hex_clicked(sender, app_data, user_data):
 
     # Format memory address for title
     if group.memory_address is not None:
-        if platform in ["PS1", "N64", "Gamecube", "Wii"]:
+        if platform in ["PS1", "N64", "Gamecube", "Wii"]:               # I should probably add a mem_addr_prefix method to the build version class or something, because I find myself having to manually check the platform to deduce the expected prefix a lot.
             mem_addr_str = f"0x80{group.memory_address:06X}"
         else:
             mem_addr_str = f"0x{group.memory_address:08X}"
     else:
-        mem_addr_str = "Unknown"
+        mem_addr_str = ""
 
     with dpg.window(
         label=f"Hex Viewer - Debug Strings at 0x{group.start_offset:X}",
@@ -1181,7 +1104,7 @@ def _on_view_debug_string_hex_clicked(sender, app_data, user_data):
         no_close=False,
         no_move = True
     ):
-        # Header info
+        # Header
         dpg.add_text(f"File: {filename}", color=(100, 200, 255))
         dpg.add_text(f"File Offset: 0x{group.start_offset:X} | Memory Address: {mem_addr_str} | Size: 0x{group.size:X} ({group.size} bytes)",
                     color=(150, 200, 150))
@@ -1202,15 +1125,13 @@ def _on_view_debug_string_hex_clicked(sender, app_data, user_data):
         dpg.add_separator()
         dpg.add_spacer(height=5)
 
-        # Hex dump container with scrolling
+        # Hex dump
         with dpg.child_window(height=550, border=True):
             _create_hex_dump(data_region, start_offset, group_start_in_region, group_end_in_region)
 
 def _on_view_debug_strings_clicked(sender, app_data, user_data):
-    """Show all strings in a debug string group"""
     group, filename, current_project_data = user_data
 
-    # Create unique window tag
     window_tag = f"debug_strings_viewer_{group.start_offset}"
 
     # Delete existing window if it exists
@@ -1220,7 +1141,7 @@ def _on_view_debug_strings_clicked(sender, app_data, user_data):
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
 
-    # Format memory address
+    # Format memory address based on platform, once again.
     if group.memory_address is not None:
         if platform in ["PS1", "N64", "Gamecube", "Wii"]:
             mem_addr_str = f"0x80{group.memory_address:06X}"
@@ -1239,7 +1160,7 @@ def _on_view_debug_strings_clicked(sender, app_data, user_data):
         no_close=False,
         no_move = True
     ):
-        # Header info
+        # Header
         dpg.add_text(f"File: {filename}", color=(100, 200, 255))
         dpg.add_text(f"File Offset: 0x{group.start_offset:X} - 0x{group.end_offset:X}",
                     color=(150, 200, 150))
@@ -1262,7 +1183,6 @@ def _on_view_debug_strings_clicked(sender, app_data, user_data):
                 )
 
 def _on_add_debug_string_codecave_clicked(sender, app_data, user_data):
-    """Add a debug string group as a codecave"""
     group, filename, current_project_data = user_data
 
     # Confirm with user
@@ -1280,10 +1200,10 @@ def _on_add_debug_string_codecave_clicked(sender, app_data, user_data):
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
 
-    # Generate a unique codecave name
+    # Generate a name
     existing_names = current_build.GetCodeCaveNames()
     counter = 0
-    codecave_name = f"debug_strings_{counter}"
+    codecave_name = f"debug_strings"
 
     while codecave_name in existing_names:
         counter += 1
@@ -1351,10 +1271,10 @@ _print:
     current_build.AddCodeCave(new_codecave)
 
     print(f"Added debug string codecave: {codecave_name}")
-    print(f"  File: {filename}")
-    print(f"  String count: {group.string_count}")
-    print(f"  Size: 0x{group.size:X} bytes ({group.size} bytes)")
-    print(f"  File offset: 0x{group.start_offset:X}")
+    verbose_print(f"  File: {filename}")
+    verbose_print(f"  String count: {group.string_count}")
+    verbose_print(f"  Size: 0x{group.size:X} bytes ({group.size} bytes)")
+    verbose_print(f"  File offset: 0x{group.start_offset:X}")
     if group.memory_address:
         print(f"  Memory address: 0x{group.memory_address:X}")
 
@@ -1368,19 +1288,18 @@ _print:
 
     # Switch to the C & C++ Injection tab
     if dpg.does_item_exist("modifications_tab_bar"):
-        dpg.set_value("modifications_tab_bar", "C & C++ Injection")
+        dpg.set_value("modifications_tab_bar", "code_injection_tab")
 
-    # Select the newly added codecave
+    # Select the new codecave
     if dpg.does_item_exist("codecaves_listbox"):
         dpg.set_value("codecaves_listbox", codecave_name)
         callback_codecave_selected("codecaves_listbox", codecave_name, current_project_data)
 
-    # Trigger auto-save
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
 
     messagebox.showinfo("Codecave Added",
-        f"Debug strings region added as codecave!\n\n"
+        f"Added as codecave!\n\n"
         f"Size: {group.size} bytes\n")
 
     # Close the codecave finder window

@@ -13,23 +13,10 @@ GECKO_MAX_LINES = 256
 
 
 def _is_hex_word(s: str) -> bool:
-    """Return True if s is a non-empty hex word (no 0x prefix)."""
     return len(s) > 0 and all(c in _HEX_CHARS for c in s)
 
 
 def iter_gecko_code_lines(code_text: str):
-    """
-    Yield 'real' Gecko code lines from a block of text.
-
-    Rules:
-      - Skips blank lines.
-      - Skips obvious non-code/comment lines:
-            * lines starting with '#', '//', ';', '*'
-            * title lines like:  "Project - GameCube Gecko"
-            * 'Mod' header
-      - Strips inline comments like:  XXXXYYYY ZZZZZZZZ  # comment
-      - Only yields lines that look like two hex words.
-    """
     for raw in code_text.splitlines():
         line = raw.strip()
         if not line:
@@ -39,7 +26,6 @@ def iter_gecko_code_lines(code_text: str):
         if line.startswith(("#", "//", ";", "*")):
             continue
         if line.startswith("\"") and line.endswith("\""):
-            # e.g. "My Project - GameCube Gecko"
             continue
         if line.lower() == "mod":
             continue
@@ -53,7 +39,7 @@ def iter_gecko_code_lines(code_text: str):
 
         parts = line.split()
         if len(parts) != 2:
-            # Not a standard "XXXXXXXX YYYYYYYY" style line
+            # Not a "XXXXXXXX YYYYYYYY" line
             continue
 
         if not (_is_hex_word(parts[0]) and _is_hex_word(parts[1])):
@@ -64,7 +50,6 @@ def iter_gecko_code_lines(code_text: str):
 
 
 def count_gecko_code_lines(code_text: str) -> int:
-    """Count how many valid Gecko code lines are in the text block."""
     return sum(1 for _ in iter_gecko_code_lines(code_text))
 
 
@@ -72,21 +57,10 @@ def check_gecko_length(
     code_text: str,
     max_lines: int = GECKO_MAX_LINES,
 ) -> tuple[bool, int, int]:
-    """
-    Check if the Gecko code is within the configured line limit.
-
-    Returns:
-        (ok, count, max_lines)
-        ok = True  -> count <= max_lines
-        ok = False -> count  > max_lines
-    """
     count = count_gecko_code_lines(code_text)
     return (count <= max_lines), count, max_lines
 
 class CheatCodeService:
-    """
-    Service for generating cheat code formats from the current project.
-    """
 
     FLAG_ADDR_GC_WII = 0x80002FF0
     FLAG_ADDR_PS2 = 0x00FFFFFF
@@ -99,12 +73,8 @@ class CheatCodeService:
             self.project_folder, ".config", "output", "bin_files"
         )
 
-    # -------------------------------------------------------------------------
-    # Internal helpers
-    # -------------------------------------------------------------------------
 
     def _ensure_bin_dir(self) -> None:
-        """Ensure bin_files output dir exists (user must have compiled first)."""
         if not os.path.isdir(self.bin_output_dir):
             raise FileNotFoundError(
                 f"Bin output directory not found:\n  {self.bin_output_dir}\n\n"
@@ -113,13 +83,6 @@ class CheatCodeService:
             )
 
     def _iter_injection_targets(self):
-        """
-        Yield (kind, name, address_hex_str) for all injection targets:
-
-            kind: 'codecave' | 'hook' | 'patch'
-            name: section/patch name (used as .bin filename)
-            address_hex_str: string as returned by GetMemoryAddress()
-        """
         build = self.project_data.GetCurrentBuildVersion()
 
         for cave in build.GetEnabledCodeCaves():
@@ -132,7 +95,6 @@ class CheatCodeService:
             yield "patch", patch.GetName(), patch.GetMemoryAddress()
 
     def _normalize_address(self, addr_str: str) -> int:
-        """Convert an address string ('80123456' or '0x80123456') to int."""
         if addr_str is None:
             raise ValueError("Missing memory address for injection target.")
 
@@ -146,12 +108,6 @@ class CheatCodeService:
             return int(s, 10)
 
     def _read_bin(self, name: str) -> Optional[bytes]:
-        """
-        Read the compiled binary for a section/patch (name.bin in bin_files).
-
-        Returns:
-            bytes or None if file missing.
-        """
         path = os.path.join(self.bin_output_dir, f"{name}.bin")
         if not os.path.isfile(path):
             return None
@@ -159,32 +115,15 @@ class CheatCodeService:
             return f.read()
 
     def _to_le_hex(self, chunk: bytes, width: int) -> str:
-        """
-        Convert a chunk of bytes to little-endian hex of fixed width,
-        matching the old `int(...).to_bytes(...).hex()` pattern.
-        """
         if not chunk:
             return ""
         value = int.from_bytes(chunk, byteorder="big")
         return value.to_bytes(width, byteorder="little").hex()
 
     #
-    #! PS1: GameShark-style codes
+    #! PS1: GameShark codes
     #
     def generate_ps1_gameshark(self, ignore_codecaves: bool = False) -> str:
-        """
-        Generate PS1 GameShark-style codes from the current project.
-
-        Mirrors old convert_to_gameshark_code() semantics, but uses:
-            - ProjectData / BuildVersion
-            - .config/output/bin_files/<Name>.bin
-
-        Args:
-            ignore_codecaves: if True, codecaves are skipped.
-
-        Returns:
-            Cheat code block as a string.
-        """
         self._ensure_bin_dir()
 
         chunk_size = 2  # 16-bit writes
@@ -222,26 +161,12 @@ class CheatCodeService:
     #! PS2
     #
     def generate_ps2_ps2rd(self, ignore_codecaves: bool = False, include_mastercode: bool = True, one_shot: bool = False) -> str:
-        """
-        Generate PS2RD-style 32-bit write codes: 20AAAAAA VVVVVVVV
-
-        Args:
-            ignore_codecaves: if True, skip codecaves.
-            include_mastercode: if True, attempt to include a mastercode
-                                (stubbed for now).
-            one_shot: if True, wrap all patch writes in a run-once block
-                      using a 32-bit conditional on FLAG_ADDR_PS2 == 0,
-                      then set FLAG_ADDR_PS2 = 1.
-
-        Returns:
-            PS2RD code block as a string.
-        """
         self._ensure_bin_dir()
 
         chunk_size = 4  # 32-bit writes
         chunks: Dict[str, List[str]] = {}
 
-        # --- Build per-section 32-bit constant writes (20AAAAAA VVVVVVVV) ---
+        # Build 32-bit constant writes (20AAAAAA VVVVVVVV)
         for kind, name, addr_str in self._iter_injection_targets():
             if ignore_codecaves and kind == "codecave":
                 continue
@@ -258,7 +183,6 @@ class CheatCodeService:
                 if not le_hex:
                     continue
 
-                # PS2RD: left side is 8 hex digits: 2-digit code type + 6-digit address field
                 # Use lower 24 bits of the EE address as offset
                 addr_field = (base_addr + i) & 0x00FFFFFF
                 code_line = f"20{addr_field:06X} {le_hex}"
@@ -296,29 +220,20 @@ class CheatCodeService:
 
         lines.append("Mod")
 
-        # No actual patch codes → just return header
+        # No actual patch codes
         if not all_codes:
             return "\n".join(lines) + "\n"
 
-        # ---------------------------------------------------------------------
-        # Always-on behavior (old behavior)
-        # ---------------------------------------------------------------------
+
         if not one_shot:
             lines.extend(all_codes)
             return "\n".join(lines) + "\n"
 
-        # ---------------------------------------------------------------------
-        # Run-once behavior using a flag in EE RAM
-        #
-        # We use:
-        #   Caaaaaaa vvvvvvvv  → if (*(u32*)a == v) { execute all remaining codes }
-        #   2aaaaaaa vvvvvvvv  → 32-bit constant write
-        #
-        # Pattern:
-        #   C<flag>   00000000    // if flag == 0, run all remaining codes
+        # The one shot codes definitely need more testing, but the idea is as follows:
+        #   if flagaddr   00000000    // if flag == 0, run all remaining codes
         #   (all patch writes)
-        #   2<flag>   00000001    // set flag = 1, so condition fails next frame
-        # ---------------------------------------------------------------------
+        #   if flagaddr   00000001    // set flag = 1, so condition fails next frame
+        
         flag_addr = self.FLAG_ADDR_PS2
         flag_field = flag_addr & 0x00FFFFFF  # match how we form 20AAAAAA
 
@@ -335,25 +250,13 @@ class CheatCodeService:
 
         return "\n".join(lines) + "\n"
 
-    def _get_ps2_mastercode(self) -> Optional[Dict[str, str]]:
-        """
-        Placeholder for PS2 mastercode detection.
-
-        Old tool used auto_find_hook_in_ps2_game(just_return=True).
-        Here we just return None for now.
-        """
+    def _get_ps2_mastercode(self) -> Optional[Dict[str, str]]: # Hmm, a lot of my auto-hooks use the same patterns as common PS2 mastercodes. I used PS2 MastercodeFinder to help research what are common ps2 hook points. This could be a problem.
         return None
 
     def generate_ps2_pnach(self, ignore_codecaves: bool = False, one_shot: bool = True) -> str:
-        """
-        Generate a PCSX2 .pnach file for the current build.
-        
-        one_shot=True  -> place=0 (apply once at boot/startup)
-        one_shot=False -> place=1 (apply every frame / vsync)
-        """
         self._ensure_bin_dir()
 
-        # place: 0 = boot-only, 1 = continuous (per vsync)
+        # place: 0 = boot-only, 1 = continuous
         place = 0 if one_shot else 1
 
         patches: Dict[str, List[str]] = {}
@@ -380,7 +283,7 @@ class CheatCodeService:
 
                 # Prefer aligned 32-bit writes, then 16-bit, then 8-bit
                 if remaining >= 4 and (addr & 3) == 0:
-                    # 32-bit (use same endian correction as PS2RD)
+                    # 32-bit
                     chunk = data[i:i + 4]
                     hex_word = self._to_le_hex(chunk, 4).upper()
                     dtype = "word"
@@ -429,14 +332,12 @@ class CheatCodeService:
         lines.append(f"author={proj_name}")
 
         if crc:
-            lines.append(f"description=Auto-generated from C Modding Tool by Composer (CRC {crc})")
+            lines.append(f"description=Auto-generated from C/C++ Game Modding Utility (CRC {crc})")
         else:
-            lines.append(f"description=Auto-generated from C Modding Tool by Composer")
+            lines.append(f"description=Auto-generated from C/C++ Game Modding Utility")
         lines.append("")
 
-        # ---------------------------------------------------------------------
-        # Patches
-        # ---------------------------------------------------------------------
+
         if not patches:
             return "\n".join(lines) + "\n"
 
@@ -453,24 +354,6 @@ class CheatCodeService:
     #! GameCube/Wii
     #
     def _choose_ar_write_prefix(self, addr: int, size_bytes: int) -> str:
-        """
-        Choose the first byte of an AR RAM write code based on:
-            - address (0x80 vs 0x81)
-            - write size (1/2/4 bytes)
-
-            AR convention:
-            8-bit writes:
-                0x80xxxxxx -> 00rrrrrr
-                0x81xxxxxx -> 01rrrrrr
-
-            16-bit writes:
-                0x80xxxxxx -> 02rrrrrr
-                0x81xxxxxx -> 03rrrrrr
-
-            32-bit writes:
-                0x80xxxxxx -> 04rrrrrr
-                0x81xxxxxx -> 05rrrrrr
-        """
         hi = (addr >> 24) & 0xFF
 
         # Base for 0x80 region
@@ -488,15 +371,6 @@ class CheatCodeService:
         return f"{base:02X}"
 
     def _generate_action_replay_ram_writes(self, platform_label: str, ignore_codecaves: bool = False, one_shot: bool = True) -> str:
-        """
-        Generate Action Replay codes for GC/Wii using only RAM write types:
-        If one_shot=True (default), all patch writes are wrapped in:
-            - A 32-bit "If Equal, All until.." conditional
-            - (all patch writes)
-            - A write that sets the flag to 1
-            - The "00000000 40000000" terminator
-        So the full patch body only runs once per boot.
-        """
         self._ensure_bin_dir()
 
         codes_by_name: Dict[str, List[str]] = {}
@@ -565,35 +439,26 @@ class CheatCodeService:
         lines.append(f"\"{title}\"")
         lines.append("Mod")
 
-        # If no codes at all, we're done
+        # If no codes
         if not all_codes:
             return "\n".join(lines) + "\n"
 
         if not one_shot:
-            # Original behavior: just dump all codes directly
             lines.extend(all_codes)
             return "\n".join(lines) + "\n"
 
-        # --- One-shot wrapper using a flag in 0x80001800–0x80003000 ---
 
         flag_addr = self.FLAG_ADDR_GC_WII  # 0x80002FF0
         flag_rrrrrr = flag_addr & 0x00FFFFFF  # 0x002FF0
 
-        # 1) Conditional: If Equal (32-bit), All until.., flag == 0
-        #
-        # From docs:
-        #   Conditional: If Equal, All until.. 32-Bit
-        #   8Crrrrrr yyyyyyyy
-        # Here: [0x80rrrrrr] == 0
+
         cond_line = f"8C{flag_rrrrrr:06X} 00000000"
 
-        # 2) All patch writes (what we already generated)
-        #
-        # 3) Set flag = 1 via a 32-bit RAM write
+
         prefix_flag = self._choose_ar_write_prefix(flag_addr, 4)  # should be 04 for 0x80xxxxxx
         flag_write_line = f"{prefix_flag}{flag_rrrrrr:06X} 00000001"
 
-        # 4) Terminator for "All until.." block
+        # 4) Terminator for "All until" block
         terminator_line = "00000000 40000000"
 
         lines.append(cond_line)
@@ -604,7 +469,6 @@ class CheatCodeService:
         return "\n".join(lines) + "\n"
 
     def generate_gc_action_replay(self, ignore_codecaves: bool = False, one_shot: bool = True) -> str:
-        """Generate GameCube Action Replay codes."""
         return self._generate_action_replay_ram_writes(
             platform_label="GameCube",
             ignore_codecaves=ignore_codecaves,
@@ -613,7 +477,6 @@ class CheatCodeService:
 
     def generate_wii_action_replay(
         self, ignore_codecaves: bool = False, one_shot: bool = True) -> str:
-        """Generate Wii Action Replay codes"""
         return self._generate_action_replay_ram_writes(
             platform_label="Wii",
             ignore_codecaves=ignore_codecaves,
@@ -621,7 +484,6 @@ class CheatCodeService:
         )
         
     def _gecko_encode_offset(self, addr: int, base_codetype: int) -> tuple[int, int]:
-        """Convert a full RAM address into 24-bit offset for Gecko."""
         BA = 0x80000000
         if addr < BA or addr > BA + 0x1FFFFFF:
             raise ValueError(
@@ -646,27 +508,12 @@ class CheatCodeService:
         return codetype, offset24
     
     def _generate_gecko_ram_writes(self, platform_label: str, ignore_codecaves: bool = False, one_shot: bool = True) -> str:
-        """
-        Generate Gecko codes for GC/Wii using direct RAM write codetypes:
-            32-bit write:
-                04______ XXXXXXXX   (ba + ______)
-                
-        We default ba to 0x80000000.
-
-        If one_shot=True:
-            Wrap the entire patch in:
-                IfEqual 32-bit on FLAG_ADDR_GC_WII == 0
-                (all patch writes)
-                Write FLAG_ADDR_GC_WII = 1
-                Endif
-            so the patch body runs only once per boot.
-        """
 
         self._ensure_bin_dir()
 
         codes_by_name: Dict[str, List[str]] = {}
 
-        # --- Build per-section Gecko write codes ---
+        # Build
         for kind, name, addr_str in self._iter_injection_targets():
             if ignore_codecaves and kind == "codecave":
                 continue
@@ -695,7 +542,7 @@ class CheatCodeService:
                     # 16-bit write, count=0 (one halfword)
                     half = int.from_bytes(data[i:i + 2], byteorder="big")
                     ct, off24 = self._gecko_encode_offset(addr, 0x02)
-                    # YYYY = 0000 → write once
+                    # YYYY = 0000
                     code_line = f"{ct:02X}{off24:06X} 0000{half:04X}"
                     i += 2
 
@@ -703,13 +550,13 @@ class CheatCodeService:
                     # 8-bit write, count=0 (one byte)
                     b = data[i]
                     ct, off24 = self._gecko_encode_offset(addr, 0x00)
-                    # YYYY = 0000, middle byte is 00, last byte is value
+                    # YYYY = 0000
                     code_line = f"{ct:02X}{off24:06X} 000000{b:02X}"
                     i += 1
 
                 codes_by_name.setdefault(name, []).append(code_line)
 
-        # --- Build header (same style as AR) ---
+        # Build header
         build = self.project_data.GetCurrentBuildVersion()
 
         get_exe = getattr(build, "GetMainExecutable", None)
@@ -740,23 +587,16 @@ class CheatCodeService:
             lines.extend(all_codes)
             return "\n".join(lines) + "\n"
 
-        # ---------------------------------------------------------------------
-        # One-shot wrapper using a 32-bit IfEqual on FLAG_ADDR_GC_WII == 0
-        # ---------------------------------------------------------------------
+        flag_addr = self.FLAG_ADDR_GC_WII  # 0x80002FF0 (this should be safe as it's right before code usually gets loaded into ram at 0x80003000)
 
-        flag_addr = self.FLAG_ADDR_GC_WII  # 0x80002FF0
 
-        # 1) If 32 bits at [ba+offset] == 0 → then codes execute
-        #    Codetype: 20______ XXXXXXXX (IfEqual 32-bit)
         ct_if, off_if = self._gecko_encode_offset(flag_addr, 0x20)
         cond_line = f"{ct_if:02X}{off_if:06X} 00000000"
 
-        # 2) All patch writes (gated by the If)
-        # 3) Write flag = 1 using 32-bit write
+
         ct_flag, off_flag = self._gecko_encode_offset(flag_addr, 0x04)
         flag_write = f"{ct_flag:02X}{off_flag:06X} 00000001"
 
-        # 4) Endif (one level) – E2T000VV XXXXYYYY, T=0, VV=1
         endif_line = "E2000001 00000000"
 
         lines.append(cond_line)
@@ -767,8 +607,6 @@ class CheatCodeService:
         return "\n".join(lines) + "\n"
     
     def generate_gc_gecko(self, ignore_codecaves: bool = False, one_shot: bool = True) -> str:
-        """
-        Generate GameCube Gecko codes for current build."""
         return self._generate_gecko_ram_writes(
             platform_label="GameCube",
             ignore_codecaves=ignore_codecaves,
@@ -776,8 +614,6 @@ class CheatCodeService:
         )
 
     def generate_wii_gecko(self,ignore_codecaves: bool = False,one_shot: bool = True) -> str:
-        """
-        Generate Wii Gecko codes for current build."""
         return self._generate_gecko_ram_writes(
             platform_label="Wii",
             ignore_codecaves=ignore_codecaves,
@@ -786,15 +622,8 @@ class CheatCodeService:
         
 
     def generate_wii_riivolution_file_patches(self, ignore_codecaves: bool = False,) -> str:
-        """Generate a Riivolution XML that uses File Patch entries for all injection files of the current Wii build."""
-
         build = self.project_data.GetCurrentBuildVersion()
         platform = (build.GetPlatform() or "").upper()
-
-        if platform not in ("GAMECUBE", "WII"):
-            return (
-                "Riivolution XML generation is only meaningful for GameCube/Wii builds. \n"
-            )
 
         project_folder = self.project_data.GetProjectFolder()
         if not project_folder:

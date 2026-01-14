@@ -1,24 +1,11 @@
-"""
-Project Dashboard Service
-Calculates and provides statistics about the current project
-"""
-
 import os
 from typing import Dict, Any, Optional
 from classes.project_data.project_data import ProjectData
 
 
 class ProjectDashboardService:
-    """Service for calculating project statistics"""
-
     @staticmethod
     def get_project_stats(project_data: ProjectData) -> Dict[str, Any]:
-        """
-        Calculate comprehensive project statistics
-
-        Returns:
-            Dict containing various project metrics
-        """
         current_build = project_data.GetCurrentBuildVersion()
 
         # Count modifications
@@ -149,7 +136,6 @@ class ProjectDashboardService:
 
     @staticmethod
     def format_stats_summary(stats: Dict[str, Any]) -> str:
-        """Format stats into a readable summary string"""
         lines = []
 
         # Platform and build

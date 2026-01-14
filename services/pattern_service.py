@@ -5,7 +5,6 @@ from classes.injection_targets.hook import Hook
 from functions.verbose_print import verbose_print
 
 class PatternMatch:
-    """Represents a found pattern match"""
     def __init__(self, pattern_name: str, file_offset: int, memory_address: int, 
                  hook_offset: int, asm_template: str):
         self.pattern_name = pattern_name
@@ -15,21 +14,12 @@ class PatternMatch:
         self.asm_template = asm_template
 
 
+# Basically to pattern match things that differ in the middle. Example: (og: 123456, compared: 123x56)
 class FlexiblePattern:
-    """
-    Represents a pattern with potential gaps/wildcards.
-    Pattern is defined as a list of tuples:
-    - ("bytes", b'\\x00\\x01\\x02') - Match these exact bytes
-    - ("skip", 8) - Skip 8 bytes (don't care what's there)
-    """
     def __init__(self, segments: List[Tuple[str, Union[bytes, int]]]):
         self.segments = segments
     
     def match(self, data: bytes, start_pos: int = 0) -> Optional[int]:
-        """
-        Try to match this pattern starting at start_pos in data.
-        Returns the starting position if match found, None otherwise.
-        """
         pos = start_pos
         
         for segment_type, segment_value in self.segments:
@@ -55,12 +45,7 @@ class FlexiblePattern:
         return start_pos
     
     def search(self, data: bytes) -> Optional[int]:
-        """
-        Search for this pattern in data.
-        Returns the position where the pattern starts, or None if not found.
-        """
-        # We need to search byte by byte since we have variable sections
-        # Start with the first segment to optimize
+        # Start with the first segment
         if not self.segments or self.segments[0][0] != "bytes":
             return None
         
@@ -82,7 +67,6 @@ class FlexiblePattern:
             search_pos += 1
     
     def total_length(self) -> int:
-        """Calculate the total length of the pattern including skips"""
         total = 0
         for segment_type, segment_value in self.segments:
             if segment_type == "bytes":
@@ -93,8 +77,6 @@ class FlexiblePattern:
 
 
 class PatternService:
-    """Handles automatic pattern detection in game executables"""
-    
     # PS1 Patterns - DrawOTag variants (every frame hook)
     PS1_PATTERNS = {
         "DrawOTag_v1": {
@@ -219,7 +201,7 @@ class PatternService:
         }
     }
 
-    # OSReport Patterns (for library function detection, not hooks)
+    # OSReport Patterns
     OSREPORT_PATTERNS = {
         "Gamecube": b'\x7c\x08\x02\xa6\x90\x01\x00\x04\x94\x21\xff\x88\x40\x86\x00\x24\xd8\x21\x00\x28\xd8\x41\x00\x30',
         "Wii": b'\x94\x21\xff\x80\x7c\x08\x02\xa6\x90\x01\x00\x84\x93\xe1\x00\x7c\x40\x86\x00\x24\xd8\x21\x00\x28\xd8\x41\x00\x30\xd8\x61\x00\x38\xd8\x81\x00\x40\xd8\xa1\x00\x48\xd8\xc1\x00\x50\xd8\xe1\x00\x58\xd9\x01\x00\x60'
@@ -229,11 +211,6 @@ class PatternService:
         self.project_data = project_data
     
     def _search_pattern(self, exe_data: bytes, pattern_info: Dict) -> Optional[int]:
-        """
-        Search for a pattern in executable data.
-        Handles both simple byte patterns and flexible patterns.
-        Returns file offset if found, None otherwise.
-        """
         # Check if this is a flexible pattern
         if "pattern" in pattern_info:
             flexible_pattern = pattern_info["pattern"]
@@ -248,7 +225,6 @@ class PatternService:
         return None
     
     def _get_pattern_length(self, pattern_info: Dict) -> int:
-        """Get the length of a pattern (for calculating hook offset)"""
         if "pattern" in pattern_info:
             return pattern_info["pattern"].total_length()
         elif "bytes" in pattern_info:
@@ -256,10 +232,6 @@ class PatternService:
         return 0
     
     def find_hook_patterns(self) -> List[PatternMatch]:
-        """
-        Search for known hook patterns in the main executable.
-        Returns a list of all found patterns.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
         
@@ -394,7 +366,6 @@ class PatternService:
         return matches
     
     def _get_patterns_for_platform(self, platform: str) -> Dict:
-        """Get pattern dictionary for platform"""
         if platform == "PS1":
             return self.PS1_PATTERNS
         elif platform == "PS2":
@@ -407,10 +378,6 @@ class PatternService:
             return {}
     
     def _get_file_offset(self, platform: str, exe_path: str) -> int:
-        """
-        Calculate the file offset for PS2/GC/Wii executables.
-        This is the difference between file address and memory address.
-        """
         if platform == "PS1":
             return 0x8000F800
         elif platform == "PS2":
@@ -420,11 +387,6 @@ class PatternService:
         return 0
 
     def _find_ps2_offset(self, exe_path: str) -> int:
-        """
-        Find PS2 ELF offset using ee-objdump.
-        Returns the difference between memory address and file offset.
-        First checks if section map is already cached.
-        """
         # Check if section map already exists (avoid running objdump again)
         current_build = self.project_data.GetCurrentBuildVersion()
         main_exe = current_build.GetMainExecutable()
@@ -515,11 +477,6 @@ class PatternService:
             return 0x100000
 
     def _find_gamecube_wii_offset(self, exe_path: str) -> int:
-        """
-        Find GameCube/Wii DOL offset using doltool.
-        Returns the difference between memory address and file offset.
-        First checks if section map is already cached.
-        """
         # Check if section map already exists (avoid running doltool again)
         current_build = self.project_data.GetCurrentBuildVersion()
         main_exe = current_build.GetMainExecutable()
@@ -584,7 +541,6 @@ class PatternService:
             return 0x3000
     
     def _calculate_memory_address(self, platform: str, file_offset: int, base_offset: int) -> int:
-        """Calculate the in-memory address from file offset"""
         if platform == "PS1":
             return base_offset + file_offset
         elif platform == "PS2":
@@ -594,20 +550,6 @@ class PatternService:
         return file_offset
 
     def _extract_jal_target_address(self, exe_data: bytes, file_offset: int, memory_address: int) -> Optional[int]:
-        """
-        Extract the target address from a JAL opcode.
-
-        MIPS JAL format: 0x0cXXXXXX where XXXXXX is the 26-bit target (in words)
-        PS2 uses little endian byte order.
-
-        Args:
-            exe_data: Executable binary data
-            file_offset: File offset where the JAL instruction is located
-            memory_address: Memory address of the JAL instruction
-
-        Returns:
-            Target address, or None if not a valid JAL opcode
-        """
         # Read 4-byte opcode at file offset
         if file_offset + 4 > len(exe_data):
             verbose_print(f"  DEBUG: file_offset {file_offset} + 4 > exe_data length")
@@ -646,16 +588,6 @@ class PatternService:
         return target_address
 
     def _add_symbol_to_file(self, symbol_name: str, address: int) -> bool:
-        """
-        Add a symbol to the current build's symbols file.
-
-        Args:
-            symbol_name: Name of the symbol (e.g., "_sceSifSendCmd")
-            address: Memory address of the symbol
-
-        Returns:
-            True if symbol was added, False if already exists or error
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         project_folder = self.project_data.GetProjectFolder()
 
@@ -702,10 +634,6 @@ class PatternService:
             return False
 
     def create_hook_from_pattern(self, pattern_match: PatternMatch, hook_name: str = "AutoHook") -> Hook:
-        """
-        Create a Hook object from a pattern match.
-        Now uses section maps if available.
-        """
         hook = Hook()
         hook.SetName(hook_name)
         
@@ -746,10 +674,6 @@ class PatternService:
         return hook
     
     def validate_tools(self, platform: str) -> Tuple[bool, str]:
-        """
-        Validate that required tools are available for the platform.
-        Returns (success, error_message)
-        """
         tool_dir = os.getcwd()
         
         if platform == "PS2":
@@ -774,11 +698,6 @@ class PatternService:
 
 
     def find_osreport(self) -> Optional[int]:
-        """
-        Search for OSReport function in GameCube/Wii executables.
-        Returns the memory address if found, None otherwise.
-        Only works for GameCube and Wii platforms.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
 
@@ -832,11 +751,6 @@ class PatternService:
         return memory_address
 
     def setup_osreport(self) -> bool:
-        """
-        Find OSReport, add it to symbols file, create osreport.h header,
-        and update main.c to use it.
-        Returns True if OSReport was found and set up, False otherwise.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         platform = current_build.GetPlatform()
         project_folder = self.project_data.GetProjectFolder()
@@ -905,7 +819,6 @@ void OSReport(const char* format, ...);
                 with open(main_c_path, 'w') as f:
                     f.write("""#include <types.h>
 #include <symbols.h>
-#include <osreport.h>
 
 void ModMain(void) {
     OSReport("Hello World!\\n");

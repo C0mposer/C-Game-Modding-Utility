@@ -5,7 +5,6 @@ import re
 from typing import List, Dict, Optional, Tuple
 
 class Symbol:
-    """Represents a symbol from the memory map"""
     def __init__(self, name: str, address: int, size: int = 0, section: str = "", symbol_type: str = ""):
         self.name = name
         self.address = address
@@ -18,14 +17,11 @@ class Symbol:
 
 
 class SymbolParserService:
-    """Parses .map files to extract symbol information"""
-    
     def __init__(self, map_file_path: str):
         self.map_file_path = map_file_path
         self.symbols: List[Symbol] = []
     
     def parse(self) -> List[Symbol]:
-        """Parse the map file and return list of symbols"""
         if not os.path.exists(self.map_file_path):
             print(f"Map file not found: {self.map_file_path}")
             return []
@@ -55,17 +51,11 @@ class SymbolParserService:
             return []
     
     def _is_symbol_assignment_format(self, content: str) -> bool:
-        """Check if map file uses symbol assignment format"""
         # Look for lines like: "0x0000000080001234                game_symbol = 0x80001234"
         pattern = r'^\s*0x[0-9a-fA-F]+\s+\w+\s*=\s*0x[0-9a-fA-F]+'
         return bool(re.search(pattern, content, re.MULTILINE))
     
     def _parse_symbol_assignments(self, content: str) -> List[Symbol]:
-        """
-        Parse symbol assignment format map files.
-        Format 1: 0x0000000080001234                game_symbol = 0x80001234
-        Format 2:                0x00000000803f1cbc                has_pressed (within sections)
-        """
         symbols = []
 
         # Pattern 1: Symbol assignments (game symbols from LOAD)
@@ -163,7 +153,6 @@ class SymbolParserService:
         return symbols
     
     def _parse_gnu_map(self, content: str) -> List[Symbol]:
-        """Parse GNU ld format map file (original implementation)"""
         symbols = []
         
         # Pattern: .section     0xADDRESS   0xSIZE symbol_name
@@ -213,7 +202,6 @@ class SymbolParserService:
         return symbols
     
     def find_symbol(self, name: str) -> Optional[Symbol]:
-        """Find symbol by name (case-insensitive)"""
         name_lower = name.lower()
         for symbol in self.symbols:
             if symbol.name.lower() == name_lower:
@@ -221,11 +209,9 @@ class SymbolParserService:
         return None
     
     def find_symbols_at_address(self, address: int) -> List[Symbol]:
-        """Find all symbols at a specific address"""
         return [s for s in self.symbols if s.address == address]
     
     def find_symbol_containing_address(self, address: int) -> Optional[Symbol]:
-        """Find the symbol that contains the given address"""
         for symbol in self.symbols:
             if symbol.size > 0:
                 if symbol.address <= address < symbol.address + symbol.size:

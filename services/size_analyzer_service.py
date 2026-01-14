@@ -3,7 +3,6 @@ from typing import List, Dict, Optional, Tuple
 from classes.project_data.project_data import ProjectData
 
 class SizeAnalysisResult:
-    """Represents size analysis for a single injection target"""
     def __init__(self, name: str, used_bytes: int, allocated_bytes: int, injection_type: str):
         self.name = name
         self.used_bytes = used_bytes
@@ -12,24 +11,20 @@ class SizeAnalysisResult:
         
     @property
     def percentage_used(self) -> float:
-        """Calculate percentage of space used"""
         if self.allocated_bytes == 0:
             return 0.0
         return (self.used_bytes / self.allocated_bytes) * 100.0
     
     @property
     def remaining_bytes(self) -> int:
-        """Calculate remaining free space"""
         return self.allocated_bytes - self.used_bytes
     
     @property
     def is_overflow(self) -> bool:
-        """Check if code exceeds allocated space"""
         return self.used_bytes > self.allocated_bytes
     
     @property
     def warning_level(self) -> str:
-        """Get warning level: safe, warning, critical, overflow"""
         if self.is_overflow:
             return "overflow"
         elif self.percentage_used >= 90:
@@ -41,16 +36,10 @@ class SizeAnalysisResult:
 
 
 class SizeAnalyzerService:
-    """Analyzes compiled code sizes and compares to allocated space"""
-    
     def __init__(self, project_data: ProjectData):
         self.project_data = project_data
     
     def analyze_all(self) -> List[SizeAnalysisResult]:
-        """
-        Analyze all codecaves, hooks, and binary patches.
-        Returns list of analysis results.
-        """
         results = []
         
         current_build = self.project_data.GetCurrentBuildVersion()
@@ -82,7 +71,6 @@ class SizeAnalyzerService:
         return results
     
     def _analyze_injection_target(self, target, bin_dir: str, injection_type: str) -> Optional[SizeAnalysisResult]:
-        """Analyze a single injection target"""
         name = target.GetName()
         
         # Get allocated size
@@ -93,19 +81,18 @@ class SizeAnalyzerService:
         try:
             allocated_bytes = int(size_str, 16)
         except ValueError:
-            return None  # Invalid size format
+            return None 
         
         # Get actual binary size
         bin_file = os.path.join(bin_dir, f"{name}.bin")
         if not os.path.exists(bin_file):
-            return None  # Binary not compiled yet
+            return None  # Not compiled yet
         
         used_bytes = os.path.getsize(bin_file)
         
         return SizeAnalysisResult(name, used_bytes, allocated_bytes, injection_type)
     
     def get_summary(self) -> Dict[str, any]:
-        """Get overall summary statistics"""
         results = self.analyze_all()
         
         if not results:

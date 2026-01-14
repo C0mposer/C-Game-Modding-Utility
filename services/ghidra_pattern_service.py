@@ -1,16 +1,9 @@
-"""
-Ghidra Pattern Service
-Scans executables for Ghidra OS library function patterns and adds them to symbol files
-"""
-
 import os
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Optional, Tuple
 
 
 class GhidraPattern:
-    """Represents a single Ghidra pattern"""
-
     def __init__(self, label: str, pattern_bytes: bytes):
         self.label = label
         self.pattern_bytes = pattern_bytes
@@ -20,29 +13,17 @@ class GhidraPattern:
 
 
 class GhidraPatternService:
-    """Service for scanning executables using Ghidra patterns"""
-
-    # Patterns to skip (nothing-burger patterns as mentioned by user)
+    # Patterns to skip
     SKIP_PATTERNS = [
         "jump_to_00000000",
-        "RFU",  # Reserved for Future Use - catches all RFU000, RFU003, RFU005, etc.
-        "possiblefuncstart",  # Too generic
+        "RFU",
+        "possiblefuncstart",
     ]
 
     def __init__(self):
         self.patterns_dir = os.path.join("prereq", "ghidra-patterns")
 
     def scan_executable(self, platform: str, executable_path: str) -> List[Tuple[str, int]]:
-        """
-        Scan an executable for OS library function patterns.
-
-        Args:
-            platform: Platform name ("PS1" or "PS2")
-            executable_path: Path to the executable to scan
-
-        Returns:
-            List of tuples (function_name, address)
-        """
         # Load patterns for platform
         patterns = self._load_patterns_for_platform(platform)
 
@@ -91,13 +72,6 @@ class GhidraPatternService:
         return unique_symbols
 
     def add_symbols_to_file(self, symbols_file_path: str, symbols: List[Tuple[str, int]]):
-        """
-        Add found symbols to a symbols file.
-
-        Args:
-            symbols_file_path: Path to the symbols file
-            symbols: List of (function_name, address) tuples
-        """
         if not symbols:
             return
 
@@ -142,15 +116,6 @@ class GhidraPatternService:
         print(f"Added {len(new_symbols_text)} OS library symbols to {symbols_file_path}")
 
     def generate_header_file(self, header_file_path: str, symbols: List[Tuple[str, int]], build_name: str):
-        """
-        Generate or update a C header file with prototypes for the found symbols.
-        Uses #ifdef guards to separate build-specific functions.
-
-        Args:
-            header_file_path: Path to the header file to create/update
-            symbols: List of (function_name, address) tuples
-            build_name: Name of the build version (used for #ifdef guard)
-        """
         if not symbols:
             return
 
@@ -377,14 +342,6 @@ class GhidraPatternService:
         print(f"Added {len([l for l, a in symbols if l in known_prototypes])} function prototypes for {build_name} to: {header_file_path}")
 
     def rename_build_in_header(self, header_file_path: str, old_build_name: str, new_build_name: str):
-        """
-        Rename a build version's #ifdef section in the header file.
-
-        Args:
-            header_file_path: Path to the header file
-            old_build_name: Old build version name
-            new_build_name: New build version name
-        """
         if not os.path.exists(header_file_path):
             return
 
@@ -411,8 +368,6 @@ class GhidraPatternService:
             print(f"Error updating header file during rename: {e}")
 
     def _load_patterns_for_platform(self, platform: str) -> List[GhidraPattern]:
-        """Load Ghidra patterns for a specific platform"""
-
         # Map platform to pattern file
         pattern_files = {
             "PS1": "r3000_LE_patterns.xml",
@@ -435,8 +390,6 @@ class GhidraPatternService:
             return []
 
     def _parse_pattern_file(self, file_path: str) -> List[GhidraPattern]:
-        """Parse a Ghidra pattern XML file"""
-
         patterns = []
 
         try:
@@ -465,8 +418,6 @@ class GhidraPatternService:
         return patterns
 
     def _parse_pattern_data(self, data_text: str) -> Optional[bytes]:
-        """Parse pattern data string into bytes"""
-
         try:
             # Remove comments
             if '<!--' in data_text:
@@ -501,15 +452,6 @@ class GhidraPatternService:
             return None
 
     def _calculate_address(self, platform: str, file_offset: int) -> int:
-        """
-        Calculate RAM address from file offset.
-
-        For now, we just return the file offset and let the user adjust
-        the base address if needed. Proper implementation would parse
-        the executable format (ELF for PS2, PS-EXE for PS1) and calculate
-        the actual RAM address.
-        """
-
         # Platform-specific base addresses (common defaults)
         # These are typical, but may vary per game
         base_addresses = {

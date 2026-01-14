@@ -7,7 +7,6 @@ from functions.verbose_print import verbose_print
 from collections import deque
 
 class SectionInfo:
-    """Represents a single section in an executable"""
     def __init__(self, section_type: str, file_offset: int, mem_start: int, 
                  mem_end: int, size: int):
         self.section_type = section_type  # "text", "data", etc.
@@ -18,11 +17,9 @@ class SectionInfo:
         self.offset_diff = mem_start - file_offset
     
     def contains_address(self, memory_address: int) -> bool:
-        """Check if this section contains the given memory address"""
         return self.mem_start <= memory_address < self.mem_end
     
     def calculate_file_offset(self, memory_address: int) -> Optional[int]:
-        """Calculate file offset for a memory address in this section"""
         # Handle addresses with 0x80 prefix
         if memory_address >= 0x80000000:
             memory_address = memory_address & 0x00FFFFFF
@@ -39,14 +36,8 @@ class SectionInfo:
 
 
 class SectionParserService:
-    """Parse executable section information for accurate offset calculation"""
-    
     @staticmethod
     def parse_executable_sections(exe_path: str, platform: str) -> List[SectionInfo]:
-        """
-        Parse all sections from an executable file.
-        Returns list of SectionInfo objects.
-        """
         if platform in ["Gamecube", "Wii"]:
             return SectionParserService.parse_dol_sections(exe_path)
         elif platform == "PS2":
@@ -58,10 +49,6 @@ class SectionParserService:
     
     @staticmethod
     def parse_dol_sections(dol_path: str) -> List[SectionInfo]:
-        """
-        Parse all sections from DOL file using doltool.
-        Returns list of SectionInfo objects.
-        """
         tool_dir = os.getcwd()
         doltool_path = os.path.join(tool_dir, "prereq", "doltool", "doltool.exe")
         
@@ -152,7 +139,6 @@ class SectionParserService:
     
     @staticmethod
     def parse_ps2_sections(elf_path: str) -> List[SectionInfo]:
-        """Parse all sections from PS2 ELF using ee-objdump"""
         tool_dir = os.getcwd()
         objdump_path = os.path.join(tool_dir, "prereq", "PS2ee", "bin", "ee-objdump.exe")
         
@@ -252,12 +238,7 @@ class SectionParserService:
     
     @staticmethod
     def parse_ps1_sections(exe_path: str) -> List[SectionInfo]:
-        """
-        PS1 executables have a simple structure - one section starting at 0x800.
-        The file offset is always 0x800 bytes from the memory address.
-        """
         try:
-            # PS1 executables are simple: everything after 0x800 header
             file_size = os.path.getsize(exe_path)
             
             # PS1 loads at 0x80000000, file starts at 0x800
@@ -277,7 +258,6 @@ class SectionParserService:
     
     @staticmethod
     def find_section_for_address(sections: List[SectionInfo], memory_address: int) -> Optional[SectionInfo]:
-        """Find the section containing the given memory address"""
         for section in sections:
             if section.contains_address(memory_address):
                 return section
@@ -285,9 +265,7 @@ class SectionParserService:
     
     @staticmethod
     def calculate_file_offset(sections: List[SectionInfo], memory_address: int) -> Optional[int]:
-        """Calculate file offset for a memory address using section map"""
-        # IMPORTANT: Handle PS1/PS2 addresses that start with 0x80
-        # If address > 0x80000000, strip the 0x80 prefix to match section format
+        # Handle PS1/PS2 addresses that start with 0x80
         if memory_address >= 0x80000000:
             memory_address = memory_address & 0x00FFFFFF  # Remove 0x80 prefix
         

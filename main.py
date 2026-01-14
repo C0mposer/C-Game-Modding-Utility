@@ -55,28 +55,14 @@ if __name__ == "__main__":
         
         width = 1024 
         height = 768
-        dpg.create_viewport(title='C & C++ Game Modding Utility', width=width, height=768, min_width = width, min_height = height)
-        # with dpg.viewport_menu_bar():
-        #     EditThemePlugin()
-        
-        # from themes.theme1 import ig_theme_v3_dpg
-        # current_theme = ig_theme_v3_dpg(0, 0, 3, 0, 0, 1, 1) # (Cyan/Cyan/Orange, Dark, Standard, Bordered, Rounded Frames)
-        # dpg.bind_theme(current_theme)
+        dpg.create_viewport(title='C & C++ Game Modding Utility', width=width, height=768, small_icon='prereq/icons/cd.ico', large_icon='prereq/icons/cd.ico')
         
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.set_primary_window("startup_window", True)
 
-        #
-        # demo.show_demo()
-        #dpg.show_style_editor()
-        #
-
-        ##! EVERY FRAME LOOP
-        
         while dpg.is_dearpygui_running():
             
-            # Poll hotkeys if project is open
             hotkey_mgr = get_hotkey_manager()
             if hotkey_mgr:
                 poll_hotkeys(hotkey_mgr)

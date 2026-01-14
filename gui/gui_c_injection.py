@@ -23,31 +23,26 @@ _new_codecave_name_input_value = ""
 _rename_codecave_name_input_value = ""
 
 def reset_codecave_state():
-    """Reset all codecave GUI state - call when switching projects"""
     global _currently_selected_codecave_name
     global _currently_selected_codecave_index
     
     _currently_selected_codecave_name = None
     _currently_selected_codecave_index = -1
     
-    # Clear GUI fields
     ClearGuiCodecaveData()
     
     
 def reset_hook_state():
     from gui.gui_asm_injection import ClearGuiHookData
-    """Reset all hook GUI state - call when switching projects"""
     global _currently_selected_hook_name
     global _currently_selected_hook_index
     
     _currently_selected_hook_name = None
     _currently_selected_hook_index = -1
     
-    # Clear GUI fields
     ClearGuiHookData()
     
 def reset_binary_patch_state():
-    """Reset all binary patch GUI state - call when switching projects"""
     from gui.gui_binary_patch_injection import ClearGuiBinaryPatchData
     global _currently_selected_binary_patch_name
     global _currently_selected_binary_patch_index
@@ -55,28 +50,24 @@ def reset_binary_patch_state():
     _currently_selected_binary_patch_name = None
     _currently_selected_binary_patch_index = -1
     
-    # Clear GUI fields
     ClearGuiBinaryPatchData()
     
-    #print("  Binary patch state reset")
-    
-
 
 def CreateCInjectionGui(current_project_data: ProjectData):
-    with dpg.tab(label="Code Injection", tag="C & C++ Injection"):
+    with dpg.tab(label="Code Injection", tag="code_injection_tab"):
 
         dpg.add_text("Codecaves:")
         dpg.add_listbox(items=[], tag="codecaves_listbox",
                         callback=callback_codecave_selected,
                         user_data=current_project_data, num_items=5)
 
-        # Right-click context menu for the listbox
+        # Right click menu
         with dpg.popup(parent="codecaves_listbox", mousebutton=dpg.mvMouseButton_Right):
             dpg.add_menu_item(label="Rename Codecave",
                               callback=callback_show_rename_codecave_popup,
                               user_data=current_project_data)
 
-        # Buttons related to managing the list of codecaves
+        # Buttons
         with dpg.group(horizontal=True):
             dpg.add_button(tag="add_new_codecave_button", label="Add New Codecave",
                            callback=callback_show_add_codecave_popup,
@@ -85,7 +76,7 @@ def CreateCInjectionGui(current_project_data: ProjectData):
                            callback=callback_remove_codecave,
                            user_data=current_project_data)
 
-            # PS1-specific button (hidden by default)
+            # PS1 header codecave button
             dpg.add_button(
                 tag="add_ps1_header_codecave_button",
                 label="📦 Add PS1 Header Codecave",
@@ -93,15 +84,28 @@ def CreateCInjectionGui(current_project_data: ProjectData):
                 user_data=current_project_data,
                 show=False  # Hidden by default, shown only for PS1 projects
             )
-
-            # Apply theme to make it stand out
             with dpg.theme() as ps1_header_theme:
                 with dpg.theme_component(dpg.mvButton):
                     dpg.add_theme_color(dpg.mvThemeCol_Button, (60, 100, 180), category=dpg.mvThemeCat_Core)
                     dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (80, 120, 200), category=dpg.mvThemeCat_Core)
                     dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (40, 80, 160), category=dpg.mvThemeCat_Core)
-
             dpg.bind_item_theme("add_ps1_header_codecave_button", ps1_header_theme)
+
+            # Open Codecave Finder button
+            dpg.add_button(
+                tag="open_codecave_finder_button",
+                label="Open Codecave Finder",
+                callback=callback_open_codecave_finder,
+                user_data=current_project_data
+            )
+
+            with dpg.theme() as codecave_finder_theme:
+                with dpg.theme_component(dpg.mvButton):
+                    dpg.add_theme_color(dpg.mvThemeCol_Button, (40, 120, 80), category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (50, 150, 100), category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (30, 100, 60), category=dpg.mvThemeCat_Core)
+
+            dpg.bind_item_theme("open_codecave_finder_button", codecave_finder_theme)
 
         dpg.add_separator()
         dpg.add_spacer(height=10)
@@ -120,7 +124,7 @@ def CreateCInjectionGui(current_project_data: ProjectData):
                 dpg.add_text("This temporarily removes it from compilation/building")
 
 
-        # C/C++ files Listbox
+        # C/C++ files listbox
         dpg.add_text("C/C++/ASM Files")
         dpg.add_listbox([], tag="C/C++ Files Listbox",
                         callback=callback_code_file_selected,
@@ -152,14 +156,14 @@ def CreateCInjectionGui(current_project_data: ProjectData):
                 horizontal=True
             )
 
-        # Existing game file selection (show/hide based on injection type)
+        # Target Game File
         with dpg.group(tag="codecave_existing_file_group", show=True):
             dpg.add_text("Target Game File")
             dpg.add_combo(("",), tag="target_game_file",
                          callback=callback_codecave_injection_file_changed,
                          user_data=current_project_data)
 
-        # New file creation (show/hide based on injection type)
+        # New file creation
         with dpg.group(tag="codecave_new_file_group", show=False):
             dpg.add_text("New File Name (will be created on disk)")
             with dpg.group(horizontal=True):
@@ -168,7 +172,7 @@ def CreateCInjectionGui(current_project_data: ProjectData):
                                    width=200)
                 dpg.add_text("Platform-specific naming conventions apply", color=(150, 150, 150))
 
-        # Address in Memory (single, unique)
+        # Address in Memory
         dpg.add_text("Address in Memory To Load At")
         with dpg.group(horizontal=True, tag="c_address_in_memory_group"):
             dpg.add_text("0x")
@@ -177,7 +181,7 @@ def CreateCInjectionGui(current_project_data: ProjectData):
                                callback=update_calculated_file_address,
                                user_data=current_project_data)
 
-        # Address in File (entire section hidden when creating a new file)
+        # Address in File
         with dpg.group(tag="codecave_file_address_group", show=True):
             dpg.add_text("Address in File")
             with dpg.group(horizontal=True):
@@ -215,7 +219,6 @@ def ClearGuiCodecaveData():
     global _currently_selected_codecave_name
     global _currently_selected_codecave_index
 
-  # Only clear if items exist
     if dpg.does_item_exist("codecave_name_detail_input"):
         dpg.set_value("codecave_name_detail_input", "")
     if dpg.does_item_exist("c_address_in_memory"):
@@ -236,7 +239,6 @@ def ClearGuiCodecaveData():
 
     _currently_selected_codecave_name = None
     _currently_selected_codecave_index = -1
-    #print("GUI Codecave Data Cleared.")
 
 
 def callback_show_add_codecave_popup(sender, app_data, user_data):
@@ -282,14 +284,21 @@ def callback_create_codecave_from_popup(sender, app_data, current_project_data: 
     new_codecave = Codecave()
     new_codecave.SetName(new_codecave_name)
     
-    new_codecave_name = new_codecave.GetName() # Update because it will be sanitized of spaces 
+    new_codecave_name = new_codecave.GetName()
     
-    # NEW: Set default aligned address based on platform
+    # Set default address based on platform
     platform = current_project_data.GetCurrentBuildVersion().GetPlatform()
-    if platform.upper() in ["PS2", "N64"]:
-        new_codecave.SetMemoryAddress("80100000")  # 8-byte aligned
+    if platform.upper() in ["PS2"]:
+        new_codecave.SetMemoryAddress("00000000")
     else:
-        new_codecave.SetMemoryAddress("80100000")  # 4-byte aligned (same default works)
+        new_codecave.SetMemoryAddress("80000000")
+    
+    # Set main executable as default injection file
+    main_exe = current_project_data.GetCurrentBuildVersion().GetMainExecutable()
+    if main_exe:
+        new_codecave.SetInjectionFile(main_exe)
+
+    new_codecave.SetAutoCalculateInjectionFileAddress(True)
 
     current_project_data.GetCurrentBuildVersion().AddCodeCave(new_codecave)
     print(f"Created new codecave: {new_codecave_name}")
@@ -322,7 +331,6 @@ def callback_show_rename_codecave_popup(sender, app_data, current_project_data: 
         dpg.set_value("rename_codecave_name_input", _rename_codecave_name_input_value)
         dpg.show_item("rename_codecave_modal")
     else:
-        # Adjusted modal position
         viewport_width = dpg.get_viewport_width()
         viewport_height = dpg.get_viewport_height()
         modal_width = 350
@@ -363,8 +371,8 @@ def callback_rename_codecave_from_popup(sender, app_data, current_project_data: 
     selected_codecave_obj.SetName(new_name)
 
     _currently_selected_codecave_name = new_name
-    UpdateCodecavesListbox(current_project_data) # This will re-sort if names are sorted
-    dpg.set_value("codecave_name_detail_input", new_name) # Update the detail input field
+    UpdateCodecavesListbox(current_project_data)
+    dpg.set_value("codecave_name_detail_input", new_name)
 
     print(f"Codecave renamed from '{old_name}' to '{new_name}'.")
     dpg.configure_item("rename_codecave_modal", show=False)
@@ -380,7 +388,6 @@ def callback_add_code_file(sender, button_data, current_project_data: ProjectDat
         messagebox.showerror("Error", "Please select or create a codecave first.")
         return
 
-    # Allow multiple file selection
     code_file_paths = filedialog.askopenfilenames(
         title="Choose Code File(s)",
         filetypes=[("Code Files", "*.c;*.cpp;*.asm;*.s"), ("All Files", "*.*")],
@@ -401,7 +408,7 @@ def callback_add_code_file(sender, button_data, current_project_data: ProjectDat
     for code_file_path in code_file_paths:
         basename = os.path.basename(code_file_path)
 
-        # --- NEW: block filenames with spaces ---
+        # Block filenames with spaces
         if any(ch.isspace() for ch in basename):
             print(f"Skipped (spaces in name): {basename}")
             space_skipped_count += 1
@@ -438,13 +445,12 @@ def callback_add_code_file(sender, button_data, current_project_data: ProjectDat
     if summary_parts:
         print("Code file add summary: " + "; ".join(summary_parts))
 
-    # Show one messagebox for space issues (bandaid rule)
     if space_skipped_count > 0:
         message = (
             "The following file(s) have spaces in their names and were skipped:\n\n"
             + "\n".join(space_skipped_files)
             + "\n\nSpaces in code filenames are not supported yet.\n"
-              "Please rename them (e.g. 'My Code.c' → 'My_Code.c') and add them again."
+              "Please rename them (e.g. 'My Code.c' -> 'My_Code.c') and add them again."
         )
         messagebox.showerror("Unsupported File Name", message)
     
@@ -471,7 +477,6 @@ def callback_remove_selected_code_file(sender, button_data, current_project_data
 
     try:
         idx_in_displayed_names = code_files_names.index(selected_item_value)
-        # Assuming code_files is a list in Codecave class
         selected_codecave.code_files.pop(idx_in_displayed_names)
         UpdateCodeFilesListbox(current_project_data)
         print(f"Removed code file: {selected_item_value}")
@@ -520,7 +525,6 @@ def callback_codecave_selected(sender, data, current_project_data: ProjectData):
 
     selected_display_name = dpg.get_value("codecaves_listbox")
 
-    # Strip [DISABLED] prefix if present
     if selected_display_name.startswith("[DISABLED] "):
         _currently_selected_codecave_name = selected_display_name.replace("[DISABLED] ", "")
     else:
@@ -546,24 +550,23 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
 
     temp_codecave = Codecave()
 
-    # --- Name ---
+    # Name
     codecave_name = dpg.get_value("codecave_name_detail_input")
     if not codecave_name:
         messagebox.showerror("Validation Error", "Codecave name cannot be empty.")
         return None
     temp_codecave.SetName(codecave_name)
 
-    # --- Preserve existing code files from currently selected codecave ---
+    # Preserve existing code files from currently selected codecave
     if _currently_selected_codecave_index != -1:
         current_codecave_obj = current_project_data.GetCurrentBuildVersion().GetCodeCaves()[_currently_selected_codecave_index]
         temp_codecave.code_files = list(current_codecave_obj.code_files)
     else:
         temp_codecave.code_files = []
 
-    # === Injection type handling (Existing file / New file / Memory Only) ===
+    # Injection type handling (Existing file / New file / Memory Only)
     injection_type_text = dpg.get_value("codecave_injection_type_radio")
 
-    # Normalize to internal string values
     if injection_type_text == "Inject into existing file":
         injection_type = "existing_file"
     elif injection_type_text == "Create new file on disk":
@@ -571,12 +574,12 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
     elif injection_type_text == "Memory Only":
         injection_type = "memory_only"
     else:
-        # Failsafe – default to existing file
+        # Default to existing file
         injection_type = "existing_file"
 
     temp_codecave.SetInjectionType(injection_type)
 
-    # --- File target based on injection type ---
+    # File target based on injection type
     if injection_type == "new_file":
         # New file: get new filename from input
         new_filename = dpg.get_value("codecave_new_filename_input")
@@ -594,10 +597,10 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
         temp_codecave.SetInjectionFile(game_file)
 
     else:
-        # Memory Only: no disk file involved
+        # Memory Only
         temp_codecave.SetInjectionFile("")
 
-    # --- Memory address (always required) ---
+    # Memory address
     memory_address = dpg.get_value("c_address_in_memory")
     if not memory_address:
         messagebox.showerror("Validation Error", "Memory address cannot be empty.")
@@ -612,7 +615,7 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
 
     temp_codecave.SetMemoryAddress(memory_address)
 
-    # --- File address handling (only for 'existing_file') ---
+    # File address handling
     if injection_type == "existing_file":
         auto_calc_enabled = dpg.get_value("auto_calc_file_address_checkbox")
         temp_codecave.SetAutoCalculateInjectionFileAddress(auto_calc_enabled)
@@ -620,11 +623,9 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
         injection_file_address = dpg.get_value("injection_file_address_input")
 
         if injection_file_address:
-            # Ensure 0x prefix
             if not injection_file_address.startswith("0x"):
                 injection_file_address = "0x" + injection_file_address
         else:
-            # If nothing entered, store empty string
             injection_file_address = ""
 
         temp_codecave.SetInjectionFileAddress(injection_file_address)
@@ -634,7 +635,7 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
         temp_codecave.SetAutoCalculateInjectionFileAddress(False)
         temp_codecave.SetInjectionFileAddress("")
 
-    # --- Size of codecave region ---
+    # Size of codecave region
     size_of_region = dpg.get_value("size_of_codecave_region")
     temp_codecave.SetSize(size_of_region)
 
@@ -642,7 +643,6 @@ def GetGuiCodecaveData(current_project_data: ProjectData):
 
 
 def callback_codecave_disabled_checkbox_changed(sender, app_data, user_data):
-    """Handle toggling the disabled checkbox for a codecave in the details panel"""
     global _currently_selected_codecave_index
     current_project_data = user_data
 
@@ -652,19 +652,19 @@ def callback_codecave_disabled_checkbox_changed(sender, app_data, user_data):
     codecave = current_project_data.GetCurrentBuildVersion().GetCodeCaves()[_currently_selected_codecave_index]
     codecave_name = codecave.GetName()
 
-    # Checkbox value: True = disabled, False = enabled
+    # Disabled Checkbox
     codecave.SetEnabled(not app_data)
 
-    # Update listbox to show visual indicator
+    # Update listbox to show visual
     UpdateCodecavesListbox(current_project_data)
 
-    # Restore selection to keep the current codecave selected
+    # Keep the current codecave selected
     if not codecave.IsEnabled():
         dpg.set_value("codecaves_listbox", f"[DISABLED] {codecave_name}")
     else:
         dpg.set_value("codecaves_listbox", codecave_name)
 
-    # Save project
+    # Save
     from services.project_serializer import ProjectSerializer
     ProjectSerializer.save_project(current_project_data)
 
@@ -672,7 +672,7 @@ def callback_codecave_disabled_checkbox_changed(sender, app_data, user_data):
 def UpdateCodecavesListbox(current_project_data: ProjectData):
     code_caves = current_project_data.GetCurrentBuildVersion().GetCodeCaves()
 
-    # Format names with [DISABLED] prefix for disabled items
+    # Format names with [DISABLED] prefix
     code_cave_display_names = []
     for cc in code_caves:
         if not cc.IsEnabled():
@@ -682,7 +682,6 @@ def UpdateCodecavesListbox(current_project_data: ProjectData):
 
     dpg.configure_item("codecaves_listbox", items=code_cave_display_names)
 
-    # Show or hide the "getting started" helper based on whether we have any codecaves
     if not code_caves:
         show_codecave_getting_started_message(current_project_data)
     else:
@@ -701,27 +700,22 @@ def UpdateCodeFilesListbox(current_project_data: ProjectData):
 
 
 def callback_codecave_injection_file_changed(sender, app_data, current_project_data: ProjectData):
-    """Auto-save when injection file dropdown changes"""
     global _currently_selected_codecave_index
 
     if _currently_selected_codecave_index == -1:
         return
 
-    # Get the selected file from the combo
     selected_file = app_data
 
-    # Update the codecave's injection file
     existing_codecave = current_project_data.GetCurrentBuildVersion().GetCodeCaves()[_currently_selected_codecave_index]
     existing_codecave.SetInjectionFile(selected_file)
 
-    # Trigger auto-save
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
 
     verbose_print(f"Codecave '{existing_codecave.GetName()}' injection file changed to: {selected_file}")
 
 def _hide_save_indicator_after_delay(indicator_tag):
-    """Helper to hide save indicator after 3 seconds"""
     import threading
 
     def hide_callback():
@@ -740,14 +734,12 @@ def callback_save_codecave(sender, button_data, current_project_data: ProjectDat
         return
 
     temp_codecave_from_gui = GetGuiCodecaveData(current_project_data)
-    if temp_codecave_from_gui is None: # If validation failed
+    if temp_codecave_from_gui is None: #
         return
 
-    # The name from the detail input should match the selected codecave's name
-    # as the detail input is disabled for direct editing.
+
     existing_codecave = current_project_data.GetCurrentBuildVersion().GetCodeCaves()[_currently_selected_codecave_index]
 
-    # Update only the mutable fields of the existing codecave object
     existing_codecave.SetInjectionFile(temp_codecave_from_gui.GetInjectionFile())
     existing_codecave.SetMemoryAddress(temp_codecave_from_gui.GetMemoryAddress())
     existing_codecave.SetSize(temp_codecave_from_gui.GetSize())
@@ -756,12 +748,12 @@ def callback_save_codecave(sender, button_data, current_project_data: ProjectDat
 
     UpdateCodecavesListbox(current_project_data)
 
-    print(f"Codecave '{existing_codecave.GetName()}' details saved.")
+    verbose_print(f"Codecave '{existing_codecave.GetName()}' details saved.")
 
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
 
-    # Show "Saved!" indicator
+    # Show "Saved!" text
     if dpg.does_item_exist("codecave_save_indicator"):
         dpg.configure_item("codecave_save_indicator", show=True)
         _hide_save_indicator_after_delay("codecave_save_indicator")
@@ -818,7 +810,7 @@ def ReloadGuiCodecaveData(current_project_data: ProjectData):
     is_disabled = not selected_codecave.IsEnabled()
     dpg.set_value("codecave_disabled_checkbox", is_disabled)
 
-    # --- Injection type handling (existing / new file / memory only) ---
+    # Injection type handling (existing / new file / memory only)
     injection_type = selected_codecave.GetInjectionType()
 
     if injection_type == "new_file":
@@ -837,7 +829,6 @@ def ReloadGuiCodecaveData(current_project_data: ProjectData):
         dpg.configure_item("codecave_new_file_group", show=False)
         dpg.configure_item("codecave_file_address_group", show=False)
 
-        # Optional: clear file-related widgets so they don't carry stale data
         dpg.set_value("codecave_new_filename_input", "")
         dpg.set_value("target_game_file", "")
 
@@ -848,11 +839,11 @@ def ReloadGuiCodecaveData(current_project_data: ProjectData):
         dpg.configure_item("codecave_new_file_group", show=False)
         dpg.configure_item("codecave_file_address_group", show=True)
 
-    # --- Code files list ---
+    # Code files list
     filenames = [os.path.basename(f) for f in selected_codecave.GetCodeFilesPaths()]
     dpg.configure_item("C/C++ Files Listbox", items=filenames)
 
-    # --- Target game file combo ---
+    # Target game file
     game_files_for_combo = current_project_data.GetCurrentBuildVersion().GetInjectionFiles()
     
     if game_files_for_combo:
@@ -870,11 +861,11 @@ def ReloadGuiCodecaveData(current_project_data: ProjectData):
     else:
         dpg.set_value("target_game_file", current_injection_file or "")
 
-    # --- Memory address & size (always relevant) ---
+    #  Memory address
     dpg.set_value("c_address_in_memory", selected_codecave.GetMemoryAddress())
     dpg.set_value("size_of_codecave_region", selected_codecave.GetSize())
 
-    # --- File address / auto-calc (only meaningful for existing_file, but safe to keep) ---
+    # File address
     auto_calc_state = selected_codecave.GetAutoCalculateInjectionFileAddress()
     dpg.set_value("auto_calc_file_address_checkbox", auto_calc_state)
     dpg.configure_item("injection_file_address_input", enabled=not auto_calc_state)
@@ -882,7 +873,6 @@ def ReloadGuiCodecaveData(current_project_data: ProjectData):
     if auto_calc_state:
         update_calculated_file_address(None, None, current_project_data)
         
-        # Only auto-calculate using section maps if checkbox is enabled
         current_build = current_project_data.GetCurrentBuildVersion()
         memory_address = selected_codecave.GetMemoryAddress()
         if memory_address:
@@ -902,7 +892,6 @@ def ReloadGuiCodecaveData(current_project_data: ProjectData):
 
 
 def update_calculated_file_address(sender, app_data, current_project_data: ProjectData):
-    """Calculate file address using section maps (NEW: Multi-section support)"""
     global _currently_selected_codecave_index
 
     if _currently_selected_codecave_index == -1:
@@ -920,20 +909,18 @@ def update_calculated_file_address(sender, app_data, current_project_data: Proje
         return
 
     try:
-        # Parse memory address
         processed_memory_address_str = memory_address_str.strip()
 
-        # Remove 0x prefix if present
+        # Remove 0x prefix
         if processed_memory_address_str.lower().startswith("0x"):
             processed_memory_address_str = processed_memory_address_str[2:]
 
-        # Remove 80 prefix if present (GameCube/Wii addresses)
+        # Remove 80 prefix
         if processed_memory_address_str.lower().startswith("80") and len(processed_memory_address_str) > 2:
             processed_memory_address_str = processed_memory_address_str[2:]
 
         memory_address_int = int(processed_memory_address_str, 16)
         
-        # NEW: Use section map to calculate file offset
         current_build = current_project_data.GetCurrentBuildVersion()
         injection_file = selected_codecave.GetInjectionFile()
         
@@ -941,22 +928,21 @@ def update_calculated_file_address(sender, app_data, current_project_data: Proje
             dpg.set_value("injection_file_address_input", "NO FILE")
             return
         
-        # Try section map first
+        # Try section map
         file_offset = current_build.GetFileOffsetForAddress(injection_file, memory_address_int)
         
         if file_offset is not None:
-            # Success! Found in section map
+            # Found in section map
             calculated_hex_string = f"{file_offset:X}"
             dpg.set_value("injection_file_address_input", calculated_hex_string)
             
-            # Show section info in console
             section_info = current_build.GetSectionInfoForAddress(injection_file, memory_address_int)
             if section_info:
-                print(f"Address 0x{memory_address_int:X} found in {section_info['type']} section")
-                print(f"  File offset: 0x{file_offset:X}")
+                verbose_print(f"Address 0x{memory_address_int:X} found in {section_info['type']} section")
+                verbose_print(f"  File offset: 0x{file_offset:X}")
             
         else:
-            # Fallback to old offset method
+            # Fallback to single offset
             ram_offset_str = dpg.get_value("File Offset From Ram Input")
             
             if not ram_offset_str:
@@ -978,7 +964,7 @@ def update_calculated_file_address(sender, app_data, current_project_data: Proje
         dpg.set_value("injection_file_address_input", "INVALID")
         print(f"Error in auto-calculation: {e}")
 
-# --- NEW: Checkbox callback ---
+# Checkbox callback
 def callback_auto_calculate_file_address_checkbox(sender, app_data, current_project_data: ProjectData):
     global _currently_selected_codecave_index
 
@@ -997,27 +983,20 @@ def callback_auto_calculate_file_address_checkbox(sender, app_data, current_proj
     dpg.configure_item("injection_file_address_input", enabled=not is_checked)
 
     if is_checked:
-        update_calculated_file_address(sender, app_data, current_project_data) # Trigger calculation immediately
+        # If checked, calculate the offset
+        update_calculated_file_address(sender, app_data, current_project_data)
     else:
-        # If unchecked, load the original saved value from the codecave
+        # If unchecked, load the saved manual value
         display_offset = selected_codecave.GetInjectionFileAddress()
         dpg.set_value("injection_file_address_input", display_offset)
         print("Auto-calculation disabled. Manual input enabled.")
         
 def callback_add_ps1_header_codecave(sender, app_data, current_project_data: ProjectData):
-    """
-    Callback for "Add PS1 Header Codecave" button.
-    Imported from template_service.
-    """
     from services.template_service import callback_add_ps1_header_codecave as template_callback
     template_callback(sender, app_data, current_project_data)
 
 
 def update_ps1_codecave_button_visibility(current_project_data: ProjectData):
-    """
-    Show/hide PS1 header codecave button based on platform.
-    Call this when platform changes or project loads.
-    """
     
     platform = current_project_data.GetCurrentBuildVersion().GetPlatform()
     is_ps1 = platform == "PS1"
@@ -1027,10 +1006,9 @@ def update_ps1_codecave_button_visibility(current_project_data: ProjectData):
 
 
 def callback_codecave_injection_type_changed(sender, app_data, current_project_data: ProjectData):
-    """Show/hide appropriate fields based on injection type"""
     global _currently_selected_codecave_index
     
-    selected_text = app_data  # e.g. "Inject into existing file", "Create new file on disk", "Memory Only"
+    selected_text = app_data
 
     if selected_text == "Create new file on disk":
         injection_type = "new_file"
@@ -1039,7 +1017,7 @@ def callback_codecave_injection_type_changed(sender, app_data, current_project_d
     else:
         injection_type = "existing_file"
 
-    # Show/hide file-related groups
+    # Show/hide groups
     show_existing_file = (injection_type == "existing_file")
     show_new_file = (injection_type == "new_file")
     show_file_address = (injection_type == "existing_file")  # ONLY for existing-file injections
@@ -1048,7 +1026,7 @@ def callback_codecave_injection_type_changed(sender, app_data, current_project_d
     dpg.configure_item("codecave_new_file_group", show=show_new_file)
     dpg.configure_item("codecave_file_address_group", show=show_file_address)
     
-    # Update codecave object if one is selected
+    # Update codecave object
     if _currently_selected_codecave_index != -1:
         codecave = current_project_data.GetCurrentBuildVersion().GetCodeCaves()[_currently_selected_codecave_index]
         codecave.SetInjectionType(injection_type)
@@ -1058,44 +1036,42 @@ def callback_codecave_injection_type_changed(sender, app_data, current_project_d
             codecave.SetAutoCalculateInjectionFileAddress(False)
             codecave.SetInjectionFileAddress("")
             if injection_type == "memory_only":
-                # Memory-only should not have a disk file associated
+                # Memory-only should not have a file
                 codecave.SetInjectionFile("")
 
         from gui.gui_main_project import trigger_auto_save
         trigger_auto_save()
 
 
-def callback_open_debug_string_codecave_finder(sender, app_data, current_project_data: ProjectData):
-    """Open Codecave Finder → Debug String tab and auto-scan."""
-    from gui.gui_codecave_finder import show_codecave_finder_window, _on_debug_string_scan_clicked
-
-    # Open the Codecave Finder window (re-uses existing window if already created)
+def callback_open_codecave_finder(sender, app_data, current_project_data: ProjectData):
+    from gui.gui_codecave_finder import show_codecave_finder_window
     show_codecave_finder_window(sender, app_data, current_project_data)
 
-    # Switch to the Debug String Finder tab if the tab bar exists
+
+def callback_open_debug_string_codecave_finder(sender, app_data, current_project_data: ProjectData):
+    from gui.gui_codecave_finder import show_codecave_finder_window, _on_debug_string_scan_clicked
+
+    show_codecave_finder_window(sender, app_data, current_project_data)
+
     if dpg.does_item_exist("codecave_finder_tab_bar"):
         try:
-            # Value is the tag of the tab we want active
             dpg.set_value("codecave_finder_tab_bar", "debug_string_finder_tab")
         except Exception as e:
             print(f"Warning: could not switch codecave finder tab: {e}")
 
-    # Kick off the debug-string scan
+    # Automatically start scanning
     try:
         _on_debug_string_scan_clicked("debug_string_scan_button", None, current_project_data)
     except Exception as e:
-        # Fallback: if something goes wrong, just let the user drive it manually
         print(f"Error auto-scanning debug strings: {e}")
         
 def show_codecave_getting_started_message(current_project_data: ProjectData):
-    """Show a little helper panel when there are no codecaves yet."""
     if dpg.does_item_exist("codecave_getting_started_group"):
         dpg.configure_item("codecave_getting_started_group", show=True)
         return
 
-    # Insert this group above the codecaves listbox inside the C & C++ Injection tab
     with dpg.group(tag="codecave_getting_started_group",
-                   parent="C & C++ Injection",
+                   parent="code_injection_tab",
                    before="codecaves_listbox"):
         dpg.add_separator()
         dpg.add_spacer(height=4)
@@ -1121,6 +1097,5 @@ def show_codecave_getting_started_message(current_project_data: ProjectData):
 
 
 def hide_codecave_getting_started_message():
-    """Hide the helper panel when at least one codecave exists."""
     if dpg.does_item_exist("codecave_getting_started_group"):
         dpg.configure_item("codecave_getting_started_group", show=False)

@@ -1,29 +1,3 @@
-#!/usr/bin/env python3
-"""
- Command-Line Interface for C/C++ Game Modding Utility
-
-Usage:
-    mod_utility.exe [project]                      Interactive mode (select command from menu)
-    mod_utility.exe compile [project]              Compile project sources
-    mod_utility.exe build [project]                Full build (compile + ISO)
-    mod_utility.exe xdelta [project]               Generate xdelta patch
-    mod_utility.exe inject [project] [emulator]    Inject into running emulator
-    mod_utility.exe clean [project]                Clean build artifacts
-    mod_utility.exe list-builds [project]          List build versions
-    mod_utility.exe info [project]                 Show project information
-
-    Note: If [project] is omitted, modtool will auto-detect the .modproj file
-          in the current directory. Run from your project directory for convenience!
-
-Options:
-    -v, --verbose       Verbose output
-    -q, --quiet         Minimal output (errors only)
-    --build=<name>      Specify build version
-    --no-color          Disable colored output
-    -h, --help          Show this help message
-    --version           Show version
-"""
-
 import sys
 import os
 import io
@@ -32,7 +6,6 @@ import argparse
 from typing import Optional, List
 from pathlib import Path
 
-# Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from classes.project_data.project_data import ProjectData
@@ -45,7 +18,6 @@ from services.pid_cache_service import PIDCacheService
 from functions.verbose_print import verbose_print
 from path_helper import get_application_directory
 
-# ==================== CLI Colors ====================
 
 class Colors:
     """ANSI color codes"""
@@ -72,94 +44,69 @@ class Colors:
         Colors.CYAN = ''
         Colors.GRAY = ''
 
-# ==================== CLI Logger ====================
 
 class CLILogger:
-    """Simple logger for CLI output"""
-
     def __init__(self, verbose: bool = False, quiet: bool = False, no_warnings: bool = False):
         self.verbose = verbose
         self.quiet = quiet
         self.no_warnings = no_warnings
     
     def info(self, message: str):
-        """Info message (normal output)"""
         if not self.quiet:
             print(f"{Colors.CYAN}{Colors.RESET} {message}")
     
     def success(self, message: str):
-        """Success message"""
         if not self.quiet:
             print(f"{Colors.GREEN}{Colors.RESET} {message}")
     
     def error(self, message: str):
-        """Error message (always shown)"""
         print(f"{Colors.RED}{Colors.RESET} {message}", file=sys.stderr)
     
     def warning(self, message: str):
-        """Warning message"""
         if not self.quiet:
             print(f"{Colors.YELLOW}⚠{Colors.RESET} {message}")
     
     def debug(self, message: str):
-        """Debug message (only in verbose mode)"""
         if self.verbose:
             print(f"{Colors.GRAY}->{Colors.RESET} {message}")
     
     def header(self, message: str):
-        """Section header"""
         if not self.quiet:
             print(f"\n{Colors.BOLD}{Colors.BLUE}{message}{Colors.RESET}")
             print(f"{Colors.GRAY}{'─' * len(message)}{Colors.RESET}")
     
     def progress(self, message: str):
-        """Progress indicator"""
         if self.verbose and not self.quiet:
             print(f"  {message}")
 
-# ==================== CLI Core ====================
 
 class ModToolCLI:
-    """Main CLI class"""
-
     def __init__(self, logger: CLILogger):
         self.logger = logger
-        # Use centralized helper for PyInstaller compatibility
         self.tool_dir = get_application_directory()
-        # Initialize callback attributes (for GUI compatibility)
         self.on_progress = None
         self.on_error = None
         self.verbose = False
     
     def _log(self, msg: str):
-        """Always shown (CLI + GUI) – for the *simple* output."""
         print(msg)
         if self.on_progress:
             self.on_progress(msg)
 
     def _vlog(self, msg: str):
-        """
-        Verbose-only details. Use this for per-hook / per-path / per-command spam.
-        """
         if not self.verbose:
             return
         verbose_print(msg)
-        # If you want verbose lines in the GUI log too, also forward:
         if self.on_progress:
             self.on_progress(msg)
 
     def _elog(self, msg: str):
-        """Error logging helper."""
         from functions.print_wrapper import print_error
         print_error(msg)
         if self.on_error:
             self.on_error(msg)
     
     def find_project_in_cwd(self) -> Optional[str]:
-        """
-        Auto-detect .modproj file in current working directory.
-        Returns the first .modproj file found.
-        """
         cwd = os.getcwd()
         self.logger.debug(f"Auto-detecting project in: {cwd}")
 
@@ -173,10 +120,6 @@ class ModToolCLI:
         return None
 
     def find_project_file(self, project_name: str) -> Optional[str]:
-        """
-        Find project file by name.
-        Searches in: current dir, projects/ dir, recursive search
-        """
         self.logger.debug(f"Searching for project: {project_name}")
 
         # Try exact path first
@@ -213,10 +156,6 @@ class ModToolCLI:
         return None
 
     def load_project(self, project_name: Optional[str]) -> Optional[ProjectData]:
-        """
-        Load project data from file.
-        If project_name is None, attempts to auto-detect .modproj in current directory.
-        """
         # Auto-detect if no project name provided
         if project_name is None:
             self.logger.debug("No project specified, attempting auto-detection...")
@@ -253,7 +192,6 @@ class ModToolCLI:
         return project_data
     
     def save_project(self, project_data: ProjectData) -> bool:
-        """Save project data"""
         success = ProjectSerializer.save_project(project_data)
         if success:
             self.logger.debug("Project saved")
@@ -262,10 +200,6 @@ class ModToolCLI:
         return success
     
     def _prompt_build_selection(self, project_data: ProjectData) -> bool:
-        """
-        Prompt user to select a build version.
-        Returns True if selection successful, False otherwise.
-        """
         build_names = [bv.GetBuildName() for bv in project_data.build_versions]
         
         # If only one build, use it automatically
@@ -305,10 +239,6 @@ class ModToolCLI:
             return False
     
     def _prompt_command_selection(self) -> Optional[str]:
-        """
-        Prompt user to select a command.
-        Returns the command name, 'exit' to quit, or None if cancelled.
-        """
         commands = [
             ('compile', 'Compile project sources'),
             ('build', 'Full build (compile + ISO)'),
@@ -360,7 +290,6 @@ class ModToolCLI:
             return 'exit'
 
     def _display_size_analysis(self, analyzer):
-        """Display code size analysis matching GUI output"""
         from services.size_analyzer_service import SizeAnalyzerService
 
         results = analyzer.analyze_all()
@@ -385,16 +314,6 @@ class ModToolCLI:
             bar_width = 30
             filled = int((percentage / 100.0) * bar_width)
             bar = "█" * filled + "░" * (bar_width - filled)
-            
-            # # Color/symbol based on warning level
-            # if result.warning_level == "overflow":
-            #     status = "🔴 OVERFLOW"
-            # elif result.warning_level == "critical":
-            #     status = "🟠 CRITICAL"
-            # elif result.warning_level == "warning":
-            #     status = "🟡 WARNING"
-            # else:
-            #     status = "🟢 OK"
             
             # Build output line
             print(f"\n{type_str}: {result.name}")
@@ -423,8 +342,8 @@ class ModToolCLI:
         
         print("=" * 60)
     
-    # ==================== Commands ====================
-    
+
+    # Actions
     def cmd_compile(self, project_name: str, build_name: Optional[str] = None) -> int:
         """Compile project sources"""
         self.logger.header("COMPILE")
@@ -502,7 +421,6 @@ class ModToolCLI:
 
     
     def cmd_build(self, project_name: str, build_name: Optional[str] = None) -> int:
-        """Full build: compile + patch + build ISO"""
         self.logger.header("BUILD")
         
         # Load project
@@ -523,7 +441,7 @@ class ModToolCLI:
         self.logger.info(f"Build: {current_build.GetBuildName()}")
         self.logger.info(f"Platform: {current_build.GetPlatform()}")
         
-        # Step 1: Compile
+        # Compile
         self.logger.info("")
         self.logger.info("[1/3] Compiling...")
 
@@ -557,7 +475,7 @@ class ModToolCLI:
             print(banner_msg)
             print(banner_bottom)
         
-        # Step 2: Build ISO
+        # Build ISO
         self.logger.info("")
         self.logger.info("[2/3] Building ISO...")
 
@@ -595,7 +513,6 @@ class ModToolCLI:
 
     def cmd_xdelta(self, project_name: str, original_file: Optional[str] = None,
                    build_name: Optional[str] = None) -> int:
-        """Generate xdelta patch from built ISO/file"""
         self.logger.header("GENERATE XDELTA PATCH")
 
         # Load project
@@ -669,7 +586,6 @@ class ModToolCLI:
 
     def cmd_inject(self, project_name: str, emulator_name: Optional[str] = None,
                build_name: Optional[str] = None) -> int:
-        """Inject compiled code into running emulator"""
         self.logger.header("INJECT")
 
         # Load project
@@ -745,12 +661,12 @@ class ModToolCLI:
                 self.logger.info("\nMake sure the emulator is running with a game loaded.")
                 return 1
 
-            # Select emulator (CASE-INSENSITIVE)
+            # Select emulator
             if emulator_name:
                 # User specified emulator - do case-insensitive match
                 emulator_name_lower = emulator_name.lower()
 
-                # Find matching emulator (case-insensitive)
+                # Find matching emulator
                 for emu in available:
                     if emu.lower() == emulator_name_lower:
                         target_emulator = emu
@@ -768,13 +684,13 @@ class ModToolCLI:
                     self.logger.warning(f"Multiple emulators detected, using: {target_emulator}")
                     self.logger.info(f"Available: {', '.join(available)}")
 
-            # Cache the PID for next time
+            # Cache the PID
             if target_emulator in EMULATOR_CONFIGS:
                 emu_info = EMULATOR_CONFIGS[target_emulator]
                 cached_pid = emu_service._get_pid(emu_info.process_name)
                 if cached_pid:
                     pid_cache.cache_pid(target_emulator, cached_pid)
-                    self.logger.debug(f"Cached PID {cached_pid} for {target_emulator}")
+                    self.logger.debug(f"Saved PID {cached_pid} for {target_emulator}")
 
         self.logger.info(f"Target: {target_emulator}")
 
@@ -783,11 +699,11 @@ class ModToolCLI:
         self.logger.info("Injecting...")
         result = emu_service.inject_into_emulator(target_emulator)
 
-        # After injection, save any newly discovered PIDs to file cache
+        # After injection, save any newly discovered PIDs
         if target_emulator in manager.cached_pids:
             new_pid = manager.cached_pids[target_emulator]
             pid_cache.cache_pid(target_emulator, new_pid)
-            self.logger.debug(f"Saved PID {new_pid} to file cache for {target_emulator}")
+            self.logger.debug(f"Saved PID {new_pid} for {target_emulator}")
 
         if result.success:
             self.logger.success(result.message)
@@ -797,7 +713,6 @@ class ModToolCLI:
             return 1
     
     def cmd_clean(self, project_name: str) -> int:
-        """Clean build artifacts"""
         self.logger.header("CLEAN")
         
         # Load project
@@ -870,7 +785,6 @@ class ModToolCLI:
         return 0
     
     def cmd_validate(self, project_name: str) -> int:
-        """Validate project setup"""
         self.logger.header("VALIDATE")
         
         # Load project
@@ -955,7 +869,6 @@ class ModToolCLI:
             return 1
     
     def cmd_list_builds(self, project_name: str) -> int:
-        """List all build versions in project"""
         self.logger.header("BUILD VERSIONS")
         
         # Load project
@@ -983,7 +896,6 @@ class ModToolCLI:
         return 0
     
     def cmd_set_build(self, project_name: str, build_name: str) -> int:
-        """Switch to different build version"""
         self.logger.header("SET BUILD VERSION")
         
         # Load project
@@ -999,7 +911,6 @@ class ModToolCLI:
             return 1
     
     def cmd_info(self, project_name: str) -> int:
-        """Show detailed project information"""
         self.logger.header("PROJECT INFO")
         
         # Load project
@@ -1043,10 +954,9 @@ class ModToolCLI:
         
         return 0
     
-    # ==================== Helper Methods ====================
+
     
     def _switch_build(self, project_data: ProjectData, build_name: str) -> bool:
-        """Switch to specified build version"""
         build_names = [bv.GetBuildName() for bv in project_data.build_versions]
         
         if build_name not in build_names:
@@ -1060,7 +970,6 @@ class ModToolCLI:
         return True
     
     def _get_supported_emulators_for_platform(self, platform: str) -> List[str]:
-        """Get list of supported emulators for a platform"""
         emulator_map = {
             "PS1": ["DuckStation", "PCSX-Redux", "BizHawk", "Mednafen 1.29", "Mednafen 1.31"],
             "PS2": ["PCSX2"],
@@ -1070,10 +979,9 @@ class ModToolCLI:
         }
         return emulator_map.get(platform, [])
 
-# ==================== Main Entry Point ====================
 
+#! Entry point
 def print_custom_help():
-    """Print custom help message"""
     help_text = """Command-line interface for C/C++ Game Modding Utility
 
 Interactive Mode:
@@ -1110,7 +1018,6 @@ For more information, visit: https://github.com/C0mposer/C-Game-Modding-Utility
     print(help_text)
 
 def modtool_main():
-    # Check for --help or -h before argparse to use custom help
     if '--help' in sys.argv or '-h' in sys.argv:
         print_custom_help()
         return 0
@@ -1122,7 +1029,7 @@ def modtool_main():
         add_help=False  # Disable automatic help to use custom help
     )
 
-    # For Sublime
+    # For Sublime since it has a problem with the default encoding
     if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout = open(sys.stdout.fileno(), 'w', encoding='utf-8', closefd=False)
 
@@ -1207,15 +1114,13 @@ def modtool_main():
     parser.add_argument('--no-color', action='store_true', help='Disable colors')
     parser.add_argument('--version', action='version', version='Mod Utility 1.0.0')
 
-    # Manual handling for interactive mode with project name
-    # Check if first arg (after script name) is NOT a known command and NOT a flag
+    # Check if first arg is not a known command
     # If so, it's a project name for interactive mode
     top_level_project = None
     commands = ['compile', 'build', 'xdelta', 'inject', 'clean', 'validate', 'list-builds', 'set-build', 'info']
 
     if len(sys.argv) > 1:
         first_arg = sys.argv[1]
-        # If first arg is not a flag and not a known command, it's a project name for interactive mode
         if not first_arg.startswith('-') and first_arg not in commands:
             top_level_project = first_arg
             # Remove it from sys.argv so argparse doesn't see it
@@ -1253,7 +1158,7 @@ def modtool_main():
             print_custom_help()
             return 0
 
-        # Interactive mode - loop until user exits
+        # Interactive mode, loop until exit
         while True:
             selected_command = cli._prompt_command_selection()
 
@@ -1330,7 +1235,7 @@ def modtool_main():
                     traceback.print_exc()
                 continue  # Go back to menu
 
-    # Non-interactive mode - execute command and exit
+    # Regular, execute command and exit
     else:
         try:
             if args.command == 'compile':

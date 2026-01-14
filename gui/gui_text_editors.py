@@ -9,7 +9,6 @@ from classes.project_data.project_data import ProjectData
 
 #! VSCode
 def callback_open_vscode(sender, app_data, current_project_data: ProjectData):
-    """Open project folder in VSCode and automatically generate tasks.json if it doesn't exist"""
     project_folder = current_project_data.GetProjectFolder()
 
     if not project_folder or not os.path.exists(project_folder):
@@ -42,7 +41,6 @@ def callback_open_vscode(sender, app_data, current_project_data: ProjectData):
 
 
 def callback_generate_vscode_tasks(sender, app_data, current_project_data: ProjectData):
-    """Generate VSCode tasks.json with compile, build, and inject tasks"""
     try:
         _generate_vscode_tasks_internal(current_project_data)
         
@@ -50,21 +48,11 @@ def callback_generate_vscode_tasks(sender, app_data, current_project_data: Proje
         platform = current_build.GetPlatform()
         emulators = _get_platform_emulators(platform)
         
-        # messagebox.showinfo("Success", 
-        #     f"VSCode tasks.json generated!\n\n"
-        #     f"Platform: {platform}\n"
-        #     f"Tasks Created:\n"
-        #     f"  • Compile (interactive build selection)\n"
-        #     f"  • Build ISO (interactive build selection)\n"
-        #     f"  • Inject ({len(emulators)} emulator(s))\n"
-        #     f"  • Clean\n\n"
-        #     f"Press Ctrl+Shift+B in VSCode to run tasks")
     except Exception as e:
         messagebox.showerror("Error", f"Could not generate tasks.json:\n\n{str(e)}")
 
 
 def _generate_vscode_tasks_internal(current_project_data: ProjectData):
-    """Internal function to generate tasks.json"""
     project_folder = current_project_data.GetProjectFolder()
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
@@ -195,7 +183,6 @@ def _generate_vscode_tasks_internal(current_project_data: ProjectData):
 
 #! Sublime
 def callback_open_sublime(sender, app_data, current_project_data: ProjectData):
-    """Open project folder in Sublime Text with auto-generated project file if it doesn't exist"""
     project_folder = current_project_data.GetProjectFolder()
 
     if not project_folder or not os.path.exists(project_folder):
@@ -244,7 +231,6 @@ def callback_open_sublime(sender, app_data, current_project_data: ProjectData):
 
 
 def _generate_sublime_project_file(current_project_data: ProjectData):
-    """Generate Sublime Text project file with build systems"""
     project_folder = current_project_data.GetProjectFolder()
     project_name = current_project_data.GetProjectName()
     current_build = current_project_data.GetCurrentBuildVersion()
@@ -343,7 +329,6 @@ def _generate_sublime_project_file(current_project_data: ProjectData):
 
 
 def callback_generate_sublime_project(sender, app_data, current_project_data: ProjectData):
-    """Generate Sublime Text project file with build systems (menu callback)"""
     try:
         _generate_sublime_project_file(current_project_data)
         
@@ -354,23 +339,12 @@ def callback_generate_sublime_project(sender, app_data, current_project_data: Pr
         project_folder = current_project_data.GetProjectFolder()
         sublime_folder = os.path.join(project_folder, ".sublime")
         
-        # messagebox.showinfo("Success", 
-        #     f"Sublime Text project file generated!\n\n"
-        #     f"Platform: {platform}\n"
-        #     f"Build Systems Created:\n"
-        #     f"  • Compile Mod\n"
-        #     f"  • Build ISO\n"
-        #     f"  • Inject ({len(emulators)} emulator(s))\n"
-        #     f"  • Clean Build\n"
-        #     f"  • Project Info\n\n"
-        #     f"Location: {sublime_folder}\n\n")
     except Exception as e:
         messagebox.showerror("Error", f"Could not generate Sublime project file:\n\n{str(e)}")
 
 
 #! Notepad++
 def callback_open_notepadpp(sender, app_data, current_project_data: ProjectData):
-    """Open project folder in Notepad++ as a workspace with auto-generated batch files if they don't exist"""
     project_folder = current_project_data.GetProjectFolder()
 
     if not project_folder or not os.path.exists(project_folder):
@@ -401,26 +375,15 @@ def callback_open_notepadpp(sender, app_data, current_project_data: ProjectData)
         if os.path.exists(npp_path):
             try:
                 # Open Notepad++ with folder as workspace
-                # -openFoldersAsWorkspace: Opens the folder as a workspace with file browser
                 subprocess.Popen([npp_path, '-openFoldersAsWorkspace', project_folder])
                 print(f" Opened Notepad++ workspace: {project_folder}")
                 return
             except Exception as e:
                 print(f"Failed to open with {npp_path}: {e}")
                 continue
-    
-    # If none found, show error
-    messagebox.showerror("Error", 
-        f"Could not find Notepad++.\n\n"
-        f"Expected at:\n"
-        f"  C:\\Program Files\\Notepad++\\notepad++.exe\n"
-        f"  or\n"
-        f"  C:\\Program Files (x86)\\Notepad++\\notepad++.exe\n\n"
-        f"Please install Notepad++.")
 
 
 def _generate_notepadpp_batch_files(current_project_data: ProjectData):
-    """Generate batch files for Notepad++ (can be run directly or via NppExec)"""
     project_folder = current_project_data.GetProjectFolder()
     project_name = current_project_data.GetProjectName()
     current_build = current_project_data.GetCurrentBuildVersion()
@@ -445,7 +408,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
     # Get emulators for platform
     emulators = _get_platform_emulators(platform)
     
-    # === 1. Compile batch file ===
+    # Compile batch file
     compile_bat = os.path.join(batch_dir, "compile.bat")
     with open(compile_bat, 'w') as f:
         f.write(f'@echo off\n')
@@ -453,7 +416,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
         f.write(f'{modtool_path} --no-color compile "{project_name}"\n')
         f.write(f'pause\n')
     
-    # === 2. Compile verbose batch file ===
+    # Compile verbose batch file
     compile_verbose_bat = os.path.join(batch_dir, "compile_verbose.bat")
     with open(compile_verbose_bat, 'w') as f:
         f.write(f'@echo off\n')
@@ -461,7 +424,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
         f.write(f'{modtool_path} --no-color --verbose compile "{project_name}"\n')
         f.write(f'pause\n')
     
-    # === 3. Build ISO batch file ===
+    # Build ISO batch file
     build_bat = os.path.join(batch_dir, "build_iso.bat")
     with open(build_bat, 'w') as f:
         f.write(f'@echo off\n')
@@ -469,7 +432,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
         f.write(f'{modtool_path} --no-color build "{project_name}"\n')
         f.write(f'pause\n')
     
-    # === 4. Build ISO verbose batch file ===
+    # Build ISO verbose batch file
     build_verbose_bat = os.path.join(batch_dir, "build_iso_verbose.bat")
     with open(build_verbose_bat, 'w') as f:
         f.write(f'@echo off\n')
@@ -477,7 +440,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
         f.write(f'{modtool_path} --no-color --verbose build "{project_name}"\n')
         f.write(f'pause\n')
     
-    # === 5. Inject batch files (one per emulator) ===
+    # Inject batch files (one per emulator)
     for emulator in emulators:
         # Sanitize emulator name for filename
         safe_name = emulator.replace(' ', '_').replace('.', '_').lower()
@@ -489,7 +452,7 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
             f.write(f'{modtool_path} --no-color inject "{project_name}" "{emulator}"\n')
             f.write(f'pause\n')
     
-    # === 6. Clean batch file ===
+    # Clean batch file
     clean_bat = os.path.join(batch_dir, "clean.bat")
     with open(clean_bat, 'w') as f:
         f.write(f'@echo off\n')
@@ -497,40 +460,16 @@ def _generate_notepadpp_batch_files(current_project_data: ProjectData):
         f.write(f'{modtool_path} --no-color clean "{project_name}"\n')
         f.write(f'pause\n')
     
-    # === 7. Project info batch file ===
+    # Project info batch file
     info_bat = os.path.join(batch_dir, "project_info.bat")
     with open(info_bat, 'w') as f:
         f.write(f'@echo off\n')
         f.write(f'cd "{tool_dir}"\n')
         f.write(f'{modtool_path} --no-color info "{project_name}"\n')
         f.write(f'pause\n')
-    
-    # === 8. Create README ===
-    readme_path = os.path.join(batch_dir, "README.txt")
-    with open(readme_path, 'w') as f:
-        f.write(f"Notepad++ Batch Files for {project_name}\n")
-        f.write(f"=" * 60 + "\n\n")
-        f.write(f"These batch files can be run directly by double-clicking,\n")
-        f.write(f"Platform: {platform}\n")
-        f.write(f"Emulators: {', '.join(emulators)}\n\n")
-        f.write(f"Available commands:\n")
-        f.write(f"  compile.bat          - Compile project\n")
-        f.write(f"  compile_verbose.bat  - Compile with verbose output\n")
-        f.write(f"  build_iso.bat        - Build ISO\n")
-        f.write(f"  build_iso_verbose.bat - Build ISO with verbose output\n")
-        for emulator in emulators:
-            safe_name = emulator.replace(' ', '_').replace('.', '_').lower()
-            f.write(f"  inject_{safe_name}.bat - Inject into {emulator}\n")
-        f.write(f"  clean.bat            - Clean build artifacts\n")
-        f.write(f"  project_info.bat     - Show project information\n\n")
-    print(f" Generated Notepad++ batch files")
-    print(f"  Platform: {platform}")
-    print(f"  Batch files: {7 + len(emulators)} total")
-    print(f"  Location: {batch_dir}")
 
 
 def callback_generate_notepadpp_batch_files(sender, app_data, current_project_data: ProjectData):
-    """Generate Notepad++ batch files (menu callback)"""
     try:
         _generate_notepadpp_batch_files(current_project_data)
         
@@ -540,27 +479,12 @@ def callback_generate_notepadpp_batch_files(sender, app_data, current_project_da
         
         project_folder = current_project_data.GetProjectFolder()
         batch_dir = os.path.join(project_folder, ".notepad++")
-        
-        # messagebox.showinfo("Success", 
-        #     f"Notepad++ batch files generated!\n\n"
-        #     f"Platform: {platform}\n"
-        #     f"Batch Files Created: {7 + len(emulators)}\n"
-        #     f"  • compile.bat\n"
-        #     f"  • compile_verbose.bat\n"
-        #     f"  • build_iso.bat\n"
-        #     f"  • build_iso_verbose.bat\n"
-        #     f"  • inject_*.bat ({len(emulators)} emulator(s))\n"
-        #     f"  • clean.bat\n"
-        #     f"  • project_info.bat\n\n"
-        #     f"Location: {batch_dir}\n\n"
-        #     f"Double-click any .bat file to run it!\n"
-        #     f"Or use with NppExec plugin (F6 in Notepad++)")
+
     except Exception as e:
         messagebox.showerror("Error", f"Could not generate batch files:\n\n{str(e)}")
 
 
-def _get_platform_emulators(platform: str) -> list:
-    """Get list of supported emulators for a platform"""
+def _get_platform_emulators(platform: str) -> list:    # Move this eventually, it's useful in a few places
     emulator_map = {
         "PS1": ["DuckStation", "PCSX-Redux", "BizHawk", "Mednafen 1.29", "Mednafen 1.31"],
         "PS2": ["PCSX2"],
@@ -574,7 +498,6 @@ def _get_platform_emulators(platform: str) -> list:
 
 #! Zed
 def callback_open_zed(sender, app_data, current_project_data: ProjectData):
-    """Open project folder in Zed and automatically generate tasks.json if it doesn't exist"""
     project_folder = current_project_data.GetProjectFolder()
 
     if not project_folder or not os.path.exists(project_folder):
@@ -596,7 +519,6 @@ def callback_open_zed(sender, app_data, current_project_data: ProjectData):
         print(f" Using existing Zed tasks.json (not overwriting)")
 
     try:
-        # Try 'zed' command (Zed CLI)
         subprocess.Popen(['zed', project_folder], shell=True)
         print(f" Opened Zed: {project_folder}")
     except Exception as e:
@@ -607,7 +529,6 @@ def callback_open_zed(sender, app_data, current_project_data: ProjectData):
 
 
 def callback_generate_zed_tasks(sender, app_data, current_project_data: ProjectData):
-    """Generate Zed tasks.json with compile, build, and inject tasks"""
     try:
         _generate_zed_tasks_internal(current_project_data)
         
@@ -615,15 +536,6 @@ def callback_generate_zed_tasks(sender, app_data, current_project_data: ProjectD
         platform = current_build.GetPlatform()
         emulators = _get_platform_emulators(platform)
         
-        # messagebox.showinfo("Success", 
-        #     f"Zed tasks.json generated!\n\n"
-        #     f"Platform: {platform}\n"
-        #     f"Tasks Created:\n"
-        #     f"  • Compile (interactive build selection)\n"
-        #     f"  • Build ISO (interactive build selection)\n"
-        #     f"  • Inject ({len(emulators)} emulator(s))\n"
-        #     f"  • Clean\n\n"
-        #     f"Use command palette to run tasks")
     except Exception as e:
         messagebox.showerror("Error", f"Could not generate tasks.json:\n\n{str(e)}")
 
@@ -633,7 +545,7 @@ def _generate_zed_tasks_internal(current_project_data: ProjectData):
     
 
 
-#! Changes the functions for when im testing VS built release
+# Changes the functions for when im testing in python, VS the pyinstaller built release
 #TODO The most hacky thing you've ever seen in your entire life :)    
 from functions.check_pyinstaller import *
 test = None
@@ -646,6 +558,3 @@ else:
     _generate_sublime_project_file = _generate_vscode_tasks_internal_script
     _generate_notepadpp_batch_files = _generate_notepadpp_batch_files_script
     test = "Script"
-    
-    
-print(test)

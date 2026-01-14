@@ -66,8 +66,6 @@ class ProjectData:
 
             full_project_path = os.path.join(base_projects_dir, file_path)
             
-
-            # Check if the specific project folder exists and create it if not
             if not os.path.exists(full_project_path):
                 verbose_print(f"Project folder '{full_project_path}/' does not exist. Creating it...")
                 try:
@@ -89,13 +87,10 @@ class ProjectData:
 
     # Create the default project directories
     def CreateProjectDirectories(self, full_project_path):
-        """Create the default project directories with enhanced headers"""
         import os
         
-        # Create default project files and directories
         os.makedirs(f"{full_project_path}/.config")
            
-        # Create symbols file for this build version
         os.makedirs(f"{full_project_path}/symbols")
         project_folder = full_project_path
         symbols_dir = os.path.join(project_folder, "symbols")
@@ -107,9 +102,7 @@ class ProjectData:
         with open(f"{full_project_path}/symbols/{build_name}.txt", "w") as symbols_file:
             symbols_file.write(f"/* Symbols file for build version: {build_name} */\n")
             symbols_file.write(f"/* This is where you put your in-game global variables & functions */\n")
-            symbols_file.write(f"/* found from RAM search/reverse engineering for this specific version. */\n\n")
-            symbols_file.write(f"/* Example: */\n")
-            symbols_file.write(f"game_symbol = 0x80001234;\n")
+            symbols_file.write(f"game_symbol = 0x80001234; /* Example: */\n")
 
         os.makedirs(f"{full_project_path}/src")
         with open(f"{full_project_path}/src/main.c", "w") as main_file:

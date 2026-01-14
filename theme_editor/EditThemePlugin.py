@@ -271,11 +271,6 @@ class EditThemePlugin():
 
 
 	def parse_color_operation(self, operation: str):
-		"""Write operation like this:
-
-		Args:
-			operation (str): 'dpg.add_theme_color(dpg.[VARGOESHERE],		self.getThemeColor("[VARGOESHERE]"),			category=dpg.mvThemeCat_Core)'
-		"""
 		for c in self.theColors:
 			newVar = operation
 			newVar = newVar.replace("[VARGOESHERE]", c)

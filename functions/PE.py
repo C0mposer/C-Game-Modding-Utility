@@ -1,11 +1,8 @@
 import pefile
 from functions.verbose_print import verbose_print
 
+# Find an exported symbol from a windows DLL
 def find_export_rva(exe_path: str, export_name: str) -> int:
-    """
-    Find the RVA of an exported symbol by parsing the PE export table.
-    This works for data exports like EEmem.
-    """
     try:
         pe = pefile.PE(exe_path, fast_load=True)
         if pe.OPTIONAL_HEADER.DATA_DIRECTORY[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_EXPORT"]].Size != 0:

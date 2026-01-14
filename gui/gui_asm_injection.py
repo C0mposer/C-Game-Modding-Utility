@@ -49,9 +49,6 @@ def CreateASMInjectionGui(current_project_data: ProjectData):
 
         dpg.add_separator()
         dpg.add_spacer(height=10)
-
-        # Rest of the existing GUI code...
-        # (Keep all the existing detail fields)
         
         dpg.add_text("Hook Name")
         with dpg.group(horizontal=True):
@@ -141,7 +138,7 @@ def ClearGuiHookData():
     verbose_print("GUI Hook Data Cleared.")
 
 
-# --- Callbacks for "Add New Hook" Popup ---
+# Callbacks for Add New Hook Popup
 def callback_show_add_hook_popup(sender, app_data, user_data):
     global _new_hook_name_input_value
     _new_hook_name_input_value = "" # Clear previous input
@@ -187,12 +184,19 @@ def callback_create_hook_from_popup(sender, app_data, current_project_data: Proj
     
     new_hook_name = new_hook.GetName() # Update because it will be sanitized of spaces 
     
-    # NEW: Set default aligned address based on platform
+    # Set default address
     platform = current_project_data.GetCurrentBuildVersion().GetPlatform()
-    if platform.upper() in ["PS2", "N64"]:
-        new_hook.SetMemoryAddress("80100000")  # 8-byte aligned
+    if platform.upper() in ["PS2"]:
+        new_hook.SetMemoryAddress("00000000") 
     else:
-        new_hook.SetMemoryAddress("80100000")  # 4-byte aligned
+        new_hook.SetMemoryAddress("80000000") 
+        
+    # Set main executable as default injection file
+    main_exe = current_project_data.GetCurrentBuildVersion().GetMainExecutable()
+    if main_exe:
+        new_hook.SetInjectionFile(main_exe)
+        
+    new_hook.SetAutoCalculateInjectionFileAddress(True)
 
     current_project_data.GetCurrentBuildVersion().AddHook(new_hook)
     print(f"Created new hook: {new_hook_name}")
@@ -211,7 +215,7 @@ def callback_create_hook_from_popup(sender, app_data, current_project_data: Proj
     trigger_auto_save()
 
 
-# --- Callbacks for "Rename Hook" Popup ---
+# Callback for Rename Hook Popup
 def callback_show_rename_hook_popup(sender, app_data, current_project_data: ProjectData):
     global _rename_hook_name_input_value
     global _currently_selected_hook_name
@@ -234,7 +238,7 @@ def callback_show_rename_hook_popup(sender, app_data, current_project_data: Proj
         modal_x = (viewport_width - modal_width) // 2
         modal_y = (viewport_height - modal_height) // 2
 
-        with dpg.window(label="Rename Hook", modal=True, no_close=True, tag="rename_hook_modal", # Unique tag
+        with dpg.window(label="Rename Hook", modal=True, no_close=True, tag="rename_hook_modal",
                         no_move=True, no_resize=True, width=modal_width, height=modal_height, pos=[modal_x, modal_y], show=False):
             dpg.add_text(f"Rename '{_currently_selected_hook_name}':")
             dpg.add_input_text(tag="rename_hook_name_input", default_value=_rename_hook_name_input_value, width=200, hint="New Hook Name") # Unique tag
@@ -305,7 +309,7 @@ def callback_add_asm_file(sender, button_data, current_project_data: ProjectData
     for code_file_path in code_file_paths:
         basename = os.path.basename(code_file_path)
 
-        # --- NEW: block filenames with spaces ---
+        # Block filenames with spaces
         if any(ch.isspace() for ch in basename):
             print(f"Skipped (spaces in name): {basename}")
             space_skipped_count += 1
@@ -342,13 +346,12 @@ def callback_add_asm_file(sender, button_data, current_project_data: ProjectData
     if summary_parts:
         print("ASM file add summary: " + "; ".join(summary_parts))
 
-    # Show one messagebox for space issues
     if space_skipped_count > 0:
         message = (
             "The following ASM file(s) have spaces in their names and were skipped:\n\n"
             + "\n".join(space_skipped_files)
             + "\n\nSpaces in ASM filenames are not supported yet.\n"
-              "Please rename them (e.g. 'My Hook.s' → 'My_Hook.s') and add them again."
+              "Please rename them (e.g. 'My Hook.s' -> 'My_Hook.s') and add them again."
         )
         messagebox.showerror("Unsupported File Name", message)
 
@@ -365,7 +368,7 @@ def callback_remove_selected_asm_file(sender, button_data, current_project_data:
         messagebox.showerror("Error", "No hook selected.")
         return
 
-    selected_item_value = dpg.get_value("hook_asm_files_listbox") # Unique tag
+    selected_item_value = dpg.get_value("hook_asm_files_listbox")
     if not selected_item_value:
         messagebox.showinfo("Info", "No ASM file selected in the listbox to remove.")
         return
@@ -424,7 +427,7 @@ def callback_hook_selected(sender, data, current_project_data: ProjectData):
 
     selected_value = dpg.get_value("hooks_listbox")
     
-    # Check if it's a multi-patch (has suffix)
+    # Check if it's a multi-patch
     if selected_value.endswith(" (Multi-Patch)"):
         # Extract the actual multi-patch name
         multipatch_name = selected_value.replace(" (Multi-Patch)", "")
@@ -438,7 +441,6 @@ def callback_hook_selected(sender, data, current_project_data: ProjectData):
         return
     
     # It's a regular hook
-    # Strip [DISABLED] prefix if present
     if selected_value.startswith("[DISABLED] "):
         _currently_selected_hook_name = selected_value.replace("[DISABLED] ", "")
     else:
@@ -483,7 +485,7 @@ def GetGuiHookData(current_project_data: ProjectData):
         messagebox.showerror("Validation Error", "Memory address cannot be empty.")
         return None
     
-    # NEW: Validate alignment
+    # Validate alignment
     platform = current_project_data.GetCurrentBuildVersion().GetPlatform()
     is_valid, error_msg = validate_address_alignment(memory_address, platform, "hook")
     if not is_valid:
@@ -494,15 +496,15 @@ def GetGuiHookData(current_project_data: ProjectData):
     
     temp_hook.SetMemoryAddress(memory_address)
 
-    auto_calc_enabled = dpg.get_value("hook_auto_calc_file_address_checkbox") # Unique tag
+    auto_calc_enabled = dpg.get_value("hook_auto_calc_file_address_checkbox")
     temp_hook.SetAutoCalculateInjectionFileAddress(auto_calc_enabled)
 
     if auto_calc_enabled:
-        injection_file_address = dpg.get_value("hook_injection_file_address_input") # Unique tag
+        injection_file_address = dpg.get_value("hook_injection_file_address_input")
         if injection_file_address and not injection_file_address.startswith("0x"):
             injection_file_address = "0x" + injection_file_address
     else:
-        injection_file_address = dpg.get_value("hook_injection_file_address_input") # Unique tag
+        injection_file_address = dpg.get_value("hook_injection_file_address_input")
         if injection_file_address and not injection_file_address.startswith("0x"):
             injection_file_address = "0x" + injection_file_address
         elif not injection_file_address:
@@ -510,14 +512,13 @@ def GetGuiHookData(current_project_data: ProjectData):
 
     temp_hook.SetInjectionFileAddress(injection_file_address)
 
-    size_of_region = dpg.get_value("hook_size_of_region") # Unique tag
+    size_of_region = dpg.get_value("hook_size_of_region")
     temp_hook.SetSize(size_of_region)
 
     return temp_hook
 
 
 def callback_hook_disabled_checkbox_changed(sender, app_data, user_data):
-    """Handle toggling the disabled checkbox for a hook in the details panel"""
     global _currently_selected_hook_index
     current_project_data = user_data
 
@@ -549,11 +550,11 @@ def callback_hook_disabled_checkbox_changed(sender, app_data, user_data):
 
 
 def UpdateHooksListbox(current_project_data: ProjectData, preserve_selection: str = None):
-    # Only show permanent hooks (exclude auto-generated)
+    # Only show permanent hooks
     all_hooks = current_project_data.GetCurrentBuildVersion().GetHooks()
     permanent_hooks = [h for h in all_hooks if not h.IsTemporary()]
 
-    # Format names with [DISABLED] prefix for disabled items
+    # [DISABLED] before disabled hooks
     permanent_hook_display_names = []
     for h in permanent_hooks:
         if not h.IsEnabled():
@@ -563,7 +564,7 @@ def UpdateHooksListbox(current_project_data: ProjectData, preserve_selection: st
 
     multipatch_names = [f"{name} (Multi-Patch)" for name in current_project_data.GetCurrentBuildVersion().GetMultiPatchNames()]
 
-    # Combine hooks and multi-patches (multi-patches shown with suffix)
+    # Combine hooks and multi-patches
     all_items = permanent_hook_display_names + multipatch_names
 
     dpg.configure_item("hooks_listbox", items=all_items)
@@ -585,13 +586,12 @@ def UpdateASMFilesListbox(current_project_data: ProjectData):
     if _currently_selected_hook_index != -1:
         selected_hook = current_project_data.GetCurrentBuildVersion().GetHooks()[_currently_selected_hook_index]
         code_files_names = [os.path.basename(f) for f in selected_hook.GetCodeFilesPaths()]
-        dpg.configure_item("hook_asm_files_listbox", items=code_files_names) # Unique tag
+        dpg.configure_item("hook_asm_files_listbox", items=code_files_names)
     else:
-        dpg.configure_item("hook_asm_files_listbox", items=[]) # Unique tag
+        dpg.configure_item("hook_asm_files_listbox", items=[])
 
 
 def callback_hook_injection_file_changed(sender, app_data, current_project_data: ProjectData):
-    """Auto-save when injection file dropdown changes"""
     global _currently_selected_hook_index
 
     if _currently_selected_hook_index == -1:
@@ -604,14 +604,12 @@ def callback_hook_injection_file_changed(sender, app_data, current_project_data:
     existing_hook = current_project_data.GetCurrentBuildVersion().GetHooks()[_currently_selected_hook_index]
     existing_hook.SetInjectionFile(selected_file)
 
-    # Trigger auto-save
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
 
     verbose_print(f"Hook '{existing_hook.GetName()}' injection file changed to: {selected_file}")
 
 def _hide_save_indicator_after_delay(indicator_tag):
-    """Helper to hide save indicator after 3 seconds"""
     import threading
 
     def hide_callback():
@@ -787,7 +785,6 @@ def ReloadGuiHookData(current_project_data: ProjectData):
 
 
 def update_calculated_file_address(sender, app_data, current_project_data: ProjectData):
-    """Calculate file address using section maps (NEW: Multi-section support)"""
     global _currently_selected_hook_index
 
     if _currently_selected_hook_index == -1:
@@ -812,13 +809,13 @@ def update_calculated_file_address(sender, app_data, current_project_data: Proje
         if processed_memory_address_str.lower().startswith("0x"):
             processed_memory_address_str = processed_memory_address_str[2:]
 
-        # Remove 80 prefix if present (GameCube/Wii addresses)
+        # Remove 80 prefix if present
         if processed_memory_address_str.lower().startswith("80") and len(processed_memory_address_str) > 2:
             processed_memory_address_str = processed_memory_address_str[2:]
 
         memory_address_int = int(processed_memory_address_str, 16)
         
-        # NEW: Use section map to calculate file offset
+        # Use section map to calculate file offset
         current_build = current_project_data.GetCurrentBuildVersion()
         injection_file = selected_hook.GetInjectionFile()
         
@@ -830,18 +827,18 @@ def update_calculated_file_address(sender, app_data, current_project_data: Proje
         file_offset = current_build.GetFileOffsetForAddress(injection_file, memory_address_int)
         
         if file_offset is not None:
-            # Success! Found in section map
+            # Found in section map
             calculated_hex_string = f"{file_offset:X}"
             dpg.set_value("hook_injection_file_address_input", calculated_hex_string)
             
             # Show section info in console
             section_info = current_build.GetSectionInfoForAddress(injection_file, memory_address_int)
             if section_info:
-                print(f"Address 0x{memory_address_int:X} found in {section_info['type']} section")
-                print(f"  File offset: 0x{file_offset:X}")
+                verbose_print(f"Address 0x{memory_address_int:X} found in {section_info['type']} section")
+                verbose_print(f"  File offset: 0x{file_offset:X}")
             
         else:
-            # Fallback to old offset method
+            # Fallback to regular offset
             ram_offset_str = dpg.get_value("File Offset From Ram Input")
             
             if not ram_offset_str:
@@ -857,7 +854,7 @@ def update_calculated_file_address(sender, app_data, current_project_data: Proje
 
             calculated_hex_string = f"{calculated_file_address_int:X}"
             dpg.set_value("hook_injection_file_address_input", calculated_hex_string)
-            print(f"Using fallback offset calculation (no section map)")
+            verbose_print(f"Using single offset")
 
     except ValueError as e:
         dpg.set_value("hook_injection_file_address_input", "INVALID")
@@ -888,7 +885,6 @@ def callback_auto_calculate_file_address_checkbox(sender, app_data, current_proj
         
         
 def callback_auto_detect_hook(sender, app_data, current_project_data: ProjectData):
-    """Auto-detect common hook patterns in the game executable"""
     from services.pattern_service import PatternService
     from gui import gui_messagebox as messagebox
     
@@ -898,24 +894,11 @@ def callback_auto_detect_hook(sender, app_data, current_project_data: ProjectDat
         messagebox.showerror("Error", "No main executable set. Please select game files first.")
         return
     
-    # Validate tools first
     pattern_service = PatternService(current_project_data)
-    platform = current_build.GetPlatform()
-    tools_valid, error_msg = pattern_service.validate_tools(platform)
-    
-    if not tools_valid:
-        response = messagebox.askyesno(
-            "Missing Tools",
-            f"{error_msg}\n\nContinue with fallback offset calculation?\n"
-            "(Results may be inaccurate)"
-        )
-        if not response:
-            return
     
     print("Starting hook pattern detection...")
     
     try:
-        # Run synchronously - threading with DPG can cause issues
         matches = pattern_service.find_hook_patterns()
         
         if not matches:
@@ -923,9 +906,9 @@ def callback_auto_detect_hook(sender, app_data, current_project_data: ProjectDat
                 "No Patterns Found",
                 "Could not automatically detect any known hook patterns.\n\n"
                 "This might mean:\n"
-                "• The game uses uncommon functions\n"
-                "• The executable is compressed/encrypted\n"
-                "• Manual hook placement is needed"
+                "  The game uses uncommon functions\n"
+                "  The executable is compressed/encrypted\n"
+                "  Manual hook placement is needed"
             )
             return
         
@@ -942,10 +925,6 @@ def callback_auto_detect_hook(sender, app_data, current_project_data: ProjectDat
 
 
 def show_pattern_selection_dialog(matches, current_project_data: ProjectData):
-    """Show dialog to select which pattern to use"""
-    from services.pattern_service import PatternService
-    from gui import gui_messagebox as messagebox
-    
     if dpg.does_item_exist("pattern_selection_modal"):
         dpg.delete_item("pattern_selection_modal")
     
@@ -1003,7 +982,6 @@ def show_pattern_selection_dialog(matches, current_project_data: ProjectData):
 
 
 def callback_use_pattern(sender, app_data, user_data):
-    """Use the selected pattern to create a hook"""
     global _currently_selected_hook_name
     global _currently_selected_hook_index
     from services.pattern_service import PatternService
@@ -1024,7 +1002,7 @@ def callback_use_pattern(sender, app_data, user_data):
         hook_name = f"AutoHook_{build_name}_{counter}"
         counter += 1
     
-    print(f"Creating hook: {hook_name}")
+    verbose_print(f"Creating hook: {hook_name}")
     
     # Create hook from pattern
     pattern_service = PatternService(current_project_data)
@@ -1048,31 +1026,29 @@ def callback_use_pattern(sender, app_data, user_data):
     
     ReloadGuiHookData(current_project_data)
     
-    # Close modal
+    # Close window
     if dpg.does_item_exist("pattern_selection_modal"):
         dpg.delete_item("pattern_selection_modal")
     
-    # Show success message
     messagebox.showinfo(
         "Hook Created",
         f"Successfully created hook '{hook_name}'!\n\n"
         f"ASM File: asm/{hook_name}.s\n\n"
-        f"Default behavior is jumping/branching to ModMain().\n"
+        f"Default behavior is jumping/branching to ModMain()\n"
         f"Edit {hook_name}.s for different behavior."
     )
     
-    print(f" Created auto-detected hook: {hook_name}")
-    print(f"  Pattern: {pattern_match.pattern_name}")
-    print(f"  Memory: 0x{pattern_match.memory_address:X}")
-    print(f"  File: 0x{pattern_match.file_offset:X}")
+    verbose_print(f" Created auto-detected hook: {hook_name}")
+    verbose_print(f"  Pattern: {pattern_match.pattern_name}")
+    verbose_print(f"  Memory: 0x{pattern_match.memory_address:X}")
+    verbose_print(f"  File: 0x{pattern_match.file_offset:X}")
     
     from gui.gui_main_project import trigger_auto_save
     trigger_auto_save()
     
 def show_hook_getting_started_message(current_project_data: ProjectData):
-    """Show a helpful message when no hooks exist"""
     if dpg.does_item_exist("hook_getting_started_group"):
-        return  # Already showing
+        return
     
     with dpg.group(tag="hook_getting_started_group", parent="hook_injection_tab", before="hooks_listbox"):
         dpg.add_spacer(height=5)
@@ -1091,15 +1067,14 @@ def show_hook_getting_started_message(current_project_data: ProjectData):
 
 
 def hide_hook_getting_started_message():
-    """Hide the getting started message"""
     if dpg.does_item_exist("hook_getting_started_group"):
         dpg.delete_item("hook_getting_started_group")
 
 
 def callback_import_multipatch(sender, app_data, current_project_data: ProjectData):
-    """Import a multi-patch ASM file reference (doesn't create hooks until compilation)"""
     from services.asm_parser_service import ASMParserService
-    from gui import gui_messagebox as messagebox, filedialog
+    from gui import gui_messagebox as messagebox
+    from tkinter import filedialog
     from classes.injection_targets.multipatch_asm import MultiPatchASM
     
     # Choose ASM file
@@ -1112,20 +1087,12 @@ def callback_import_multipatch(sender, app_data, current_project_data: ProjectDa
     if not asm_file:
         return
     
-    # Check if it's actually a multi-patch file
+    # Check if it's a multi-patch file
     parser = ASMParserService(current_project_data)
     if not parser.is_multipatch_file(asm_file):
         messagebox.showwarning(
             "Not a Multi-Patch File",
-            "This file doesn't contain any .memaddr directives.\n\n"
-            "Multi-patch files should use the format:\n"
-            ".memaddr 0x80123456\n"
-            ".file SCUS.elf  # optional\n"
-            ".fileaddr 0x1234  # optional\n"
-            "nop\n"
-            "\n"
-            ".memaddr 0x80111222\n"
-            "li $a0, 0x69"
+            "This file doesn't contain any Multi-Patch directives.\n"
         )
         return
     
@@ -1143,7 +1110,7 @@ def callback_import_multipatch(sender, app_data, current_project_data: ProjectDa
         )
         return
     
-    # Quick validation - try parsing
+    # Validation
     try:
         patches = parser.parse_multipatch_asm(asm_file)
         if not patches:
@@ -1173,17 +1140,11 @@ def callback_import_multipatch(sender, app_data, current_project_data: ProjectDa
     # Show success message
     messagebox.showinfo(
         "Multi-Patch Added",
-        f"Successfully added multi-patch '{base_name}'!\n\n"
-        f"• File: {os.path.basename(asm_file)}\n"
-        f"• Patches: {len(patches)}\n\n"
-        f"The file will be re-scanned on every compilation.\n"
-        f"Edit the .asm file to add/remove/modify patches."
-    )
+        f"Successfully added multi-patch '{base_name}'!\n")
     
-    print(f"Added multi-patch: {base_name} ({len(patches)} patches)")
+    verbose_print(f"Added multi-patch: {base_name} ({len(patches)} patches)")
     
 def show_multipatch_info(multipatch_name: str, current_project_data: ProjectData):
-    """Show read-only info about a multi-patch"""
     from services.asm_parser_service import ASMParserService
     
     # Clear regular hook data
@@ -1204,7 +1165,7 @@ def show_multipatch_info(multipatch_name: str, current_project_data: ProjectData
     # Set the name field (read-only)
     dpg.set_value("hook_name_detail_input", f"{multipatch_name} (Multi-Patch)")
     
-    # Parse the file to get info
+    # Parse the file
     parser = ASMParserService(current_project_data)
     asm_file_path = multipatch.GetFilePath()
     
@@ -1227,7 +1188,7 @@ def show_multipatch_info(multipatch_name: str, current_project_data: ProjectData
         
         dpg.configure_item("hook_asm_files_listbox", items=file_display)
         
-        # Show message in target game file
+        # Show message in target game files
         dpg.set_value("hook_target_game_file", f"{len(patches)} patch(es) - edit .asm file to modify")
         
         # Show info message

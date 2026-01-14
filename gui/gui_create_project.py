@@ -3,6 +3,8 @@ import dearpygui.demo as demo
 
 from gui.gui_main_project import *
     
+    
+#! DEPRICATED IN FAVOR OF PROJECT WIZARD
 # Init the create project window options
 def InitCreateProjectWindow():
     with dpg.window(label="Create Project", tag="Create Project", height=400, width=350, pos=[600/2, 300/2], no_move=True, no_resize=True, no_collapse=True, menubar=False):

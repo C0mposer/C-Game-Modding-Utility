@@ -5,7 +5,7 @@ from tkinter import filedialog
 from gui import gui_messagebox as messagebox
 import os
 
-from gui.gui_project_wizard import show_project_wizard  # NEW: Import wizard
+from gui.gui_project_wizard import show_project_wizard  # Import wizard
 from gui.gui_prereq_prompt import check_and_prompt_prereqs
 from dpg.widget_themes import *
 from services.project_serializer import ProjectSerializer
@@ -14,7 +14,6 @@ from path_helper import get_application_directory
 
 # Helper Functions (defined first so they can be called by InitMainWindow)
 def _populate_recent_projects():
-    """Populate recent projects list"""
     from services.recent_projects_service import RecentProjectsService
 
     # Clear existing
@@ -52,10 +51,6 @@ def _populate_recent_projects():
             else:
                 dpg.add_text(f"[{project.platform}]", color=platform_color)
 
-            # # Show truncated path
-            # truncated_path = project.path if len(project.path) < 50 else "..." + project.path[-47:]
-            # dpg.add_text(truncated_path, color=(128, 128, 128))
-
             # Remove button
             dpg.add_button(
                 label="X",
@@ -66,13 +61,12 @@ def _populate_recent_projects():
 
 
 def _load_recent_project(t, a, project_path):
-    """Load a recent project"""
     #print(f"Test f{project_path}")
     from gui.gui_main_project import InitMainProjectWindowWithData
 
     project_data = ProjectSerializer.load_project(project_path, show_loading=True)
     if project_data:
-        # Check prerequisites for this project's platform
+        # Check prerequisites for this project's platform FIRST
         tool_dir = get_application_directory()
         platform = project_data.GetCurrentBuildVersion().GetPlatform()
 
@@ -80,22 +74,26 @@ def _load_recent_project(t, a, project_path):
             # User cancelled download - don't open project
             return
 
+        # Validate project files and prompt user to fix any missing files
+        from services.project_validator import ProjectValidator
+        if not ProjectValidator.validate_and_fix_project(project_data):
+            # User cancelled validation - don't open project
+            return
+
         dpg.delete_item("startup_window")
         InitMainProjectWindowWithData(project_data)
     else:
-        # If load failed, refresh the recent projects list (file might be gone)
+        # If load failed, refresh the recent projects list
         _populate_recent_projects()
 
 
 def _remove_recent_project(sender, app_data, project_path):
-    """Remove project from recent list"""
     from services.recent_projects_service import RecentProjectsService
     RecentProjectsService.remove_recent_project(project_path)
     _populate_recent_projects()  # Refresh display
 
 
 def InitMainWindow():
-    """Main startup window - now launches wizard instead of simple name input"""
     dpg.delete_item("startup_window")
 
     with dpg.window(label="startup_window", tag="startup_window", no_move=True, no_resize=True):
@@ -103,7 +101,7 @@ def InitMainWindow():
         dpg.add_separator()
         dpg.add_spacer(height=10)
 
-        # NEW: Single button to launch wizard
+        # Single button to launch wizard
         dpg.add_button(
             label="Create New Project",
             callback=create_new_project_callback,
@@ -113,7 +111,6 @@ def InitMainWindow():
         SetLastItemsTheme(my_widget_themes.GetMyThemes()[0])
 
         dpg.add_spacer(height=5)
-        dpg.add_text("  Step-by-step guided setup", color=(150, 150, 150))
 
         dpg.add_separator()
         dpg.add_spacer(height=10)
@@ -137,11 +134,9 @@ def InitMainWindow():
 
 # Callbacks
 def create_new_project_callback():
-    """NEW: Launch the project wizard instead of simple name input"""
     show_project_wizard()  # Launch the new wizard!
 
 def load_project_callback():
-    """Load an existing project from a .modproj file"""
     file_path = filedialog.askopenfilename(
         title="Load Project",
         filetypes=[("Mod Project Files", "*.modproj"), ("All Files", "*.*")],
@@ -149,9 +144,9 @@ def load_project_callback():
     )
 
     if not file_path:
-        return  # User cancelled
+        return  # Cancelled
 
-    # Load the project with loading indicator (handled internally)
+    # Load the project
     project_data = ProjectSerializer.load_project(file_path, show_loading=True)
 
     if project_data is None:
@@ -166,7 +161,13 @@ def load_project_callback():
         # User cancelled download - don't open project
         return
 
-    # Import here to avoid circular imports
+    # Validate project files
+    from services.project_validator import ProjectValidator
+    if not ProjectValidator.validate_and_fix_project(project_data):
+        # User cancelled validation - don't open project
+        return
+
+    # Importing here to avoid circular import
     from gui.gui_main_project import InitMainProjectWindowWithData
 
     # Open the project in the main window

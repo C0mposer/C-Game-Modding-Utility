@@ -6,7 +6,6 @@ from enum import Enum
 from functions.verbose_print import verbose_print
 
 class DataType(Enum):
-    """Memory data types"""
     BYTE_SIGNED = "s8"
     BYTE_UNSIGNED = "u8"
     SHORT_SIGNED = "s16"
@@ -21,7 +20,6 @@ class DataType(Enum):
 
     @property
     def size(self) -> int:
-        """Size in bytes"""
         if self == DataType.RGB or self == DataType.BGR:
             return 3
         if self in (DataType.RGBA, DataType.BGRA):
@@ -36,23 +34,18 @@ class DataType(Enum):
 
     @property
     def is_signed(self) -> bool:
-        """Check if signed type"""
         return self.value.startswith("s")
 
     @property
     def is_color(self) -> bool:
-        """Check if this is a color type"""
         return self in (DataType.RGB, DataType.RGBA, DataType.BGR, DataType.BGRA)
 
     @property
     def has_alpha(self) -> bool:
-        """Check if this color type has an alpha channel"""
         return self in (DataType.RGBA, DataType.BGRA)
 
 
 class WatchEntry:
-    """Represents a single memory watch entry"""
-
     def __init__(self, address: int, data_type: DataType, name: str = ""):
         self.address = address
         self.data_type = data_type
@@ -69,7 +62,6 @@ class WatchEntry:
         self.previous_rgba_value: Optional[Tuple[int, int, int, int]] = None
 
     def update_value(self, new_value: int):
-        """Update with new value"""
         if self.current_value is not None:
             self.previous_value = self.current_value
 
@@ -82,7 +74,6 @@ class WatchEntry:
             self.has_changed = False
 
     def update_rgb_value(self, r: int, g: int, b: int):
-        """Update RGB value (3 components)"""
         if self.rgb_value is not None:
             self.previous_rgb_value = self.rgb_value
 
@@ -95,7 +86,6 @@ class WatchEntry:
             self.has_changed = False
 
     def update_rgba_value(self, r: int, g: int, b: int, a: int):
-        """Update RGBA value (4 components)"""
         if self.rgba_value is not None:
             self.previous_rgba_value = self.rgba_value
 
@@ -108,7 +98,6 @@ class WatchEntry:
             self.has_changed = False
 
     def format_value(self) -> str:
-        """Format current value as string"""
         # Handle RGB/BGR (3 bytes)
         if self.data_type in (DataType.RGB, DataType.BGR):
             if self.rgb_value is None:
@@ -143,7 +132,6 @@ class WatchEntry:
         return str(self.current_value)
 
     def format_hex(self) -> str:
-        """Format current value as hex"""
         # Handle RGB/BGR (3 bytes)
         if self.data_type in (DataType.RGB, DataType.BGR):
             if self.rgb_value is None:
@@ -166,8 +154,6 @@ class WatchEntry:
 
 
 class MemoryWatchService:
-    """Service for watching memory addresses in real-time"""
-
     def __init__(self):
         self.watch_entries: List[WatchEntry] = []
         self.is_running = False
@@ -184,19 +170,16 @@ class MemoryWatchService:
         self.emulator_name: Optional[str] = None
         self.main_ram_address: Optional[int] = None
 
-        # Cached for fast I/O
+        # Cached
         self._emu_info = None
         self._kernel32 = None
         self._process_handle = None
         
-        # Connection validity flag
         self._connection_valid = False
 
-    # ---------- Setup / teardown ----------
 
     def reset_connection(self):
-        """Reset all connection state - call this only when changing projects"""
-        print("Resetting memory watch connection state...")
+        print("Resetting memory watch connection")
         
         # Stop polling if running
         if self.is_running:
@@ -223,11 +206,6 @@ class MemoryWatchService:
         print("Connection state reset complete")
 
     def set_emulator_connection(self, emulator_service, emulator_name: str):
-        """
-        Set the emulator connection for reading memory.
-        Uses centralized connection manager for cached PIDs and connections.
-        """
-        # Only reset if we're connecting to a different emulator or don't have a valid connection
         if self._connection_valid and self.emulator_name == emulator_name and self.main_ram_address:
             print(f"Reusing existing connection to {emulator_name}")
             # Validate the handle is still good
@@ -236,7 +214,7 @@ class MemoryWatchService:
             else:
                 print("Existing connection no longer valid, reconnecting...")
 
-        # Use centralized connection manager for cached connection
+        # Use cached connection from another part of the tool, like injection
         from services.emulator_connection_manager import get_emulator_manager
         from services.emulator_service import EMULATOR_CONFIGS
 
@@ -270,7 +248,6 @@ class MemoryWatchService:
         return True
     
     def _validate_existing_connection(self) -> bool:
-        """Check if the existing connection is still valid"""
         if not self._process_handle or not self._kernel32:
             return False
         
@@ -291,14 +268,12 @@ class MemoryWatchService:
         return False
 
     def _get_main_ram_address(self) -> Optional[int]:
-        """Resolve the main RAM base address once."""
         if not self.emulator_service or not self._emu_info:
             return None
 
         emu_info = self._emu_info
 
         try:
-            # PCSX2: use pcsx2_service
             if emu_info.name == "PCSX2":
                 from services.pcsx2_service import set_ee_base_address_ctypes
                 
@@ -323,7 +298,6 @@ class MemoryWatchService:
                 print("Memory watch could not locate Duckstation memory address")
                 return None
             
-            # Dolphin: use its helper
             if emu_info.name == "Dolphin":
                 base = self.emulator_service._get_dolphin_base_address()
                 if base:
@@ -332,7 +306,6 @@ class MemoryWatchService:
                 print("Memory watch could not locate Dolphin MEM1 address")
                 return None
 
-            # Others: open once, query, close
             k32 = self._ensure_kernel32()
             pid = self.emulator_service._get_pid(emu_info.process_name)
             if not pid:
@@ -359,7 +332,6 @@ class MemoryWatchService:
         return self._kernel32
 
     def _ensure_process_handle(self) -> Optional[int]:
-        """Use a cached OpenProcess handle; reopen if needed."""
         if not self.emulator_service or not self._emu_info:
             return None
 
@@ -397,7 +369,6 @@ class MemoryWatchService:
         print(f"Opened new process handle: {handle}")
         return handle
 
-    # ---------- Watch management ----------
 
     def add_watch(self, address: int, data_type: DataType, name: str = "") -> WatchEntry:
         with self.lock:
@@ -417,7 +388,7 @@ class MemoryWatchService:
             self.watch_entries.clear()
             print("Cleared all watches")
 
-    # ---------- Poll loop ----------
+
 
     def start(self):
         if self.is_running:
@@ -492,7 +463,7 @@ class MemoryWatchService:
                     if value is not None:
                         entry.update_value(value)
 
-    # ---------- Low-level IO helpers ----------
+
 
     def _normalize_offset(self, address: int) -> int:
         addr_str = f"{address:X}"
@@ -501,17 +472,14 @@ class MemoryWatchService:
         return address
 
     def _is_big_endian_platform(self) -> bool:
-        """Check if the emulator platform uses big-endian byte order"""
         if not self._emu_info:
             return False
         return self._emu_info.platform in ["Gamecube", "Wii"]
 
     def _is_ps2(self) -> bool:
-        """Check if currently connected to PS2/PCSX2"""
         return self._emu_info and self._emu_info.name == "PCSX2"
 
     def _get_pine_ipc(self):
-        """Get PINE IPC module (cached)"""
         if not hasattr(self, '_pine_ipc'):
             import sys
             from path_helper import get_application_directory
@@ -523,7 +491,6 @@ class MemoryWatchService:
         return self._pine_ipc
 
     def _read_memory_pine(self, ps2_address: int, size: int) -> Optional[bytes]:
-        """Read memory using PINE protocol for PS2"""
         try:
             pine = self._get_pine_ipc()
 
@@ -545,7 +512,6 @@ class MemoryWatchService:
             return None
 
     def _write_memory_pine(self, ps2_address: int, data: bytes) -> bool:
-        """Write memory using PINE protocol for PS2"""
         try:
             pine = self._get_pine_ipc()
 
@@ -588,7 +554,6 @@ class MemoryWatchService:
         return value
 
     def _read_color_value(self, handle: int, address: int, data_type: DataType):
-        """Read color value from memory - handles RGB, RGBA, BGR, BGRA"""
         if not self.main_ram_address:
             return None
 
@@ -626,7 +591,6 @@ class MemoryWatchService:
         return None
 
     def write_value(self, address: int, value: int, data_type: DataType) -> bool:
-        """Write scalar value using cached handle (Cheat Engine style) or PINE for PS2."""
         if not self.main_ram_address or not self.emulator_service or not self._emu_info:
             return False
 
@@ -659,7 +623,6 @@ class MemoryWatchService:
             return False
 
     def write_color_value(self, address: int, data_type: DataType, r: int, g: int, b: int, a: int = 255) -> bool:
-        """Write color value (RGB/RGBA/BGR/BGRA) using cached handle or PINE for PS2"""
         if not self.main_ram_address or not self.emulator_service or not self._emu_info:
             return False
 

@@ -8,7 +8,6 @@ from typing import Dict, List, Optional, Tuple
 from classes.project_data.project_data import ProjectData
 
 class AssemblyFunction:
-    """Represents a parsed assembly function"""
     def __init__(self, name: str, address: str, section: str, instructions: List[Tuple[str, str, str]]):
         self.name = name
         self.address = address
@@ -16,8 +15,6 @@ class AssemblyFunction:
         self.instructions = instructions  # [(address, hex_code, instruction), ...]
 
 class AssemblyViewerService:
-    """Handles objdump parsing and assembly display"""
-    
     # Objdump paths for each platform
     OBJDUMP_PATHS = {
         "PS1": "prereq/PS1mips/bin/mips-objdump.exe",
@@ -33,7 +30,6 @@ class AssemblyViewerService:
         self.functions: Dict[str, AssemblyFunction] = {}
     
     def get_objdump_path(self) -> Optional[str]:
-        """Get objdump path for current platform"""
         platform = self.project_data.GetCurrentBuildVersion().GetPlatform()
         relative_path = self.OBJDUMP_PATHS.get(platform)
         
@@ -48,7 +44,6 @@ class AssemblyViewerService:
         return full_path
     
     def run_objdump(self) -> Optional[str]:
-        """Run objdump on the compiled ELF file"""
         objdump_path = self.get_objdump_path()
         if not objdump_path:
             return None
@@ -87,14 +82,13 @@ class AssemblyViewerService:
             return None
     
     def parse_objdump_output(self, output: str) -> Dict[str, AssemblyFunction]:
-        """Parse objdump output into function objects"""
         functions = {}
         
         lines = output.split('\n')
         current_section = "unknown"
         current_function = None
         current_address = None
-        current_function_section = "unknown"  # Track section for current function
+        current_function_section = "unknown"
         current_instructions = []
         
         # Patterns
@@ -117,13 +111,13 @@ class AssemblyViewerService:
             if func_match:
                 func_name = func_match.group(2)
                 
-                # Skip compiler-generated labels (not real functions, just markers)
-                # Common patterns: $L, $LM, $LC, .L, etc.
+                # Skip compiler-generated labels
+                # $L, $LM, $LC, .L, etc.
                 if func_name.startswith('$L') or func_name.startswith('.L'):
                     # Don't treat this as a new function, just continue parsing
                     continue
                 
-                # This is a real function - save previous function with ITS section
+                # This is a real function
                 if current_function and current_instructions:
                     functions[current_function] = AssemblyFunction(
                         name=current_function,
@@ -132,7 +126,7 @@ class AssemblyViewerService:
                         instructions=current_instructions
                     )
                 
-                # Start new function - capture current section for THIS function
+                # Start new function - capture current section
                 current_address = func_match.group(1)
                 current_function = func_name
                 current_function_section = current_section  # Save section for this function
@@ -143,12 +137,11 @@ class AssemblyViewerService:
             inst_match = instruction_pattern.match(line)
             if inst_match and current_function:
                 addr = inst_match.group(1)
-                hex_code = inst_match.group(2).strip()  # Strip whitespace from hex
+                hex_code = inst_match.group(2).strip()  # Strip whitespace
                 instruction = inst_match.group(3)
                 
                 # Stop parsing if we hit data directives
                 if data_directive_pattern.match(instruction):
-                    # We've hit data, save current function and stop
                     if current_instructions:
                         functions[current_function] = AssemblyFunction(
                             name=current_function,
@@ -162,7 +155,7 @@ class AssemblyViewerService:
                 
                 current_instructions.append((addr, hex_code, instruction))
         
-        # Don't forget last function
+        # Last function
         if current_function and current_instructions:
             functions[current_function] = AssemblyFunction(
                 name=current_function,
@@ -176,7 +169,6 @@ class AssemblyViewerService:
 
 
 def show_assembly_viewer_window(sender, app_data, project_data: ProjectData):
-    """Show the assembly viewer window"""
     WINDOW_TAG = "assembly_viewer_window"
     
     if dpg.does_item_exist(WINDOW_TAG):
@@ -228,9 +220,9 @@ def show_assembly_viewer_window(sender, app_data, project_data: ProjectData):
         dpg.add_separator()
         dpg.add_spacer(height=5)
         
-        # Main content - side by side
+        # Main Group
         with dpg.group(horizontal=True):
-            # Left side - function list
+            # Functrion list
             with dpg.child_window(width=250, height=550):
                 dpg.add_text("Functions", color=(100, 150, 255))
                 dpg.add_separator()
@@ -244,33 +236,29 @@ def show_assembly_viewer_window(sender, app_data, project_data: ProjectData):
 
             dpg.add_spacer(width=10)
 
-            # Right side - assembly display
+            # Assembly display
             with dpg.child_window(width=-1, height=550):
                 dpg.add_text("Assembly Code", color=(100, 150, 255), tag=f"{WINDOW_TAG}_asm_title")
                 dpg.add_separator()
                 
-                # Assembly display area
                 with dpg.child_window(tag=f"{WINDOW_TAG}_asm_display", border=False):
                     dpg.add_text("Select a function to view assembly...", 
                                tag=f"{WINDOW_TAG}_asm_placeholder",
                                color=(150, 150, 150))
     
-    # Initial load
     _refresh_assembly_view(project_data)
 
 
 def _refresh_assembly_view(project_data: ProjectData):
-    """Refresh assembly view by running objdump"""
     WINDOW_TAG = "assembly_viewer_window"
     
     dpg.set_value(f"{WINDOW_TAG}_status", "Running objdump...")
     
-    # Create service and run objdump
     service = AssemblyViewerService(project_data)
     output = service.run_objdump()
     
     if not output:
-        dpg.set_value(f"{WINDOW_TAG}_status", "❌ Failed to run objdump")
+        dpg.set_value(f"{WINDOW_TAG}_status", "Failed to run objdump")
         dpg.configure_item(f"{WINDOW_TAG}_function_list", items=["(objdump failed)"])
         return
     
@@ -282,7 +270,7 @@ def _refresh_assembly_view(project_data: ProjectData):
         dpg.configure_item(f"{WINDOW_TAG}_function_list", items=["(no functions)"])
         return
     
-    # Store functions globally for callbacks
+    # Store functions globally
     global _asm_viewer_functions
     _asm_viewer_functions = functions
     
@@ -293,7 +281,6 @@ def _refresh_assembly_view(project_data: ProjectData):
 
 
 def _update_function_list_order():
-    """Update function list based on selected sort order"""
     WINDOW_TAG = "assembly_viewer_window"
     
     if '_asm_viewer_functions' not in globals():
@@ -307,20 +294,19 @@ def _update_function_list_order():
     elif sort_order == "Instruction Count":
         # Sort by instruction count, most first
         function_names = sorted(functions.keys(), key=lambda k: len(functions[k].instructions), reverse=True)
-    else:  # Section (default)
+    else:
         # Sort by section, then by address within section
         function_names = sorted(functions.keys(), key=lambda k: (functions[k].section, int(functions[k].address, 16)))
     
     dpg.configure_item(f"{WINDOW_TAG}_function_list", items=function_names)
     
-    # Auto-select first function
+    # Auto select first function
     if function_names:
         dpg.set_value(f"{WINDOW_TAG}_function_list", function_names[0])
         _on_function_selected(function_names[0], None)
 
 
 def _filter_functions(search_text: str):
-    """Filter function list based on search text"""
     WINDOW_TAG = "assembly_viewer_window"
     
     if '_asm_viewer_functions' not in globals():
@@ -361,7 +347,6 @@ def _filter_functions(search_text: str):
 
 
 def _on_function_selected(function_name: str, project_data: ProjectData):
-    """Display selected function's assembly"""
     WINDOW_TAG = "assembly_viewer_window"
     
     if '_asm_viewer_functions' not in globals():
@@ -373,17 +358,15 @@ def _on_function_selected(function_name: str, project_data: ProjectData):
     
     # Update title
     dpg.set_value(f"{WINDOW_TAG}_asm_title", 
-                  f"Disassembly - {func.name} (0x{func.address})")
+                  f"Assembly Code - {func.name} (0x{func.address})")
     
-    # Clear display
     _clear_asm_display()
     
-    # Render assembly
+    # Render assembly view
     _render_assembly(func)
 
 
 def _clear_asm_display():
-    """Clear assembly display area"""
     WINDOW_TAG = "assembly_viewer_window"
     
     if dpg.does_item_exist(f"{WINDOW_TAG}_asm_display"):
@@ -395,7 +378,6 @@ def _clear_asm_display():
 
 
 def _render_assembly(func: AssemblyFunction):
-    """Render assembly code with syntax highlighting"""
     WINDOW_TAG = "assembly_viewer_window"
     
     # Colors
@@ -409,7 +391,7 @@ def _render_assembly(func: AssemblyFunction):
     with dpg.group(parent=f"{WINDOW_TAG}_asm_display"):
         # Function header
         instruction_count = len(func.instructions)
-        # Each instruction is 4 bytes on MIPS and PowerPC architectures
+        # Each instruction is 4 bytes on MIPS and PowerPC
         byte_count = instruction_count * 4
 
         with dpg.group(horizontal=True):
@@ -426,10 +408,10 @@ def _render_assembly(func: AssemblyFunction):
         # Assembly instructions
         for addr, hex_code, instruction in func.instructions:
             with dpg.group(horizontal=True):
-                # Address (fixed width)
+                # Address
                 dpg.add_text(f"{addr}:", color=COLOR_ADDRESS)
                 
-                # Hex code (fixed width)
+                # Hex code
                 dpg.add_text(f"  {hex_code:8s}", color=COLOR_HEX)
                 
                 # Parse and highlight instruction
@@ -438,53 +420,36 @@ def _render_assembly(func: AssemblyFunction):
         dpg.add_spacer(height=20)
 
 
+# Sometimes objdump likes to be a bit silly with symbol offsets, and it will be something like:
+# jal 12345 <SomeAddr+SomeOffset> to get to an unnamed symbol. This is quite silly, and it should just show
+# The hardcoded address if it's unsure. So parse if there is an offset inside of <>, amd remove it
+# An example would be: "411a80<func_name+0x678>" or "0x12345 <func_name + 0x678>"
 def _clean_symbol_offsets(instruction: str) -> str:
-    """
-    Clean up symbol references with offsets from objdump output.
-
-    Example:
-        "jal 411a80<gCreateLightGem+0x16ed00>" -> "jal 411a80 <unknown_symbol>"
-        "jal 0x52024 <exact_func>" -> "jal 0x52024 <exact_func>" (keeps exact matches)
-
-    Args:
-        instruction: The instruction string from objdump
-
-    Returns:
-        Cleaned instruction with offset-based symbols replaced with <unknown_symbol>
-    """
-    # Pattern to match: address (with or without 0x) followed by <symbol + offset>
-    # We want to replace the <...> part with <unknown_symbol> if it contains a '+'
     import re
-
-    # Match pattern like: "411a80<func_name+0x678>" or "0x12345 <func_name + 0x678>"
-    # Handles addresses with or without 0x prefix, with or without space before <
+    # Replace the <...> part with <unknown_symbol> if it contains a '+'
+    # Handle addresses with or without 0x prefix
     pattern = r'((?:0x)?[0-9a-fA-F]+)\s*<([^>]+)>'
 
     def replace_func(match):
         address = match.group(1)
         symbol_part = match.group(2)
 
-        # If the symbol contains '+', it's an offset from an unrelated function
-        # Replace with <unknown_symbol> for consistency and to keep blue coloring
         if '+' in symbol_part:
             return f"{address} <unknown_symbol>"
         else:
-            # It's an exact symbol match, keep it
-            return match.group(0)  # Return the whole match unchanged
+            # It's an exact symbol match without a + offset, so keep it
+            return match.group(0) 
 
     return re.sub(pattern, replace_func, instruction)
 
 
 def _render_instruction(instruction: str):
-    """Render a single instruction with basic syntax highlighting"""
     COLOR_INSTRUCTION = (200, 200, 200, 255)
     COLOR_REGISTER = (150, 200, 150, 255)
     COLOR_IMMEDIATE = (200, 150, 150, 255)
     COLOR_LABEL = (150, 180, 255, 255)
 
-    # Clean up symbol references with offsets (e.g., "0x52024 <func + 0x20504>" -> "0x52024")
-    # Keep exact symbol matches (e.g., "0x52024 <exact_func>" stays as is)
-    instruction = _clean_symbol_offsets(instruction)
+    instruction = _clean_symbol_offsets(instruction) # remove <sym+offset>
 
     # Split instruction into parts
     parts = instruction.split()
@@ -497,11 +462,11 @@ def _render_instruction(instruction: str):
     mnemonic = parts[0]
     dpg.add_text(f"  {mnemonic:8s}", color=COLOR_INSTRUCTION)
     
-    # Rest are operands
+    # Then operands
     if len(parts) > 1:
         operands = ' '.join(parts[1:])
         
-        # Simple highlighting
+        # highlighting
         tokens = re.split(r'([,$()]+)', operands)
         
         for token in tokens:

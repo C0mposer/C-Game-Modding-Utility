@@ -1,5 +1,3 @@
-# services/compilation_service.py
-
 import os
 import re
 import subprocess
@@ -15,14 +13,11 @@ from functions.print_wrapper import *
 from functions.verbose_print import verbose_print
 
 class BuildCache:
-    """Manages build cache for incremental compilation"""
-
     def __init__(self, cache_path: str):
         self.cache_path = cache_path
         self.data = self._load_cache()
 
     def _load_cache(self) -> dict:
-        """Load existing cache or return empty cache"""
         if os.path.exists(self.cache_path):
             try:
                 with open(self.cache_path, 'r') as f:
@@ -42,23 +37,19 @@ class BuildCache:
         }
 
     def save(self):
-        """Save cache to disk"""
         os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
         with open(self.cache_path, 'w') as f:
             json.dump(self.data, f, indent=2)
 
     def clear(self):
-        """Clear cache (for Clean builds)"""
         self.data = self._empty_cache()
         if os.path.exists(self.cache_path):
             os.remove(self.cache_path)
 
     def get_file_info(self, source_path: str) -> Optional[dict]:
-        """Get cached info for a source file"""
         return self.data.get("files", {}).get(source_path)
 
     def set_file_info(self, source_path: str, source_mtime: float, obj_file: str, obj_mtime: float):
-        """Update cached info for a source file"""
         if "files" not in self.data:
             self.data["files"] = {}
         self.data["files"][source_path] = {
@@ -68,7 +59,6 @@ class BuildCache:
         }
 
     def build_config_changed(self, compiler_flags: str, platform: str, build_name: str, build_index: int) -> bool:
-        """Check if build configuration changed since last build"""
         return (
             self.data.get("last_compiler_flags") != compiler_flags or
             self.data.get("last_platform") != platform or
@@ -77,14 +67,12 @@ class BuildCache:
         )
 
     def update_build_config(self, compiler_flags: str, platform: str, build_name: str, build_index: int):
-        """Update build configuration in cache"""
         self.data["last_compiler_flags"] = compiler_flags
         self.data["last_platform"] = platform
         self.data["last_build_name"] = build_name
         self.data["last_build_index"] = build_index
 
     def get_newest_include_mtime(self, include_dir: str) -> float:
-        """Get the newest modification time of any file in include directory"""
         if not os.path.exists(include_dir):
             return 0.0
 
@@ -99,7 +87,6 @@ class BuildCache:
         return newest_mtime
 
     def include_dir_changed(self, include_dir: str) -> bool:
-        """Check if any header file changed since last build"""
         current_mtime = self.get_newest_include_mtime(include_dir)
         last_mtime = self.data.get("last_include_dir_mtime", 0.0)
 
@@ -110,7 +97,6 @@ class BuildCache:
         return False
 
 class CompilationResult:
-    """Represents the result of a compilation operation"""
     def __init__(self, success: bool, message: str = "", details: str = ""):
         self.success = success
         self.message = message
@@ -119,25 +105,22 @@ class CompilationResult:
         self.linker_overflow_errors: List[Dict[str, str]] = []  # List of {section: str, overflow_bytes: str}
 
 class AutoHookInfo:
-    """Information about an auto-detected hook from C code"""
     def __init__(self, hook_type: str, memory_address: str, function_name: str, 
                  source_file: str, line_number: int, target_file: Optional[str] = None,
-                 explicit_file_addr: Optional[str] = None):  # NEW parameter
+                 explicit_file_addr: Optional[str] = None):
         self.hook_type = hook_type  # "J_HOOK", "JAL_HOOK", "B_HOOK", "BL_HOOK"
         self.memory_address = memory_address
         self.function_name = function_name
         self.source_file = source_file
         self.line_number = line_number
         self.target_file = target_file  # Optional: specific game file to inject into
-        self.explicit_file_addr = explicit_file_addr  # NEW: explicit file address
+        self.explicit_file_addr = explicit_file_addr  # explicit file address
 
 
 class CompilationService:
-    """Handles all compilation and linking operations with auto-hook support"""
-    
     # Hook type to ASM instruction mapping
     HOOK_TEMPLATES = {
-        "J_HOOK": ".set noreorder\nj {function_name}\nnop\n", # Mips
+        "J_HOOK": ".set noreorder\nj {function_name}\n", # Mips
         "JAL_HOOK": ".set noreorder\njal {function_name}\n",  # Mips
         "B_HOOK": ".set noreorder\nb {function_name}\n",      # PowerPC
         "BL_HOOK": ".set noreorder\nbl {function_name}\n",    # PowerPC
@@ -145,29 +128,17 @@ class CompilationService:
     
     @staticmethod
     def _strip_ansi_codes(text: str) -> str:
-        """Remove ANSI color codes and escape sequences from text"""
         import re
-        # Match all ANSI escape sequences:
-        # - \x1b\[[0-9;]*m  (color codes like [31m, [0m)
-        # - \x1b\[K          (clear to end of line)
-        # - \x1b\[[0-9;]*[A-Za-z]  (other control sequences)
         ansi_escape = re.compile(r'\x1b\[[0-9;]*[mKA-Za-z]|\x1b\[K')
         return ansi_escape.sub('', text)
 
     def _strip_project_paths(self, text: str) -> str:
-        r"""
-        Strip project directory paths from compiler error/warning messages.
-        Only strips paths that are within the project directory.
-        Leaves system paths (like C:\MinGW\...) unchanged.
-        """
         if not text:
             return text
 
         # Get project directory and normalize it
         project_dir = os.path.abspath(self.project_data.GetProjectFolder())
 
-        # Normalize path separators to match the OS
-        # We need to handle both forward and backslashes in compiler output
         project_dir_normalized = os.path.normpath(project_dir)
 
         # Create variants with different path separators (for cross-platform)
@@ -176,14 +147,14 @@ class CompilationService:
 
         result = text
 
-        # Replace backward slash version (Windows style)
+        # Replace backward slash version
         if project_dir_back in result:
             # Find and replace, preserving the path separator style used in the message
             result = result.replace(project_dir_back + '\\', '')
             result = result.replace(project_dir_back + '/', '')
             result = result.replace(project_dir_back, '')
 
-        # Replace forward slash version (Unix style or mixed)
+        # Replace forward slash version
         if project_dir_forward in result:
             result = result.replace(project_dir_forward + '/', '')
             result = result.replace(project_dir_forward + '\\', '')
@@ -192,12 +163,6 @@ class CompilationService:
         return result
 
     def _colorize_filename_in_line(self, line: str) -> str:
-        """
-        Colorize the filename portion of a compiler message line.
-        Format: "filename.c:line:col: message"
-        or "In file included from filename.c:line:"
-        Colors only the filename in purple for easy identification.
-        """
         if not line:
             return line
 
@@ -224,13 +189,11 @@ class CompilationService:
 
             return line
 
-        # Standard compiler message format: "filename.c:line:col: message"
-        # Find the first colon (separates filename from line number)
         first_colon = line.find(':')
         if first_colon == -1:
             return line  # No filename pattern found
 
-        # Check if this looks like a compiler message (has at least two colons)
+        # Check if this looks like a compiler message
         second_colon = line.find(':', first_colon + 1)
         if second_colon == -1:
             return line  # Not a compiler message format
@@ -239,7 +202,7 @@ class CompilationService:
         filename = line[:first_colon]
         rest_of_line = line[first_colon:]
 
-        # Only colorize if it looks like a file (has an extension or path separator)
+        # Only colorize if it looks like a file 
         if '.' in filename or '/' in filename or '\\' in filename:
             from termcolor import colored
             colored_filename = colored(filename, "magenta")
@@ -272,22 +235,21 @@ class CompilationService:
         self.build_cache = BuildCache(cache_path)
     
     def compile_project(self) -> CompilationResult:
-        """Main compilation pipeline with auto-hook detection"""
         result = CompilationResult(success=False)
         
         # Clear previous warnings and notes
         self.compilation_warnings = []
         self.compilation_notes = []
         
-        # NEW: Track which hooks to clean up after compilation
+        # Track which hooks to clean up after compilation
         hooks_to_cleanup = []
         
-        # NEW: Clean up previous auto-hooks before starting
+        # Clean up previous auto-hooks before starting
         self._cleanup_previous_multipatch_hooks()
         self._cleanup_previous_auto_hooks()
         
         try:
-            # Step 0: Scan for auto-hooks in C/C++ files
+            # Scan for auto-hooks in C/C++ files
             if self.verbose:
                 self._log_progress("Scanning for auto-hooks...")
             self.auto_hooks = self._scan_for_auto_hooks()
@@ -303,28 +265,28 @@ class CompilationService:
                 if not validation_result.success:
                     return validation_result
             
-            # NEW: Step 0.5: Process multi-patch ASM files
+            # Process multi-patch ASM files
             if self.verbose:
                 self._log_progress("Processing multi-patch ASM files...")
             multipatch_result = self._process_multipatches(hooks_to_cleanup)
             if not multipatch_result.success:
                 return multipatch_result
             
-            # Step 1: Validate environment
+            # Validate environment
             if self.verbose:
                 self._log_progress("Validating compilation environment...")
             if not self._validate_environment():
                 result.message = "Compilation environment validation failed"
                 return result
             
-            # Step 2: Update linker script (now includes auto-generated hooks)
+            # Update linker script (now includes auto-generated hooks)
             if self.verbose:
                 self._log_progress("Generating linker script...")
             if not self._update_linker_script():
                 result.message = "Failed to generate linker script"
                 return result
             
-            # Step 3: Compile source files (with build name define)
+            # Compile source files (with build name define)
             self._log_progress("Compiling...")
             compile_result = self._compile_sources()
             if not compile_result.success:
@@ -334,7 +296,7 @@ class CompilationService:
             
             result.object_files = compile_result.object_files
             
-            # Step 4: Link object files
+            # Link object files
             self._log_progress("Linking...")
             link_result = self._link_objects(result.object_files)
             if not link_result.success:
@@ -343,7 +305,7 @@ class CompilationService:
                 result.linker_overflow_errors = link_result.linker_overflow_errors  # Copy overflow errors
                 return result
             
-            # Step 5: Extract sections
+            # Extract sections
             self._log_progress("Extracting...")
             extract_result = self._extract_sections()
             if not extract_result.success:
@@ -351,7 +313,7 @@ class CompilationService:
                 result.details = extract_result.details
                 return result
             
-            # Step 6: Copy binary patches
+            # Copy binary patches
             if self.verbose:
                 self._log_progress("Copying binary patches...")
             patch_result = self._copy_binary_patches()
@@ -366,7 +328,7 @@ class CompilationService:
             if self.auto_hooks:
                 result.message += f" ({len(self.auto_hooks)} auto-hook(s) created)"
             
-            # Display all collected warnings AFTER compilation (unless suppressed)
+            # Display warnings after compilation (unless suppressed)
             if self.compilation_warnings and not self.no_warnings:
                 self._log_progress("")  # Blank line
                 for filename, warnings_text in self.compilation_warnings:
@@ -383,7 +345,6 @@ class CompilationService:
         return result
 
     def _copy_binary_patches(self) -> CompilationResult:
-        """Copy binary patch files to bin_files directory"""
         result = CompilationResult(success=True)
 
         project_folder = self.project_data.GetProjectFolder()
@@ -425,7 +386,7 @@ class CompilationService:
                 import shutil
                 shutil.copyfile(source_file, dest_file)
                 if self.verbose:
-                    self._log_progress(f"    Copied: {os.path.basename(source_file)} → {patch_name}.bin")
+                    self._log_progress(f"    Copied: {os.path.basename(source_file)} -> {patch_name}.bin")
                 copied_count += 1
             except Exception as e:
                 self._log_error(f"    Failed to copy {patch_name}: {str(e)}")
@@ -437,18 +398,8 @@ class CompilationService:
             self._log_progress(f"  Copied {copied_count} binary patch(es)")
         return result
     
-    # ==================== AUTO-HOOK DETECTION ====================
     
     def _scan_for_auto_hooks(self) -> List[AutoHookInfo]:
-        """
-        Scan all C/C++ source files for auto-hook macros.
-        
-        Supported formats:
-        - J_HOOK(0x80123456)                          // assumes main executable, auto finds file address
-        - J_HOOK(0x80123456, "filename.bin")          // specific file, auto finds file address
-        - J_HOOK(0x80123456, "filename.bin", 0x4321)  // specific file, explicit file addrress
-        - JAL_HOOK(...), B_HOOK(...), BL_HOOK(...)    // same patterns
-        """
         auto_hooks = []
 
         # Get all C/C++ files from codecaves
@@ -456,13 +407,13 @@ class CompilationService:
         for cave in self.project_data.GetCurrentBuildVersion().GetEnabledCodeCaves():
             source_files.extend(cave.GetCodeFilesPaths())
         
-        # NEW: Enhanced regex pattern to match all three formats
+        # Ppattern to match all three formats
         # Matches: HOOK_TYPE(address) or HOOK_TYPE(address, "file") or HOOK_TYPE(address, "file", fileaddr)
         hook_pattern = re.compile(
             r'(J_HOOK|JAL_HOOK|B_HOOK|BL_HOOK)\s*\(\s*'
             r'(0x[0-9A-Fa-f]+)'  # Memory address
             r'(?:\s*,\s*"([^"]+)")?'  # Optional file parameter
-            r'(?:\s*,\s*(0x[0-9A-Fa-f]+))?\s*\)'  # NEW: Optional explicit file address
+            r'(?:\s*,\s*(0x[0-9A-Fa-f]+))?\s*\)'  # Optional explicit file address
         )
         
         for source_file in source_files:
@@ -486,7 +437,7 @@ class CompilationService:
                     hook_type = match.group(1)
                     memory_address = match.group(2)
                     target_file = match.group(3)  # Optional
-                    explicit_file_addr = match.group(4)  # NEW: Optional explicit file address
+                    explicit_file_addr = match.group(4)  # Optional explicit file address
                     
                     # Find the function name on the next non-empty line
                     function_name = self._find_function_name(lines, line_num)
@@ -507,9 +458,8 @@ class CompilationService:
                     
                     auto_hooks.append(auto_hook)
                     
-                    # Enhanced verbose output
                     if self.verbose:
-                        msg = f"    {hook_type} @ {memory_address} → {function_name}()"
+                        msg = f"    {hook_type} @ {memory_address} -> {function_name}()"
                         if target_file:
                             msg += f" [file: {target_file}]"
                         if explicit_file_addr:
@@ -523,10 +473,6 @@ class CompilationService:
         return auto_hooks
     
     def _find_function_name(self, lines: List[str], start_line: int) -> Optional[str]:
-        """
-        Find the function name after a hook macro.
-        Looks for pattern: type function_name(
-        """
         # Function pattern: matches "int MyFunc(" or "void MyFunc("
         func_pattern = re.compile(r'\w+\s+(\w+)\s*\(')
         
@@ -581,10 +527,10 @@ class CompilationService:
             # Set injection file
             hook.SetInjectionFile(target_file)
             
-            # NEW: Three-tier priority for file address
+            # Priority for file address:
             # 1. Explicit file address from J_HOOK(addr, file, fileaddr) (highest priority)
-            # 2. Section map (automatic)
-            # 3. Single offset (fallback)
+            # 2. Section map
+            # 3. Single offset
             
             if hook_info.explicit_file_addr:
                 # Priority 1: User provided explicit file address
@@ -668,21 +614,20 @@ class CompilationService:
         
         # Warn about missing file offsets (only for hooks without explicit addresses)
         if missing_offsets:
-            self._log_error("\n ⚠ WARNING: Some auto-hooks need manual file addresses:")
+            self._log_error("\n WARNING: Some auto-hooks need manual file addresses:")
             for hook_info, target_file in missing_offsets:
-                self._log_error(f"  • {hook_info.function_name}() → {target_file}")
+                self._log_error(f"  - {hook_info.function_name}() -> {target_file}")
                 self._log_error(f"    - No section map found")
                 self._log_error(f"    - No file offset set")
             self._log_error("\nFix this by:")
             self._log_error("  1. Provide explicit file address: J_HOOK(0x80123456, \"file.bin\", 0x1234), OR")
-            self._log_error("  2. Set file offset in 'Target Game Files' tab, OR")
+            self._log_error("  2. Set file offset in 'Game Files To Inject Into' tab, OR")
             self._log_error("  3. Build section map for the file (if supported)")
             self._log_error("Then recompile.")
         
         return result
     
     def _get_asm_template(self, hook_type: str, function_name: str, platform: str) -> str:
-        """Get the appropriate ASM template for the hook type and platform"""
         template = self.HOOK_TEMPLATES.get(hook_type, "")
 
         # Adjust for platform
@@ -690,23 +635,17 @@ class CompilationService:
             # PowerPC doesn't need .set noreorder
             template = template.replace(".set noreorder\n", "")
 
-            # PowerPC uses different jump instructions
+            # Incase the user accidenitly uses the wrong kind
             if hook_type == "J_HOOK":
                 template = f"b {function_name}\n"
             elif hook_type == "JAL_HOOK":
                 template = f"bl {function_name}\n"
-        elif platform == "PS2":
-            # PS2 MIPS architecture doesn't have branch delay slots
-            # Remove nop from J_HOOK (JAL_HOOK already has no nop)
-            if hook_type == "J_HOOK":
-                template = template.replace("\nnop\n", "\n")
+
 
         return template.format(function_name=function_name)
-    
-    # ==================== COMPILATION (Enhanced) ====================
+
     
     def _compile_sources(self) -> CompilationResult:
-        """Compile all C/C++/ASM source files with incremental build support"""
         result = CompilationResult(success=False)
 
         project_dir = os.path.abspath(self.project_data.GetProjectFolder())
@@ -719,7 +658,7 @@ class CompilationService:
             result.message = "Object output directory missing"
             return result
 
-        # Collect all source files (including auto-hooks)
+        # Collect all source files
         all_source_files = self._collect_source_files()
 
         if not all_source_files:
@@ -738,7 +677,6 @@ class CompilationService:
             user_compiler_flags = current_build.GetCompilerFlags()
 
         # Construct full compiler flags string for comparison
-        # Note: -fno-exceptions and -fno-rtti are added per-file for C++ files only
         compiler_flags_str = f"-g -ffreestanding -fno-builtin {user_compiler_flags}"
 
         # Check if build configuration changed (forces full rebuild)
@@ -808,15 +746,15 @@ class CompilationService:
                 compiled_obj_files.append(obj_filename)
                 files_skipped += 1
 
-        # Compile files (in parallel if 3+ files, otherwise sequential to avoid thread overhead)
+        # Compile files
         files_compiled = 0
-        PARALLEL_THRESHOLD = 3  # Only use parallel compilation for 3+ files
+        PARALLEL_THRESHOLD = 3 
 
         if len(files_to_compile) == 0:
             # Nothing to compile
             pass
         elif len(files_to_compile) < PARALLEL_THRESHOLD:
-            # Few files (1-2) - compile sequentially (thread overhead not worth it)
+            # Few files (1-2) - compile sequentially
             for src_file_path, obj_file_path, reason in files_to_compile:
                 src_filename = os.path.basename(src_file_path)
                 obj_filename = os.path.splitext(src_filename)[0] + '.o'
@@ -898,7 +836,6 @@ class CompilationService:
         return result
 
     def _compile_single_file(self, src_file_path: str, output_dir: str, platform: str) -> CompilationResult:
-        """Compile a single file with build name as preprocessor define"""
         result = CompilationResult(success=False)
 
         src_file_path = os.path.abspath(src_file_path)
@@ -1131,11 +1068,8 @@ class CompilationService:
         return result
 
 
-    # ==================== REST OF COMPILATION SERVICE ====================
-    # (Keep all existing methods: _link_objects, _extract_sections, etc.)
 
     def _validate_environment(self) -> bool:
-        """Check if all required tools are available"""
         platform = self.project_data.GetCurrentBuildVersion().GetPlatform()
         
         compiler_path = self._get_compiler_path(platform)
@@ -1156,17 +1090,14 @@ class CompilationService:
         return True
     
     def _get_compiler_path(self, platform: str) -> str:
-        """Get the full path to the compiler for the platform"""
         relative_path = self.mod_builder.compilers.get(platform, "")
         return os.path.join(self.tool_dir, relative_path)
     
     def _get_objcopy_path(self, platform: str) -> str:
-        """Get the full path to objcopy for the platform"""
         relative_path = self.mod_builder.objcopy_exes.get(platform, "")
         return os.path.join(self.tool_dir, relative_path)
     
     def _collect_source_files(self) -> List[str]:
-        """Collect all source files including auto-generated hooks"""
         source_files = []
 
         # From code caves
@@ -1180,13 +1111,11 @@ class CompilationService:
         return source_files
 
     def clean_build_cache(self):
-        """Clear build cache to force full rebuild on next compile"""
         if self.verbose:
             self._log_progress("Clearing build cache...")
         self.build_cache.clear()
 
     def _update_linker_script(self) -> bool:
-        """Generate the linker script (includes auto-generated hooks)"""
         try:
             project_folder = self.project_data.GetProjectFolder()
             build_name = self.project_data.GetCurrentBuildVersion().GetBuildName()
@@ -1263,7 +1192,7 @@ class CompilationService:
                             f"        {o_file_rel_path}(.scommon)\n"
                         )
                     
-                    if i == len(code_caves) - 1:
+                    if i == len(code_caves) - 1: # Place any remaining code in last codecave. This is kind of a hack, but it rarely happens
                         script_file.write("        *(.text)\n")
                         script_file.write("        *(.branch_lt)\n")
                     
@@ -1290,7 +1219,6 @@ class CompilationService:
             return False
     
     def _link_objects(self, obj_files: List[str]) -> CompilationResult:
-        """Link object files into ELF"""
         result = CompilationResult(success=False)
         
         project_dir = os.path.abspath(self.project_data.GetProjectFolder())
@@ -1375,7 +1303,7 @@ class CompilationService:
                     for r in results:
                         if r.is_overflow:
                             overflow = r.used_bytes - r.allocated_bytes
-                            self._log_error(f"  • {r.name}: OVERFLOW by 0x{overflow:X} bytes")
+                            self._log_error(f"  - {r.name}: OVERFLOW by 0x{overflow:X} bytes")
             
         except subprocess.TimeoutExpired:
             result.details = "Linker timed out after 30 seconds"
@@ -1392,7 +1320,6 @@ class CompilationService:
         return result
     
     def _parse_linker_errors(self, stderr: str, result: CompilationResult = None) -> str:
-        """Parse linker error messages for user-friendly output and extract overflow details"""
         verbose_print(stderr)
 
         # Strip project paths from stderr for cleaner output
@@ -1453,7 +1380,6 @@ class CompilationService:
         return stderr_cleaned
     
     def _move_map_file(self, map_path: str, project_dir: str):
-        """Move map file to proper directory"""
         import shutil
         memory_map_dir = os.path.join(project_dir, ".config", "memory_map")
         os.makedirs(memory_map_dir, exist_ok=True)
@@ -1467,7 +1393,6 @@ class CompilationService:
             self._log_error(f"Failed to move map file: {str(e)}")
     
     def _extract_sections(self) -> CompilationResult:
-        """Extract compiled sections from ELF to raw binary files"""
         result = CompilationResult(success=True)
 
         project_dir = os.path.abspath(self.project_data.GetProjectFolder())
@@ -1503,7 +1428,7 @@ class CompilationService:
             self._log_progress(f"  Extracting {num_sections} section(s)...")
 
         try:
-            # Extract sections sequentially (objcopy is fast, parallel overhead not worth it)
+            # Extract sections
             for section_name in sections_to_extract:
                 section_flag = f".{section_name}"
                 output_bin_name = f"{section_name}.bin"
@@ -1562,10 +1487,6 @@ class CompilationService:
         return result
 
     def _process_multipatches(self, hooks_to_cleanup: list) -> CompilationResult:
-        """
-        Process all multi-patch ASM files and create temporary hooks.
-        These hooks are tracked for cleanup after compilation.
-        """
         result = CompilationResult(success=True)
         
         current_build = self.project_data.GetCurrentBuildVersion()
@@ -1623,10 +1544,6 @@ class CompilationService:
         return result
     
     def _cleanup_previous_multipatch_hooks(self):
-        """
-        Remove multi-patch generated hooks from previous compilations.
-        Multi-patch hooks are regenerated fresh each time.
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         hooks = current_build.GetHooks()
         
@@ -1666,7 +1583,7 @@ class CompilationService:
         current_build = self.project_data.GetCurrentBuildVersion()
         hooks = current_build.GetHooks()
 
-        # Remove only TEMPORARY hooks that start with "AutoHook_"
+        # Remove only temporary hooks that start with "AutoHook_"
         # (Permanent user hooks with "AutoHook_" prefix should be kept)
         hooks_to_remove = [h for h in hooks if h.GetName().startswith("AutoHook_") and h.IsTemporary()]
 
@@ -1694,38 +1611,28 @@ class CompilationService:
     
     
     def _log_progress(self, message: str):
-        """Log progress message"""
-        # Always print to console (with colors)
         print(message)
         
-        # Also log via verbose_print for detailed logging
         if self.verbose:
             verbose_print(message)
         
-        # Send to GUI callback if available (strip ANSI codes)
         if self.on_progress:
             clean_message = self._strip_ansi_codes(message)
             self.on_progress(clean_message)
     
     def _log_error(self, message: str):
-        """Log error message"""
-        # Always print to console (with colors)
         print_error(f"{message}")
         
-        # Send to GUI callback if available (strip ANSI codes)
         if self.on_error:
             clean_message = self._strip_ansi_codes(message)
             self.on_error(clean_message)
     
     def _display_warnings_block(self, filename: str, warnings_text: str):
-        """Display a formatted warning block for a specific file"""
-        # Print to console - header in cyan, warnings with GCC's own coloring
         print("")
         print_cyan("╔══════════════════════════════════════════════════════════╗")
         print_cyan(f"║            COMPILER WARNINGS ({filename})".ljust(61) + "║")
         print_cyan("╚══════════════════════════════════════════════════════════╝")
 
-        # Print each warning line with GCC's own coloring and colorized filenames
         for line in warnings_text.strip().split('\n'):
             if line.strip():
                 colorized_line = self._colorize_filename_in_line(line)
@@ -1733,7 +1640,6 @@ class CompilationService:
 
         print("")  # Blank line after warnings
 
-        # Also send to GUI if callback exists (strip ANSI codes)
         if self.on_progress:
             self.on_progress("")
             self.on_progress("╔══════════════════════════════════════════════════════════╗")
@@ -1748,14 +1654,11 @@ class CompilationService:
             self.on_progress("")
 
     def _display_notes_block(self, filename: str, notes_text: str):
-        """Display a formatted notes block for a specific file"""
-        # Print to console - header in dark grey, notes with GCC's own coloring
         print("")
         print_dark_grey("╔══════════════════════════════════════════════════════════╗")
         print_dark_grey(f"║            COMPILER NOTES ({filename})".ljust(61) + "║")
         print_dark_grey("╚══════════════════════════════════════════════════════════╝")
 
-        # Print each note line with GCC's own coloring and colorized filenames
         for line in notes_text.strip().split('\n'):
             if line.strip():
                 colorized_line = self._colorize_filename_in_line(line)
@@ -1763,7 +1666,6 @@ class CompilationService:
 
         print("")  # Blank line after notes
 
-        # Also send to GUI if callback exists (strip ANSI codes)
         if self.on_progress:
             self.on_progress("")
             self.on_progress("╔══════════════════════════════════════════════════════════╗")

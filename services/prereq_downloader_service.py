@@ -1,7 +1,3 @@
-"""
-Tool Manager - Downloads and manages platform-specific prerequisite tools
-"""
-
 import os
 import shutil
 import zipfile
@@ -59,7 +55,6 @@ class ToolManager:
         os.makedirs(self.prereq_dir, exist_ok=True)
 
     def is_platform_installed(self, platform: str) -> bool:
-        """Check if platform tools are installed"""
         if platform not in self.TOOL_PACKAGES:
             return False
 
@@ -74,15 +69,6 @@ class ToolManager:
         return True
 
     def check_platform_prereqs(self, platform_name: str) -> bool:
-        """
-        Check if prerequisites for a platform are installed
-
-        Args:
-            platform_name: Platform name (PS1, PS2, Gamecube, Wii)
-
-        Returns:
-            True if installed, False if missing
-        """
         platform_key = self.PLATFORM_MAP.get(platform_name)
         if not platform_key:
             return True  # Unknown platform, assume OK
@@ -90,7 +76,6 @@ class ToolManager:
         return self.is_platform_installed(platform_key)
 
     def get_missing_platforms(self, required_platforms: List[str]) -> List[str]:
-        """Get list of platforms that need to be installed"""
         missing = []
         for platform in required_platforms:
             if not self.is_platform_installed(platform):

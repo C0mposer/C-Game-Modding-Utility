@@ -1,8 +1,3 @@
-"""
-Centralized Emulator Connection Manager
-Manages emulator scanning and connections across the entire application
-"""
-
 import threading
 from typing import Optional, List, Callable, Dict
 from services.emulator_service import EmulatorService, EMULATOR_CONFIGS
@@ -12,7 +7,6 @@ import psutil
 
 
 class EmulatorConnection:
-    """Cached emulator connection state"""
     def __init__(self):
         self.emulator_name: Optional[str] = None
         self.main_ram: Optional[int] = None
@@ -22,7 +16,6 @@ class EmulatorConnection:
         self.is_valid = False
 
     def reset(self):
-        """Reset connection state"""
         if self.handle and self.kernel32:
             try:
                 self.kernel32.CloseHandle(self.handle)
@@ -35,7 +28,6 @@ class EmulatorConnection:
         self.is_valid = False
 
     def validate(self) -> bool:
-        """Check if connection is still valid"""
         if not self.handle or not self.kernel32:
             return False
 
@@ -56,8 +48,6 @@ class EmulatorConnection:
 
 
 class EmulatorConnectionManager:
-    """Singleton manager for all emulator connections across the application"""
-
     _instance = None
     _lock = threading.Lock()
 
@@ -81,43 +71,36 @@ class EmulatorConnectionManager:
             self.on_emulators_scanned: List[Callable[[List[str]], None]] = []
             self.on_connection_changed: List[Callable[[bool, Optional[str]], None]] = []
 
-            # Current project data (needed for EmulatorService)
+            # Current project data
             self.current_project_data = None
 
     def set_project_data(self, project_data):
-        """Set the current project data (required for EmulatorService)"""
         self.current_project_data = project_data
 
     def reset_for_project_close(self):
-        """Reset connection when project is closed or changed"""
         self.connection.reset()
         self.available_emulators = []
         self.last_scan_result = []
         self._notify_connection_changed(False, None)
 
     def register_scan_callback(self, callback: Callable[[List[str]], None]):
-        """Register a callback to be notified when emulators are scanned"""
         if callback not in self.on_emulators_scanned:
             self.on_emulators_scanned.append(callback)
             verbose_print(f"[EmulatorManager] Registered scan callback: {callback} (total: {len(self.on_emulators_scanned)})")
 
     def register_connection_callback(self, callback: Callable[[bool, Optional[str]], None]):
-        """Register a callback to be notified when connection status changes"""
         if callback not in self.on_connection_changed:
             self.on_connection_changed.append(callback)
 
     def unregister_scan_callback(self, callback: Callable[[List[str]], None]):
-        """Unregister a scan callback"""
         if callback in self.on_emulators_scanned:
             self.on_emulators_scanned.remove(callback)
 
     def unregister_connection_callback(self, callback: Callable[[bool, Optional[str]], None]):
-        """Unregister a connection callback"""
         if callback in self.on_connection_changed:
             self.on_connection_changed.remove(callback)
 
     def scan_emulators(self) -> List[str]:
-        """Scan for available emulators and notify all listeners"""
         if not self.current_project_data:
             return []
 
@@ -158,10 +141,6 @@ class EmulatorConnectionManager:
         return available
 
     def get_or_establish_connection(self, emulator_name: str) -> tuple[Optional[int], Optional[int], Optional[int]]:
-        """
-        Get or establish emulator connection. Returns (handle, main_ram, kernel32).
-        Caches connection for instant reuse and notifies listeners.
-        """
         if not self.current_project_data:
             return (None, None, None)
 
@@ -227,6 +206,9 @@ class EmulatorConnectionManager:
         elif emu_info.name == "Duckstation":
             from services.duckstation_service import get_ram_base_address_ctypes
             main_ram = get_ram_base_address_ctypes(pid)  # Pass cached PID to avoid slow process scan
+        elif emu_info.name.startswith("BizHawk"):
+            from services.bizhawk_service import get_ram_base_address_ctypes
+            main_ram = get_ram_base_address_ctypes(pid)  # Pass cached PID to avoid slow process scan
         else:
             main_ram = emu_service._get_main_ram_address(handle, emu_info)
 
@@ -242,19 +224,16 @@ class EmulatorConnectionManager:
         self.connection.emu_info = emu_info
         self.connection.is_valid = True
 
-        # Notify listeners of successful connection
         self._notify_connection_changed(True, emulator_name)
 
         return (handle, main_ram, kernel32)
 
     def get_current_connection(self) -> Optional[EmulatorConnection]:
-        """Get the current connection if valid, otherwise None"""
         if self.connection.is_valid and self.connection.validate():
             return self.connection
         return None
 
     def disconnect(self):
-        """Disconnect from current emulator"""
         was_connected = self.connection.is_valid
         emulator_name = self.connection.emulator_name
         self.connection.reset()
@@ -263,10 +242,6 @@ class EmulatorConnectionManager:
             self._notify_connection_changed(False, emulator_name)
 
     def _validate_pid(self, pid: int, expected_process_name: str) -> bool:
-        """
-        Validate that a PID is still valid and matches the expected process name.
-        Returns True if valid, False if PID doesn't exist or process name doesn't match.
-        """
         try:
             proc = psutil.Process(pid)
             # Check if process name matches (case-insensitive prefix match)
@@ -277,7 +252,6 @@ class EmulatorConnectionManager:
             return False
 
     def _notify_connection_changed(self, is_connected: bool, emulator_name: Optional[str]):
-        """Notify all listeners of connection status change"""
         for callback in self.on_connection_changed:
             try:
                 callback(is_connected, emulator_name)
@@ -285,11 +259,10 @@ class EmulatorConnectionManager:
                 print(f"Error in connection callback: {e}")
 
 
-# Global singleton instance
+# Global instance
 _manager = None
 
 def get_emulator_manager() -> EmulatorConnectionManager:
-    """Get the global emulator connection manager instance"""
     global _manager
     if _manager is None:
         _manager = EmulatorConnectionManager()

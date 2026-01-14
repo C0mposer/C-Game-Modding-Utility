@@ -38,7 +38,6 @@ CloseHandle.restype  = wintypes.BOOL
 
 
 def iter_processes():
-    """Yield (pid, exe_name) for all processes using Toolhelp32Snapshot."""
     h_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
     if h_snapshot == wintypes.HANDLE(-1).value:
         raise OSError("CreateToolhelp32Snapshot failed")

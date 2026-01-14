@@ -14,12 +14,11 @@ from gui.gui_prereq_prompt import check_and_prompt_prereqs
 from services.emulator_connection_manager import get_emulator_manager
 from path_helper import get_application_directory
 
+#! This file is a mess, be warned. 
+#! I need to extract a lot of functions out of here into other files, but have been lazy lol
+
 
 def _scan_for_os_library_functions(current_project_data: ProjectData):
-    """
-    Scan main executable for OS library function patterns (PS1/PS2 only).
-    Called after extracting/setting game files for a build version.
-    """
     import os
 
     current_build = current_project_data.GetCurrentBuildVersion()
@@ -74,55 +73,29 @@ def _scan_for_os_library_functions(current_project_data: ProjectData):
         print(f"Error scanning for OS library patterns: {e}")
 
 
-def _reset_gdb_debugger():
-    """Reset GDB debugger state"""
-    import gui.gui_gdb_debugger as gdb_debugger
-
-    # Reset the global debugger state
-    if hasattr(gdb_debugger, '_debugger_state'):
-        if gdb_debugger._debugger_state.is_connected and gdb_debugger._debugger_state.service:
-            try:
-                gdb_debugger._debugger_state.service.disconnect()
-            except:
-                pass
-
-        # Reset state
-        gdb_debugger._debugger_state.service = None
-        gdb_debugger._debugger_state.is_connected = False
-        gdb_debugger._debugger_state.current_emulator = ""
-        gdb_debugger._debugger_state.current_host = "localhost"
-        gdb_debugger._debugger_state.current_port = 3333
-
-    print("GDB debugger state reset")
 
 def _close_all_project_windows():
-    """Delete all project-related windows so they get recreated fresh"""
-    # List of all project-specific window tags
     window_tags = [
         "gdb_debugger_window",
         "assembly_viewer_window",
         "visual_patcher_window",
         "codecave_finder_window",
-        # Add any modals or dialogs
         "add_build_version_modal",
         "pattern_selection_dialog",
-        # Memory watch is handled separately via reset_memory_watch_service()
     ]
 
     for tag in window_tags:
         if dpg.does_item_exist(tag):
             try:
                 dpg.delete_item(tag)
-                print(f"Deleted window: {tag}")
+                verbose_print(f"Deleted window: {tag}")
             except Exception as e:
-                print(f"Error deleting window {tag}: {e}")
+                verbose_print(f"Error deleting window {tag}: {e}")
 
-    # Reset assembly viewer global state
     import gui.gui_assembly_viewer as asm_viewer
     if hasattr(asm_viewer, '_asm_viewer_functions'):
         asm_viewer._asm_viewer_functions.clear()
 
-    # Reset visual patcher global state
     import gui.gui_hex_differ as visual_patcher
     if hasattr(visual_patcher, '_state'):
         visual_patcher._state.file_name = ""
@@ -135,7 +108,6 @@ def _close_all_project_windows():
     print("All project windows closed and state cleared")
 
 def reset_global_project_state():
-    """Comprehensive reset of all project-related state and windows"""
     print("Resetting all project state...")
 
     # Reset codecave state
@@ -159,12 +131,6 @@ def reset_global_project_state():
     except Exception as e:
         print(f"Error resetting binary patch state: {e}")
 
-    # Reset GDB debugger state
-    try:
-        _reset_gdb_debugger()
-    except Exception as e:
-        print(f"Error resetting GDB debugger: {e}")
-
     # Reset game files state
     from gui.gui_game_files import reset_game_files_state
     try:
@@ -172,24 +138,17 @@ def reset_global_project_state():
     except Exception as e:
         print(f"Error resetting game files state: {e}")
 
-    # Reset string editor state (including ProjectData reference)
-    from gui.gui_string_editor import reset_string_editor_state
-    try:
-        reset_string_editor_state()
-    except Exception as e:
-        print(f"Error resetting string editor state: {e}")
-
-    # Reset codecave finder state (including ProjectData reference)
+    # Reset codecave finder state
     from gui.gui_codecave_finder import reset_codecave_finder_state
     try:
         reset_codecave_finder_state()
     except Exception as e:
         print(f"Error resetting codecave finder state: {e}")
 
-    # Close/delete all project-related windows (they'll be recreated fresh if reopened)
+    # Close/delete all project-related windows
     _close_all_project_windows()
 
-    print("Global project state reset complete")
+
 
 def ShowFullProjectTabs():
     dpg.configure_item("Target Game Files", show=True)
@@ -197,8 +156,7 @@ def ShowFullProjectTabs():
     dpg.configure_item("Build", show=True)
     
 def callback_add_project_build_version(sender, app_data, current_project_data: ProjectData):
-    """Add a new build version to the project"""
-    # Create input dialog for build name and sharing option
+    # Create input dialog for build name
     if dpg.does_item_exist("add_build_version_modal"):
         dpg.show_item("add_build_version_modal")
         return
@@ -261,7 +219,6 @@ def callback_add_project_build_version(sender, app_data, current_project_data: P
 
 
 def callback_create_build_version_from_modal(sender, app_data, current_project_data: ProjectData):
-    """Actually create the build version after getting the name"""
     import os
 
     new_name = dpg.get_value("new_build_version_name_input")
@@ -271,20 +228,20 @@ def callback_create_build_version_from_modal(sender, app_data, current_project_d
         messagebox.showerror("Error", "Build version name cannot be empty.")
         return
 
-    # Auto-capitalize for consistency with preprocessor defines
+    # Auto-capitalize
     new_name = new_name.upper()
 
-    # Check if name exists in CURRENT project only
+    # Check if name exists in current project
     existing_names = [bv.GetBuildName() for bv in current_project_data.build_versions]
     if new_name in existing_names:
         messagebox.showerror("Error", f"A build version named '{new_name}' already exists in this project.")
         return
 
-    # Create new build version (will be auto-capitalized by SetBuildName)
+    # Create new build version
     current_project_data.AddBuildVersionWithName(new_name)
     new_build = current_project_data.build_versions[-1]
     
-    # Handle sharing logic
+    # Sharing logic
     if share_from != "New Files (Don't Share)":
         # Find the build to share from
         source_build = None
@@ -294,8 +251,7 @@ def callback_create_build_version_from_modal(sender, app_data, current_project_d
                 break
         
         if source_build:
-            # IMPORTANT: When sharing, use the EXACT same paths as the source build
-            # This allows multiple build versions to point to the same game files
+            # When sharing, use the same paths as the source build
             new_build.SetGameFolder(source_build.GetGameFolder())
             new_build.SetSourcePath(source_build.GetSourcePath())
             new_build.SetPlatform(source_build.GetPlatform())
@@ -316,43 +272,38 @@ def callback_create_build_version_from_modal(sender, app_data, current_project_d
                 if offset:
                     new_build.SetInjectionFileOffset(file, offset)
             
-            print(f"Created new build version '{new_name}' sharing files from '{share_from}'")
-            print(f"  Shared game folder: {source_build.GetGameFolder()}")
-            print(f"  Shared symbols file: {source_build.GetSymbolsFile()}")
+            verbose_print(f"Created new build version '{new_name}' sharing files from '{share_from}'")
+            verbose_print(f"  Shared game folder: {source_build.GetGameFolder()}")
+            verbose_print(f"  Shared symbols file: {source_build.GetSymbolsFile()}")
             
             messagebox.showinfo("Build Version Shared",
                 f"New build version '{new_name}' created!\n\n"
-                f"Sharing game files from: {share_from}\n"
-                f"This build uses the same game files\n"
-                f"Compiled code will be build-specific\n\n"
-                f"You can now add modifications specific to this build.")
+                f"Sharing game files from: {share_from}\n")
+            
         else:
             print(f"Warning: Could not find source build '{share_from}'")
             new_build.SetSymbolsFile(f"{new_name}.txt")
     else:
-        # Set default symbols file for new independent build
+        # Set default symbols file for new build
         new_build.SetSymbolsFile(f"{new_name}.txt")
         
-        # Create symbols file for this build version
+        # Create symbols file for new build version
         project_folder = current_project_data.GetProjectFolder()
         symbols_dir = os.path.join(project_folder, "symbols")
         symbols_file_path = os.path.join(symbols_dir, f"{new_name}.txt")
         
         try:
-            # Ensure symbols directory exists
             os.makedirs(symbols_dir, exist_ok=True)
             
-            # Create the symbols file with instructions. (Maybe slim down the instructions eventually? Kinda bulky)
+            # Create the symbols file with instructions. (Maybe I should slim down the instructions eventually? Kinda bulky)
             with open(symbols_file_path, "w") as symbols_file:
                 symbols_file.write(
-                    f"/* Symbol file for build version: {new_name} */\n"
+                    f"/* Symbols file for build version: {new_name} */\n"
                     f"/* This is where you put your in-game global variables & functions */\n"
-                    f"/* found from RAM search/reverse engineering for this specific version. */\n\n"
-                    f"/* Example: */\n"
-                    f"/* game_symbol = 0x80001234; */\n"
+                    f"game_symbol = 0x80001234; /* Example */\n"
                 )
             
-            print(f"Created symbols file: symbols/{new_name}.txt")
+            verbose_print(f"Created symbols file: symbols/{new_name}.txt")
             
         except Exception as e:
             print(f"Warning: Could not create symbols file: {str(e)}")
@@ -393,27 +344,23 @@ def _copy_ps1_build_data(original_build, new_build, project_data):
 
 
 def callback_duplicate_build_version(sender, app_data, current_project_data: ProjectData):
-    """Actually create the build version after getting the name"""
     import os
 
     new_name = current_project_data.GetCurrentBuildVersionName() + "_duplicate"
     original_build = current_project_data.GetCurrentBuildVersion()
 
-    # Create new build version (shares symbols file with original)
     current_project_data.DuplicateBuildVersion(original_build, new_name)
 
     # Set the duplicated build to use the same symbols file as the original
-    new_build = current_project_data.build_versions[-1]  # Get the newly added build
+    new_build = current_project_data.build_versions[-1]  # Get the newly added build through -1
     new_build.SetSymbolsFile(original_build.GetSymbolsFile())
 
     # If PS1 platform, copy XML and share game files from original build
     if current_project_data.GetCurrentBuildVersion().GetPlatform():
         _copy_ps1_build_data(original_build, new_build, current_project_data)
 
-    # Don't create a new symbols file - just reuse the original's
-
-    print(f"Duplicated build version: {new_name}")
-    print(f"  Sharing symbols file: {original_build.GetSymbolsFile()}")
+    verbose_print(f"Duplicated build version: {new_name}")
+    verbose_print(f"  Sharing symbols file: {original_build.GetSymbolsFile()}")
 
     # Update the listbox
     update_build_version_listbox(current_project_data)
@@ -423,7 +370,6 @@ def callback_duplicate_build_version(sender, app_data, current_project_data: Pro
 
 
 def callback_switch_project_build_version(sender, app_data, current_project_data: ProjectData):
-    """Switch to a different build version"""
     selected_build_name = app_data
     
     if not selected_build_name:
@@ -441,20 +387,18 @@ def callback_switch_project_build_version(sender, app_data, current_project_data
             new_platform = build_version.GetPlatform()
 
             if not check_and_prompt_prereqs(tool_dir, new_platform, None):
-                # User cancelled download - switch back to old build
+                # Cancelled download, switch back to old build
                 current_project_data.SetBuildVersionIndex(old_index)
                 return
 
-            print(f"Switched from build #{old_index} to build #{i}: {selected_build_name}")
+            verbose_print(f"Switched from build #{old_index} to build #{i}: {selected_build_name}")
 
-            # Refresh the entire UI to show the new build version's data
+            # Refresh the entire UI
             refresh_ui_for_current_build(current_project_data)
 
             from gui.gui_main_project import trigger_auto_save
             trigger_auto_save()
             return
-    
-    print(f"Error: Could not find build version '{selected_build_name}'")
 
 
 def callback_rename_build_version(sender, app_data, current_project_data: ProjectData):
@@ -513,7 +457,7 @@ def callback_do_rename_build_version(sender, app_data, current_project_data: Pro
         messagebox.showerror("Error", "Build version name cannot be empty.")
         return
 
-    # Auto-capitalize for consistency with preprocessor defines
+    # Auto-capitalize
     new_name = new_name.upper()
 
     if new_name == old_name:
@@ -526,12 +470,11 @@ def callback_do_rename_build_version(sender, app_data, current_project_data: Pro
         messagebox.showerror("Error", f"A build version named '{new_name}' already exists.")
         return
 
-    # Rename the build version (will be auto-capitalized by SetBuildName)
+    # Rename the build version
     current_build.SetBuildName(new_name)
 
     print(f"Renamed build version from '{old_name}' to '{new_name}'")
 
-    # Update library_symbols.h if it exists (for PS1/PS2 projects)
     platform = current_build.GetPlatform()
     if platform in ["PS1", "PS2"]:
         project_folder = current_project_data.GetProjectFolder()
@@ -555,7 +498,6 @@ def callback_do_rename_build_version(sender, app_data, current_project_data: Pro
 
 
 def callback_delete_build_version(sender, app_data, current_project_data: ProjectData):
-    """Delete the currently selected build version"""
     if len(current_project_data.build_versions) <= 1:
         messagebox.showwarning("Cannot Delete", "You must have at least one build version.")
         return
@@ -589,7 +531,6 @@ def callback_delete_build_version(sender, app_data, current_project_data: Projec
 
 
 def update_build_version_listbox(current_project_data: ProjectData):
-    """Update the build version listbox with current data"""
     build_names = [bv.GetBuildName() for bv in current_project_data.build_versions]
     current_name = current_project_data.GetCurrentBuildVersion().GetBuildName()
     
@@ -598,13 +539,10 @@ def update_build_version_listbox(current_project_data: ProjectData):
 
 
 def refresh_ui_for_current_build(current_project_data: ProjectData):
-    """Refresh all UI elements to reflect the current build version"""
     current_build = current_project_data.GetCurrentBuildVersion()
     
-    # Update the "Editing:" label
     dpg.set_value("current_build_label", f"Editing: {current_build.GetBuildName()}")
     
-    # Update platform combo
     platform = current_build.GetPlatform()
     dpg.set_value("platform_combo", platform if platform else "Choose a Platform")
     
@@ -612,7 +550,7 @@ def refresh_ui_for_current_build(current_project_data: ProjectData):
     import gui.gui_main_project
     gui.gui_main_project.AddRelevantGameFileOptions(current_project_data)
     
-    # Update PS1 codecave button visibility
+    # Update PS1 header codecave button visibility
     from gui.gui_c_injection import update_ps1_codecave_button_visibility
     update_ps1_codecave_button_visibility(current_project_data)
 
@@ -621,7 +559,7 @@ def refresh_ui_for_current_build(current_project_data: ProjectData):
     refresh_build_panel_ui(current_project_data)
     update_build_button_label(current_project_data)
 
-    # Update game files listbox with formatted items
+    # Update game files listbox
     game_files = current_build.GetInjectionFiles()
     if game_files:
         from gui.gui_game_files import _get_formatted_file_list
@@ -653,7 +591,7 @@ def refresh_ui_for_current_build(current_project_data: ProjectData):
     ClearGuiBinaryPatchData()
     UpdateBinaryPatchesListbox(current_project_data)
     
-    # Show/hide tabs based on whether platform and game folder are set
+    # Show/hide tabs based on whether build version has a game & platform set
     if platform and platform != "Choose a Platform" and current_build.GetGameFolder():
         dpg.configure_item("Target Game Files", show=True)
         dpg.configure_item("Modifications", show=True)
@@ -679,11 +617,11 @@ def refresh_ui_for_current_build(current_project_data: ProjectData):
         dpg.configure_item("symbols_file_combo", items=symbols_files if symbols_files else [current_symbols])
         dpg.set_value("symbols_file_combo", current_symbols)
 
-    # Hide Emulator / Build / Export section until this build is compiled
+    # Hide Injection / Build / Cheats section until compilation is finished
     if dpg.does_item_exist("emulator_iso_buttons_group_container"):
         dpg.configure_item("emulator_iso_buttons_group_container", show=False)
 
-    # Hide Code Size Analysis until this build is compiled
+    # Hide Code Size Analysis until compilation is finished
     if dpg.does_item_exist("size_analysis_header"):
         dpg.configure_item("size_analysis_header", show=False)
 
@@ -695,16 +633,14 @@ def refresh_ui_for_current_build(current_project_data: ProjectData):
     from gui.gui_main_project import update_project_dashboard
     update_project_dashboard(current_project_data)
 
-    print(f"UI refreshed for build version: {current_build.GetBuildName()}")
+    verbose_print(f"UI refreshed")
 
 def callback_save_project(sender, button_data, current_project_data: ProjectData):
-    """Manually save the project"""
     import gui.gui_main_project
     
-    # Check if auto-save already handled it
     if gui.gui_main_project._auto_save_manager:
         if not gui.gui_main_project._auto_save_manager.save_pending:
-            messagebox.showinfo("Already Saved", "Project is already up to date!")
+            messagebox.showinfo("Already Saved", "Project is up to date")
             return
     
     success = ProjectSerializer.save_project(current_project_data)
@@ -716,7 +652,6 @@ def callback_save_project(sender, button_data, current_project_data: ProjectData
         messagebox.showerror("Error", "Failed to save project.")
 
 def callback_rename_project(_, __, current_project_data: ProjectData):
-    """Show rename project modal dialog"""
     import dearpygui.dearpygui as dpg
 
     old_name = current_project_data.GetProjectName()
@@ -746,7 +681,6 @@ def callback_rename_project(_, __, current_project_data: ProjectData):
 
 
 def callback_execute_rename_project(_, __, current_project_data: ProjectData):
-    """Execute the actual project rename"""
     import os
     import re
     import dearpygui.dearpygui as dpg
@@ -758,18 +692,18 @@ def callback_execute_rename_project(_, __, current_project_data: ProjectData):
         dpg.configure_item("rename_project_modal", show=False)
         return
 
-    # Validate name (no special chars, not empty)
+    # No special chars
     new_name = new_name.strip()
     if not new_name:
         messagebox.showerror("Invalid Name", "Project name cannot be empty.")
         return
 
-    # Remove invalid filename characters
+    # Remove invalid characters
     invalid_chars = r'[<>:"/\\|?*]'
     if re.search(invalid_chars, new_name):
         messagebox.showerror(
             "Invalid Name",
-            "Project name cannot contain: < > : \" / \\ | ? *"
+            "Project name cannot contain certain symbols"
         )
         return
 
@@ -796,7 +730,7 @@ def callback_execute_rename_project(_, __, current_project_data: ProjectData):
         # Update project name in data
         current_project_data.SetProjectName(new_name)
 
-        # Save project (creates/updates the file)
+        # Save project
         success = ProjectSerializer.save_project(current_project_data)
         if not success:
             messagebox.showerror("Error", "Failed to save project with new name.")
@@ -836,17 +770,8 @@ def callback_execute_rename_project(_, __, current_project_data: ProjectData):
         dpg.configure_item("rename_project_modal", show=False)
 
 def callback_clean_build(_, __, current_project_data: ProjectData):
-    """Clean build artifacts and force full rebuild"""
     import os
     import shutil
-
-    # result = messagebox.askyesno(
-    #     "Clean Build",
-    #     "This will delete all compiled files and force a full rebuild on next compile.\n\nContinue?"
-    # )
-
-    # if not result:
-    #     return
 
     project_folder = current_project_data.GetProjectFolder()
 
@@ -901,65 +826,48 @@ def callback_clean_build(_, __, current_project_data: ProjectData):
         messagebox.showinfo("Clean Complete", "Nothing to clean.")
 
 def reset_memory_watch_service():
-    """Reset the memory watch service when changing/closing projects"""
-    try:
-        # Import the reset function for project changes
-        from gui.gui_memory_watch import reset_memory_watch_for_project_change
-        
-        reset_memory_watch_for_project_change()
-        print("Memory watch reset for project change")
-    except Exception as e:
-        print(f"Could not reset memory watch service: {e}")
+    from gui.gui_memory_watch import reset_memory_watch_for_project_change
+    
+    reset_memory_watch_for_project_change()
+    verbose_print("Memory watch reset for project change")
 
 
-# Then update these existing functions:
 
 def callback_close_project(sender, button_data, current_project_data):
-    """Close current project and return to startup screen"""
     import gui.gui_main_project
     import gui.gui_startup_window
+    from gui.gui_build import reset_build_preferences
 
-    # Stop auto-save and clear it
     if gui.gui_main_project._auto_save_manager:
         gui.gui_main_project._auto_save_manager.save_now()
         gui.gui_main_project._auto_save_manager.stop()
         gui.gui_main_project._auto_save_manager = None
 
-    # Reset memory watch service
     reset_memory_watch_service()
-
-    # Reset emulator connection manager
     get_emulator_manager().reset_for_project_close()
-
-    # Reset all global project state
     reset_global_project_state()
-
-    # Reset build preferences and state
-    from gui.gui_build import reset_build_preferences
     reset_build_preferences()
-
-    # Reset main project state (auto-save manager, hotkey manager, etc.)
     gui.gui_main_project.reset_main_project_state()
 
     # Delete project window
     if dpg.does_item_exist("Project Window"):
         dpg.delete_item("Project Window")
 
-    # Clear project data reference
+    # Clear current project data reference
     current_project_data = None
 
-    # Return to startup
+    # Go to the main window
     gui.gui_startup_window.InitMainWindow()
     dpg.set_primary_window("startup_window", True)
 
     print("Project closed successfully")
 
 
-def callback_load_different_project(sender, button_data, current_project_data):
-    """Close current project and load a different one"""
+def callback_load_different_project(sender, button_data, current_project_data): # Im doing a lot of the same stuff here as I was in close project. I should eventually make a wrapper
     import gui.gui_main_project
+    from gui.gui_build import reset_build_preferences
 
-    # Ask user to confirm
+    # Confirm
     response = messagebox.askyesno(
         "Load Different Project",
         "This will close the current project. Any unsaved changes will be saved. Continue?"
@@ -968,29 +876,22 @@ def callback_load_different_project(sender, button_data, current_project_data):
     if not response:
         return
 
-    # Stop auto-save for current project and clear it
     if gui.gui_main_project._auto_save_manager:
         gui.gui_main_project._auto_save_manager.save_now()
         gui.gui_main_project._auto_save_manager.stop()
         gui.gui_main_project._auto_save_manager = None
+        
+    if dpg.does_item_exist("Project Window"):
+        dpg.delete_item("Project Window", children_only=False)
+        dpg.split_frame()
 
-    # Reset memory watch service
     reset_memory_watch_service()
-
-    # Reset emulator connection manager
     get_emulator_manager().reset_for_project_close()
-
-    # Reset all global project state
     reset_global_project_state()
-
-    # Reset build preferences and state
-    from gui.gui_build import reset_build_preferences
     reset_build_preferences()
-
-    # Reset main project state (auto-save manager, hotkey manager, etc.)
     gui.gui_main_project.reset_main_project_state()
 
-    # Open file dialog
+    # Choose the new project
     file_path = filedialog.askopenfilename(
         title="Load Project",
         filetypes=[("Mod Project Files", "*.modproj"), ("All Files", "*.*")],
@@ -998,17 +899,17 @@ def callback_load_different_project(sender, button_data, current_project_data):
     )
 
     if not file_path:
-        return  # User cancelled
+        return  # Cancelled
 
-    # Show loading indicator after file dialog closes
+    # Show loading indicator after
     try:
         LoadingIndicator.show("Loading Project...")
         dpg.split_frame()
     except:
-        # If loading indicator fails (context issues), continue anyway
+        # If loading ivisual fails, continue anyway
         pass
 
-    # Load the project (don't show loading again internally)
+    # Load the project
     new_project_data = ProjectSerializer.load_project(file_path, show_loading=False)
 
     # Hide loading indicator
@@ -1021,6 +922,19 @@ def callback_load_different_project(sender, button_data, current_project_data):
         messagebox.showerror("Load Failed", "Failed to load project file.")
         return
 
+    # Check prerequisites for this project's platform FIRST
+    tool_dir = get_application_directory()
+    platform = new_project_data.GetCurrentBuildVersion().GetPlatform()
+
+    if not check_and_prompt_prereqs(tool_dir, platform, None):
+        # User cancelled download - don't open project
+        return
+
+    # Validate
+    from services.project_validator import ProjectValidator
+    if not ProjectValidator.validate_and_fix_project(new_project_data):
+        return
+
     # Close current project window
     if dpg.does_item_exist("Project Window"):
         dpg.delete_item("Project Window")
@@ -1031,20 +945,19 @@ def callback_load_different_project(sender, button_data, current_project_data):
     print("Different project loaded successfully")
     
 def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData):
-    """Extract PS1 BIN/CUE file with template prompt"""
     from gui.gui_loading_indicator import LoadingIndicator
     from services.binmerge_service import BinmergeService
 
-    # Choose ISO file (prefer CUE for multi-bin games)
+    # Choose bin/cue
     original_file_path = filedialog.askopenfilename(
-        title="Choose PS1 BIN/CUE File (use .cue for multi-bin games)",
+        title="Choose PS1 BIN/CUE File",
         filetypes=[("PS1 Images", "*.bin;*.cue"), ("All Files", "*.*")]
     )
 
     if not original_file_path:
         return
 
-    # Process the file (handle multi-bin merging if needed)
+    # Process the file
     print(f"\nProcessing PS1 file: {os.path.basename(original_file_path)}")
     success, bin_to_extract, message = BinmergeService.process_ps1_file(original_file_path)
 
@@ -1055,9 +968,8 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
     print(f" {message}")
     print(f"  BIN to extract: {os.path.basename(bin_to_extract)}")
 
-    # Keep track of both the original file (for source_path) and the bin to extract
     iso_path = bin_to_extract
-    source_path_to_save = original_file_path  # Preserve original CUE/BIN path for rebuilding
+    source_path_to_save = original_file_path  # Preserve original CUE/BIN path
 
     # Check if game files already exist for this build
     current_build = current_project_data.GetCurrentBuildVersion()
@@ -1085,7 +997,7 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
             project_folder = current_project_data.GetProjectFolder()
             build_name = current_build.GetBuildName()
             
-            # Use build-specific output directory
+            # Build-specific game file directory
             output_dir = os.path.join(project_folder, '.config', 'game_files', build_name)
             
             # Create ISO service and extract
@@ -1094,23 +1006,20 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
 
             # Update UI on main thread
             def update_ui():
-                print("DEBUG: update_ui() called in PS1 extraction callback")
                 LoadingIndicator.hide()
 
                 if result.success:
                     messagebox.showinfo("Success",
                         f"PS1 BIN extracted successfully!\n\n")
 
-                    # Set paths (extraction already put files in build-specific folder)
+                    # Set paths
                     current_build.SetGameFolder(output_dir)
-                    current_build.SetSourcePath(source_path_to_save)  # Use original file path (CUE or BIN)
+                    current_build.SetSourcePath(source_path_to_save)  # Use original file path
 
                     # Search for main executable
                     main_exe = current_build.SearchForMainExecutableInGameFolder()
-                    print(f"DEBUG: Searched for main exe, result: {main_exe}")
 
                     if main_exe:
-                        print("DEBUG: Entered main_exe block")
                         current_build.SetMainExecutable(main_exe)
                         current_build.AddInjectionFile(main_exe)
                         current_build.AutoSetFileOffsetForPlatform()
@@ -1125,10 +1034,10 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
                             dpg.configure_item("Target Game Files", show=True)
                             dpg.configure_item("Modifications", show=True)
                         except Exception as e:
-                            print(f"Warning: GUI update failed (this is OK): {e}")
+                            pass
 
                         # Download box art
-                        print("DEBUG: About to attempt box art download")
+                        verbose_print("Downloading game box art")
                         from services.game_boxart_service import GameBoxartService
                         from gui.gui_main_project import update_boxart_display
                         download_result = GameBoxartService.download_boxart(current_project_data)
@@ -1143,13 +1052,12 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
                         trigger_auto_save()
 
                         # Scan for OS library functions
-                        #_scan_for_os_library_functions(current_project_data)
+                        #_scan_for_os_library_functions(current_project_data) # I haven't really fleshed this out yet. This will be a post 1.0.0 feature, since it will require a LOT of manual pattern finding
 
                         messagebox.showinfo("Success",
-                            f"Game files set up for build '{build_name}'!\n\n"
+                            f"Game files extracted for '{build_name}'!\n\n"
                             f"Main executable: {main_exe}\n"
-                            f"Working directory: .config/game_files/{build_name}/\n"
-                            f"File offset: 0xF800 (default for PS1)")
+                            f"Extracted directory: .config/game_files/{build_name}/\n")
 
                         from services.template_service import show_ps1_template_prompt
                         show_ps1_template_prompt(current_project_data)    
@@ -1172,7 +1080,6 @@ def callback_extract_ps1_bin(sender, app_data, current_project_data: ProjectData
     thread.start()
 
 def callback_extract_ps2_iso(sender, app_data, current_project_data: ProjectData):
-    """Extract PS2 ISO file"""
     from gui.gui_loading_indicator import LoadingIndicator
 
     # Choose ISO file
@@ -1194,9 +1101,8 @@ def callback_extract_ps2_iso(sender, app_data, current_project_data: ProjectData
     if os.path.exists(output_dir) and os.listdir(output_dir):
         response = messagebox.askyesno(
             "Replace Existing Game Files?",
-            f"The build '{build_name}' already has extracted game files.\n\n"
+            f"'{build_name}' already has extracted game files.\n\n"
             f"Do you want to replace them with the new ISO?\n\n"
-            f"This will overwrite all existing game files for this build."
         )
         if not response:
             return
@@ -1260,13 +1166,9 @@ def callback_extract_ps2_iso(sender, app_data, current_project_data: ProjectData
                         #_scan_for_os_library_functions(current_project_data)
 
                         # Setup PS2 _print syscall for Hello World
-                        print("Setting up PS2 _print syscall...")
                         from services.template_service import TemplateService
                         template_service = TemplateService(current_project_data)
-                        if template_service.setup_ps2_print_syscall():
-                            print(" PS2 _print syscall setup complete")
-                        else:
-                            print(" PS2 _print syscall setup failed")
+                        template_service.setup_ps2_print_syscall()
 
                         messagebox.showinfo("Success",
                             f"Game files set up for build '{build_name}'!\n\n"
@@ -1290,7 +1192,6 @@ def callback_extract_ps2_iso(sender, app_data, current_project_data: ProjectData
 
 
 def callback_extract_gamecube_iso(sender, app_data, current_project_data: ProjectData):
-    """Extract GameCube ISO file"""
     from gui.gui_loading_indicator import LoadingIndicator
 
     # Choose ISO file
@@ -1320,7 +1221,7 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
         if not response:
             return
 
-        # Delete existing root directory to avoid gc-fst error
+        # Delete existing root directory to avoid gc-fst yelling at us
         try:
             import shutil
             shutil.rmtree(root_dir)
@@ -1328,7 +1229,6 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
             messagebox.showerror("Error", f"Failed to remove existing game files: {e}")
             return
 
-    # Show loading indicator
     LoadingIndicator.show("Extracting GameCube ISO...")
     
     def extract_async():
@@ -1337,14 +1237,11 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
             project_folder = current_project_data.GetProjectFolder()
             build_name = current_build.GetBuildName()
             
-            # Use build-specific output directory
             output_dir = os.path.join(project_folder, '.config', 'game_files', build_name)
             
-            # Create ISO service and extract
             iso_service = ISOService(current_project_data, verbose=False)
             result = iso_service.extract_iso(iso_path, output_dir)
             
-            # Update UI on main thread
             def update_ui():
                 LoadingIndicator.hide()
                 
@@ -1354,7 +1251,7 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
                         f"Build: {build_name}\n"
                         f"Location: .config/game_files/{build_name}/")
                     
-                    # For GameCube, files are in root/ subdirectory
+                    # files are in root/ subdirectory
                     game_folder = os.path.join(output_dir, 'root')
                     current_build.SetGameFolder(game_folder)
                     current_build.SetSourcePath(iso_path)
@@ -1367,7 +1264,7 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
                         current_build.AddInjectionFile(main_exe)
                         current_build.AutoSetFileOffsetForPlatform()
 
-                        # Try to find and setup OSReport for Hello World
+                        # Try to find OSReport for Hello World
                         print("Searching for OSReport pattern...")
                         from services.pattern_service import PatternService
                         pattern_service = PatternService(current_project_data)
@@ -1381,7 +1278,6 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
                         dpg.set_value("game_files_listbox", main_exe)
 
                         offset = current_build.GetInjectionFileOffset(main_exe)
-                        #dpg.set_value("File Offset From Ram Input", offset if offset else "")
 
                         dpg.configure_item("Target Game Files", show=True)
                         dpg.configure_item("Modifications", show=True)
@@ -1417,7 +1313,6 @@ def callback_extract_gamecube_iso(sender, app_data, current_project_data: Projec
 
 
 def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData):
-    """Extract Wii ISO file"""
     from gui.gui_loading_indicator import LoadingIndicator
 
     # Choose ISO file
@@ -1439,14 +1334,12 @@ def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData
     if os.path.exists(output_dir) and os.listdir(output_dir):
         response = messagebox.askyesno(
             "Replace Existing Game Files?",
-            f"The build '{build_name}' already has extracted game files.\n\n"
+            f"'{build_name}' already has extracted game files.\n\n"
             f"Do you want to replace them with the new ISO?\n\n"
-            f"This will overwrite all existing game files for this build."
         )
         if not response:
             return
 
-    # Show loading indicator
     LoadingIndicator.show("Extracting Wii ISO...")
     
     def extract_async():
@@ -1455,14 +1348,11 @@ def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData
             project_folder = current_project_data.GetProjectFolder()
             build_name = current_build.GetBuildName()
             
-            # Use build-specific output directory
             output_dir = os.path.join(project_folder, '.config', 'game_files', build_name)
             
-            # Create ISO service and extract
             iso_service = ISOService(current_project_data, verbose=False)
             result = iso_service.extract_iso(iso_path, output_dir)
             
-            # Update UI on main thread
             def update_ui():
                 LoadingIndicator.hide()
                 
@@ -1483,7 +1373,7 @@ def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData
                         current_build.AddInjectionFile(main_exe)
                         current_build.AutoSetFileOffsetForPlatform()
 
-                        # Try to find and setup OSReport for Hello World
+                        # Try to find OSReport for Hello World
                         print("Searching for OSReport pattern...")
                         from services.pattern_service import PatternService
                         pattern_service = PatternService(current_project_data)
@@ -1497,7 +1387,6 @@ def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData
                         dpg.set_value("game_files_listbox", main_exe)
 
                         offset = current_build.GetInjectionFileOffset(main_exe)
-                        #dpg.set_value("File Offset From Ram Input", offset if offset else "")
 
                         dpg.configure_item("Target Game Files", show=True)
                         dpg.configure_item("Modifications", show=True)
@@ -1533,7 +1422,6 @@ def callback_extract_wii_iso(sender, app_data, current_project_data: ProjectData
 
 
 def callback_choose_ps1_iso_folder(sender, button_data, current_project_data: ProjectData):
-    """Choose already-extracted PS1 BIN folder with auto offset"""
     bin_folder_path = filedialog.askdirectory(title="Choose Extracted PS1 BIN folder")
     if not bin_folder_path:
         return
@@ -1615,7 +1503,6 @@ def callback_choose_ps1_iso_folder(sender, button_data, current_project_data: Pr
 
 
 def callback_choose_ps2_iso_folder(sender, button_data, current_project_data: ProjectData):
-    """Choose already-extracted PS2 ISO folder"""
     iso_folder_path = filedialog.askdirectory(title="Choose Extracted PS2 ISO folder")
     if not iso_folder_path:
         return
@@ -1635,7 +1522,6 @@ def callback_choose_ps2_iso_folder(sender, button_data, current_project_data: Pr
         dpg.configure_item("game_files_listbox", items=(current_project_data.GetCurrentBuildVersion().GetMainExecutable(), ))
         
         offset = current_project_data.GetCurrentBuildVersion().GetInjectionFileOffset(main_exe)
-        #dpg.set_value("File Offset From Ram Input", offset if offset else "")
     
     dpg.configure_item("Target Game Files", show=True)
     dpg.configure_item("Modifications", show=True)
@@ -1663,7 +1549,6 @@ def callback_choose_ps2_iso_folder(sender, button_data, current_project_data: Pr
 
 
 def callback_choose_gamecube_iso_folder(sender, button_data, current_project_data: ProjectData):
-    """Choose already-extracted GameCube/Wii ISO folder"""
     current_build = current_project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
 
@@ -1672,13 +1557,9 @@ def callback_choose_gamecube_iso_folder(sender, button_data, current_project_dat
     if not iso_folder_path:
         return
 
-    # GameCube extractions have a 'root' subdirectory containing the actual files
-    # Wii extractions (from Dolphin) have a 'DATA' subdirectory containing the actual files
-    # Check if we need to navigate to the appropriate subdirectory
-
     game_folder = iso_folder_path  # Default to user selection
 
-    # Check for Wii 'DATA' folder first (Dolphin extraction format)
+    # Check for Wii 'DATA' folder (Dolphin extraction format)
     data_subdir = os.path.join(iso_folder_path, 'DATA')
     if os.path.exists(data_subdir) and os.path.isdir(data_subdir):
         game_folder = data_subdir
@@ -1735,7 +1616,6 @@ def callback_choose_gamecube_iso_folder(sender, button_data, current_project_dat
 
 
 def callback_choose_n64_rom(sender, app_data, current_project_data: ProjectData):
-    """Choose N64 ROM file (doesn't need extraction)"""
     
     rom_path = filedialog.askopenfilename(
         title="Choose N64 ROM File",
@@ -1762,7 +1642,6 @@ def callback_choose_n64_rom(sender, app_data, current_project_data: ProjectData)
     messagebox.showinfo("Success", f"N64 ROM set: {rom_name}")
     
 def callback_choose_single_file(sender, app_data, current_project_data: ProjectData):
-    """Choose a single file for modification (no ISO rebuilding)"""
     from tkinter import filedialog
     from gui import gui_messagebox as messagebox
     
@@ -1806,7 +1685,7 @@ def callback_choose_single_file(sender, app_data, current_project_data: ProjectD
     )
     
     if not file_path:
-        return  # User cancelled
+        return  # Cancelled
     
     import os
     filename = os.path.basename(file_path)
@@ -1860,7 +1739,7 @@ def callback_choose_single_file(sender, app_data, current_project_data: ProjectD
     messagebox.showinfo("Single File Build Version", 
         f"{filename} selected\n\n")
     
-    # For PS1, still offer template if applicable
+    # For PS1, show template prompt (header codecave + auto hook). Eventually I want a full template system, but as it stands now, ps1 is the only one that can have a truly universal template
     if platform == "PS1":
         from services.template_service import show_ps1_template_prompt
         show_ps1_template_prompt(current_project_data)

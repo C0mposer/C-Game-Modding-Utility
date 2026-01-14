@@ -3,16 +3,16 @@ from classes.project_data.project_data import ProjectData
 from services.visual_patcher_service import VisualPatcherService, PatchRegion
 from typing import List, Optional
 from functions.verbose_print import verbose_print
+from dpg.address_copy_helper import register_address_widget
 
-# Color scheme for hex viewer
-COLOR_ORIGINAL = (180, 180, 180, 255)  # Gray for unmodified bytes
-COLOR_PATCHED = (180, 180, 180, 255)   # Gray for unmodified bytes
-COLOR_CAVE_SIZE = (255, 255, 100, 255)  # Yellow for the entire cave size region (both views)
-COLOR_ACTUAL_CHANGE = (255, 100, 100, 255)  # Red for bytes that actually changed (patched view only)
-COLOR_ADDRESS = (150, 150, 200, 255)   # Blue-ish for addresses
-COLOR_ASCII = (200, 200, 150, 255)     # Yellow-ish for ASCII
+COLOR_ORIGINAL = (180, 180, 180, 255) 
+COLOR_PATCHED = (180, 180, 180, 255)
+COLOR_CAVE_SIZE = (255, 255, 100, 255)
+COLOR_ACTUAL_CHANGE = (255, 100, 100, 255)
+COLOR_ADDRESS = (150, 150, 200, 255)
+COLOR_ASCII = (200, 200, 150, 255)
 
-BYTES_PER_ROW = 16  # Standard hex viewer width
+BYTES_PER_ROW = 16
 
 class VisualPatcherState:
     def __init__(self):
@@ -20,8 +20,8 @@ class VisualPatcherState:
         self.original_data: Optional[bytearray] = None
         self.patched_data: Optional[bytearray] = None
         self.patch_regions: List[PatchRegion] = []
-        self.selected_patch_index: int = -1  # -1 means show all patches
-        self.syncing_scroll: bool = False  # Flag to prevent infinite scroll loops
+        self.selected_patch_index: int = -1
+        self.syncing_scroll: bool = False
 
 _state = VisualPatcherState()
 
@@ -32,7 +32,7 @@ def show_visual_patcher_window(sender, app_data, project_data: ProjectData):
         dpg.show_item(WINDOW_TAG)
         return
 
-    # Calculate centered position for 1024x768 viewport
+    # Calculate centered position for 1024x768 viewport (default for now)
     window_width = 1000
     window_height = 706
     viewport_width = 1024
@@ -86,9 +86,9 @@ def show_visual_patcher_window(sender, app_data, project_data: ProjectData):
         
         dpg.add_separator()
         
-        # Main content area with side-by-side hex viewers
+        # Main area
         with dpg.group(horizontal=True):
-            # Left side - Original
+            # Left side - Original Bytes
             with dpg.child_window(
                 width=490,
                 height=550,
@@ -101,7 +101,7 @@ def show_visual_patcher_window(sender, app_data, project_data: ProjectData):
 
             dpg.add_spacer(width=2)
 
-            # Right side - Patched
+            # Right side - Patched Bytes
             with dpg.child_window(
                 width=490,
                 height=550,
@@ -112,7 +112,7 @@ def show_visual_patcher_window(sender, app_data, project_data: ProjectData):
                 with dpg.child_window(tag=f"{WINDOW_TAG}_patched_hex", border=False):
                     dpg.add_text("Load a file to view hex data...", tag=f"{WINDOW_TAG}_patched_placeholder")
     
-    # Set up scroll synchronization using a global mouse wheel handler
+    # Scroll synchronization using a global mouse wheel handler
     with dpg.handler_registry():
         dpg.add_mouse_wheel_handler(callback=_on_mouse_wheel_scroll)
 
@@ -124,11 +124,8 @@ def _on_mouse_wheel_scroll(sender, app_data):
     original_hex_tag = f"{WINDOW_TAG}_original_hex"
     patched_hex_tag = f"{WINDOW_TAG}_patched_hex"
     
-    # Check if the window exists
     if not dpg.does_item_exist(WINDOW_TAG):
         return
-    
-    # Check if both hex containers exist
     if not dpg.does_item_exist(original_hex_tag) or not dpg.does_item_exist(patched_hex_tag):
         return
     
@@ -142,15 +139,15 @@ def _on_mouse_wheel_scroll(sender, app_data):
     try:
         _state.syncing_scroll = True
         
-        # Get the scroll position from whichever one was scrolled
+        # Get the scroll position from whichever one was scrolled on
         if is_over_original:
             scroll_y = dpg.get_y_scroll(original_hex_tag)
             dpg.set_y_scroll(patched_hex_tag, scroll_y)
-        else:  # is_over_patched
+        else:  
             scroll_y = dpg.get_y_scroll(patched_hex_tag)
             dpg.set_y_scroll(original_hex_tag, scroll_y)
     except Exception as e:
-        print(f"Scroll sync error: {e}")
+        verbose_print(f"Scroll sync error: {e}")
     finally:
         _state.syncing_scroll = False
 
@@ -164,14 +161,13 @@ def _on_patch_selection_changed():
     if not patch_name:
         return
     
-    # Find the index of the selected patch
     _state.selected_patch_index = -1
     for i, region in enumerate(_state.patch_regions):
         if region.name == patch_name:
             _state.selected_patch_index = i
             break
     
-    # Refresh the hex view with new highlighting
+    # Refresh
     if _state.original_data is not None:
         _render_hex_view()
 
@@ -185,7 +181,6 @@ def _load_file(project_data: ProjectData):
 
     _update_info_text(f"Loading '{file_name}'...")
 
-    # Run the service
     service = VisualPatcherService(project_data)
     original_data, patched_data, patch_regions = service.generate_diff(file_name)
 
@@ -231,19 +226,17 @@ def _render_hex_view():
     _clear_hex_container(f"{WINDOW_TAG}_original_hex")
     _clear_hex_container(f"{WINDOW_TAG}_patched_hex")
     
-    # Determine which regions to highlight and what range to show
+    # Determine which regions to highlight
     if _state.selected_patch_index >= 0 and _state.selected_patch_index < len(_state.patch_regions):
-        # Show the selected patch region with context
         region = _state.patch_regions[_state.selected_patch_index]
         
-        # Use allocated_size if available, otherwise fall back to patch size
         display_size = region.allocated_size if hasattr(region, 'allocated_size') else region.size
         
-        # Align to row boundaries
+        # Align
         start_offset = (region.offset // BYTES_PER_ROW) * BYTES_PER_ROW
         end_offset = ((region.offset + display_size + BYTES_PER_ROW - 1) // BYTES_PER_ROW) * BYTES_PER_ROW
         
-        # Show some context before and after (5 rows = 80 bytes)
+        # Show some context before and after (5 rows)
         context_rows = 5
         start_offset = max(0, start_offset - (context_rows * BYTES_PER_ROW))
         end_offset = min(len(_state.original_data), end_offset + (context_rows * BYTES_PER_ROW))
@@ -294,50 +287,48 @@ def _render_hex_data(
     highlight_regions: List[PatchRegion],
     is_patched_view: bool
 ):  
-    #print(f"_render_hex_data called: container={container_tag}, is_patched={is_patched_view}, start={start_offset:X}, end={end_offset:X}")
-    
+
     # Check if container exists
     if not dpg.does_item_exist(container_tag):
         print(f"Error: Container {container_tag} does not exist!")
         return
     
-    # Build a map of bytes in the cave size region (yellow in both views)
     cave_size_bytes = set()
-    # Build a map of bytes that are part of the patch data (red in patched view only)
     actually_changed_bytes = set()
     
     for region in highlight_regions:
         # Use the allocated_size (from GetSize()) for yellow highlighting
         allocated_size = region.allocated_size if hasattr(region, 'allocated_size') else region.size
         
-        # Yellow highlight for entire allocated cave size in both views (if size > 0)
+        # Yellow highlight for entire allocated cave size in both views
         if allocated_size and allocated_size > 0:
             for offset in range(region.offset, region.offset + allocated_size):
                 cave_size_bytes.add(offset)
         
-        # Red highlight for bytes changed within the actual patch data (patched view only)
-        # This should always show, even if allocated_size is 0
+        # Red highlight for bytes changed within the actual patch data
         if is_patched_view and region.size > 0:
             # Mark all bytes in the patch data range (region.size) as red
             for i in range(region.size):
                 offset = region.offset + i
                 actually_changed_bytes.add(offset)
     
-    #print(f"Cave size bytes: {len(cave_size_bytes)}, Actually changed bytes: {len(actually_changed_bytes)}")
+    #print(f"Cave size bytes: {len(cave_size_bytes)}, Changed bytes: {len(actually_changed_bytes)}")
     
     current_offset = start_offset
     row_count = 0
     
     with dpg.group(parent=container_tag):
         while current_offset < end_offset and current_offset < len(data):
-            # Calculate how many bytes to show in this row
+            # How many bytes to show in this row
             bytes_in_row = min(BYTES_PER_ROW, len(data) - current_offset, end_offset - current_offset)
             
             with dpg.group(horizontal=True, horizontal_spacing=0):
                 # Address column
-                dpg.add_text(f"{current_offset:08X}: ", color=COLOR_ADDRESS)
+                addr_tag = f"hex_addr_{container_tag}_{current_offset}"
+                dpg.add_text(f"{current_offset:08X}: ", tag=addr_tag, color=COLOR_ADDRESS)
+                register_address_widget(addr_tag, f"{current_offset:08X}", has_0x_prefix=False)
 
-                # Build grouped hex bytes by color for efficiency
+
                 i = 0
                 while i < bytes_in_row:
                     byte_offset = current_offset + i
@@ -353,7 +344,7 @@ def _render_hex_data(
                     else:
                         color = COLOR_ORIGINAL
 
-                    # Group consecutive bytes with same color
+                    # Group consecutive bytes
                     hex_bytes = [f"{byte_value:02X}"]
                     j = i + 1
                     while j < bytes_in_row:
@@ -374,16 +365,13 @@ def _render_hex_data(
                         else:
                             break
 
-                    # Join bytes with spaces
-                    # Each byte in hex_bytes becomes "XX " except we don't want trailing space in the segment
                     hex_parts = []
                     for k, byte_hex in enumerate(hex_bytes):
                         if k < len(hex_bytes) - 1:
                             hex_parts.append(f"{byte_hex} ")
                         else:
-                            # Last byte in this colored segment
+                            # Last byte in this segment
                             if j < bytes_in_row:
-                                # More bytes follow in this row (different color), add space
                                 hex_parts.append(f"{byte_hex} ")
                             else:
                                 # Last byte in row, no trailing space
@@ -394,7 +382,7 @@ def _render_hex_data(
 
                     i = j
 
-                # Padding for incomplete rows (if needed)
+                # Padding for incomplete rows
                 if bytes_in_row < BYTES_PER_ROW:
                     padding_count = BYTES_PER_ROW - bytes_in_row
                     padding_str = "   " * padding_count

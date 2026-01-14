@@ -10,7 +10,6 @@ from services.pcsx2_service import set_ee_base_address_ctypes
 from services.duckstation_service import *
 from path_helper import get_application_directory
 
-# Import consolidated memory operations
 from services.memory_utils import read_process_memory, write_process_memory
 
 # Windows API constants
@@ -32,7 +31,6 @@ psapi = ctypes.WinDLL('psapi', use_last_error=True)
 
 
 class EmulatorInfo:
-    """Configuration for different emulators"""
     def __init__(self, name: str, process_name: str, platform: str,
                  base: bool = False, base_exe_dll_name: str = "",
                  ptr: bool = False, double_ptr: bool = False,
@@ -90,7 +88,7 @@ EMULATOR_CONFIGS = {
         platform="PS1",
         base=False,
         ptr=False,
-        address=0x0  # Uses HTTP API instead
+        address=0x0  # Uses HTTP API
     ),
     
     # PS2 Emulators
@@ -122,30 +120,26 @@ EMULATOR_CONFIGS = {
         base=True,
         base_exe_dll_name="Project64.exe",
         ptr=True,
-        main_ram_offset=0x0  #  Needs to be found
+        main_ram_offset=0x0  # WIP
     ),
 }
 
 
 class InjectionResult:
-    """Result of an injection operation"""
     def __init__(self, success: bool, message: str = ""):
         self.success = success
         self.message = message
 
 
 class EmulatorService:
-    """Handles injection of compiled code into running emulators"""
-    
     def __init__(self, project_data: ProjectData):
         self.project_data = project_data
         
     def get_available_emulators(self) -> List[str]:
-        """Get list of currently running emulators that match the project's platform"""
         platform = self.project_data.GetCurrentBuildVersion().GetPlatform()
         available: List[str] = []
 
-        # Scan all processes ONCE using the fast Toolhelp32Snapshot-based iterator
+        # Scan all processes
         running_processes: dict[str, int] = {}
         try:
             for pid, name in iter_processes():
@@ -154,20 +148,19 @@ class EmulatorService:
                 name_lower = name.lower()
                 running_processes[name_lower] = pid
         except OSError as e:
-            # Fallback to psutil if the Win32 snapshot fails for some reason
-            print(f"Warning: Error scanning processes via Toolhelp32Snapshot: {e}")
+            print(f"Warning: Error scanning processes {e}")
             try:
                 for proc in psutil.process_iter(attrs=['pid', 'name']):
                     pname = proc.info.get('name')
                     if pname:
                         running_processes[pname.lower()] = proc.info['pid']
             except Exception as e2:
-                print(f"Warning: Error scanning processes with psutil: {e2}")
+                print(f"Warning: Error scanning processes {e2}")
                 running_processes = {}
 
-        # Now check each emulator against the cached process list
+        # Check each emulator against the cached process list
         for emu_name, emu_info in EMULATOR_CONFIGS.items():
-            # Check if emulator matches platform (or is multi-platform like Dolphin)
+            # Check if emulator matches platform
             if emu_info.platform == platform or (platform == "Wii" and emu_info.platform == "Gamecube"):
                 process_name_lower = emu_info.process_name.lower()
 
@@ -180,20 +173,16 @@ class EmulatorService:
         return available
     
     def inject_into_emulator(self, emulator_name: str) -> InjectionResult:
-        """
-        Main injection function - injects compiled code into running emulator
-        Uses centralized connection manager for cached PIDs and connections.
-        """
         if emulator_name not in EMULATOR_CONFIGS:
             return InjectionResult(False, f"Unknown emulator: {emulator_name}")
 
         emu_info = EMULATOR_CONFIGS[emulator_name]
 
-        # Special case for PCSX-Redux (uses HTTP API)
+        # Uses web server
         if emulator_name == "PCSX-Redux":
             return self._inject_into_redux(emu_info)
 
-        # Special case for PCSX2 - try PINE protocol first
+        # Try PINE protocol first
         if emulator_name == "PCSX2":
             print(f" Checking for PINE protocol support...")
             pine_result = self._perform_pine_injection()
@@ -202,24 +191,18 @@ class EmulatorService:
             if pine_result is not None:
                 return pine_result
 
-            # PINE failed or unavailable, fallback to standard memory write
-            print(f" Falling back to standard memory write injection...")
+            # Fallback to standard memory write
+            print(f" Falling back to older PXCS2 method")
 
-        # Use centralized connection manager for cached connection
         from services.emulator_connection_manager import get_emulator_manager
         manager = get_emulator_manager()
         manager.set_project_data(self.project_data)
 
-        # Get or establish connection (uses cached PID if available)
+        # Connect to emu
         handle, main_ram, kernel32 = manager.get_or_establish_connection(emulator_name)
 
         if not handle or not main_ram:
-            return InjectionResult(False,
-                f"Could not connect to {emulator_name}.\n\n"
-                "Make sure:\n"
-                "• Emulator is running\n"
-                "• A game is loaded\n"
-                "• Run as Administrator if needed")
+            return InjectionResult(False, f"Could not connect to {emulator_name}.\n\n")
 
         try:
             # Perform injection using cached connection
@@ -233,10 +216,7 @@ class EmulatorService:
 
             return result
         finally:
-            # Don't close handle - manager caches it for reuse
             pass
-    
-   # services/emulator_service.py - REPLACE the _inject_via_memory method
    
     def _change_memory_protection(handle, address, size, protection):
         old_protection = ctypes.c_ulong()
@@ -244,9 +224,7 @@ class EmulatorService:
         return old_protection
 
     def _inject_via_memory(self, emu_info: EmulatorInfo) -> InjectionResult:
-        """Inject code via direct memory manipulation"""
         try:
-            # Special handling for PCSX2 - use dynamic address detection
             if emu_info.name == "PCSX2":
                 # Try pcsx2-qt.exe first, then pcsx2.exe
                 main_ram = None
@@ -256,12 +234,7 @@ class EmulatorService:
                     print(f" Found PCSX2 EE Base Address: 0x{main_ram:X}")
 
                 if main_ram is None or main_ram == 0:
-                    return InjectionResult(False,
-                        "Could not locate PCSX2 EE memory address.\n\n"
-                        "Make sure:\n"
-                        "• PCSX2 is running\n"
-                        "• A game is loaded and running\n"
-                        "• You're running this tool as Administrator")
+                    return InjectionResult(False, "Could not locate PCSX2 EE memory address.\n\n")
 
                 # Get the actual process handle for injection
                 pid = None
@@ -291,48 +264,74 @@ class EmulatorService:
                 main_ram = get_ram_base_address_ctypes()
                 if main_ram != 0:
                     print(f" Found Duckstation Base Address: 0x{main_ram:X}")
-                
+
                 if main_ram is None or main_ram == 0:
                     return InjectionResult(False)
-                
+
                 # Get the actual process handle for injection
                 pid = None
                 pid = self._get_pid("duckstation")
-                
+
                 if pid is None:
                     return InjectionResult(False, "Could not find Duckstation process")
-                
+
                 # Use specific access rights for memory operations
-                PROCESS_ACCESS = (PROCESS_VM_OPERATION | PROCESS_VM_READ | 
+                PROCESS_ACCESS = (PROCESS_VM_OPERATION | PROCESS_VM_READ |
                                  PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION)
                 handle = kernel32.OpenProcess(PROCESS_ACCESS, False, pid)
                 if not handle:
                     error_code = ctypes.windll.kernel32.GetLastError()
-                    return InjectionResult(False, 
+                    return InjectionResult(False,
                         f"Could not open Duckstation process (error {error_code}). "
                         "Try running as Administrator.")
-                
+
                 try:
                     return self._perform_injection(handle, main_ram, emu_info.name)
                 finally:
                     kernel32.CloseHandle(handle)
-            
+
+            # Special handling for BizHawk - use pattern matching
+            elif emu_info.name.startswith("BizHawk"):
+                from services.bizhawk_service import get_ram_base_address_ctypes as get_bizhawk_ram
+                main_ram = None
+                verbose_print(f" Attempting to find BizHawk memory via pattern matching...")
+
+                # Get PID first
+                pid = self._get_pid("EmuHawk")
+                if pid is None:
+                    return InjectionResult(False, "Could not find BizHawk process")
+
+                main_ram = get_bizhawk_ram(pid)
+                if main_ram != 0:
+                    print(f" Found BizHawk Base Address: 0x{main_ram:X}")
+
+                if main_ram is None or main_ram == 0:
+                    return InjectionResult(False, "Could not locate BizHawk PS1 RAM.\n\n")
+
+                # Use specific access rights for memory operations
+                PROCESS_ACCESS = (PROCESS_VM_OPERATION | PROCESS_VM_READ |
+                                 PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION)
+                handle = kernel32.OpenProcess(PROCESS_ACCESS, False, pid)
+                if not handle:
+                    error_code = ctypes.windll.kernel32.GetLastError()
+                    return InjectionResult(False,
+                        f"Could not open BizHawk process (error {error_code}). "
+                        "Try running as Administrator.")
+
+                try:
+                    return self._perform_injection(handle, main_ram, emu_info.name)
+                finally:
+                    kernel32.CloseHandle(handle)
+
             # Special handling for Dolphin - use memory engine
             elif emu_info.name == "Dolphin":
                 main_ram = self._get_dolphin_base_address()
                 
                 if main_ram is None:
-                    return InjectionResult(False, 
-                        "Could not locate Dolphin MEM1 address.\n\n"
-                        "Make sure:\n"
-                        "• Dolphin is running\n"
-                        "• A game is loaded (not just at menu)\n"
-                        "• DolphinMemoryEngine tool is in prereq/DolphinMemoryEngine/")
+                    return InjectionResult(False, "Could not locate Dolphin MEM1 address.\n\n")
                 
                 print(f" Found Dolphin MEM1 at: 0x{main_ram:X}")
                 
-                # For Dolphin, we inject directly to MEM1 without needing process handle
-                # Actually, we still need the handle to write, so let's get it
                 pid = self._get_pid(emu_info.process_name)
                 if pid is None:
                     return InjectionResult(False, f"Could not find {emu_info.name} process")
@@ -385,10 +384,6 @@ class EmulatorService:
 
 
     def _perform_injection(self, handle: int, main_ram: int, emulator_name: str) -> InjectionResult:
-        """
-        Perform the actual injection (separated for reuse).
-        This is the common injection logic used by all emulators.
-        """
         # Load compiled binaries
         bin_data = self._load_compiled_binaries()
         if not bin_data:
@@ -488,14 +483,6 @@ class EmulatorService:
 
 
     def _perform_pine_injection(self, verbose: bool = False) -> InjectionResult:
-        """
-        Perform injection using PINE protocol for PCSX2.
-        This refreshes the recompiler cache for full-speed execution.
-        Falls back to standard memory write if PINE fails.
-
-        Args:
-            verbose: If True, print detailed debug information
-        """
         try:
             print("\n====== Starting PINE injection attempt ======")
 
@@ -761,7 +748,6 @@ class EmulatorService:
 
 
     def _upload_redux_symbols(self):
-        """Upload symbol map to PCSX-Redux"""
         try:
             project_folder = self.project_data.GetProjectFolder()
             map_path = os.path.join(project_folder, '.config', 'memory_map', 'MyMod.map')
@@ -788,7 +774,6 @@ class EmulatorService:
             print(f" Could not upload symbols: {e}")
     
     def _inject_into_redux(self, emu_info: EmulatorInfo) -> InjectionResult:
-        """Special injection for PCSX-Redux via HTTP API"""
         try:
             url = "http://127.0.0.1:8080"
             api_url = url + "/api/v1/cpu/ram/raw"
@@ -906,6 +891,7 @@ class EmulatorService:
         
         # Base + offset (e.g., BizHawk)
         elif emu_info.base and not emu_info.ptr:
+            print("test", base_address + emu_info.main_ram_offset)
             return base_address + emu_info.main_ram_offset
         
         # Direct address (e.g., Mednafen, old PCSX2)
@@ -936,17 +922,14 @@ class EmulatorService:
     # services/emulator_service.py - UPDATE _read_memory
 
     def _read_memory(self, handle: int, address: int, size: int) -> Optional[bytes]:
-        """Read memory from process - delegates to consolidated memory_utils"""
         return read_process_memory(handle, address, size)
         
     # services/emulator_service.py - UPDATE _write_memory to add test read
 
     def _write_memory(self, handle: int, address: int, data: bytes) -> bool:
-        """Write data to process memory - delegates to consolidated memory_utils"""
         return write_process_memory(handle, address, data)
     
     def _load_compiled_binaries(self) -> Dict[str, bytes]:
-        """Load all compiled .bin files from output directory"""
         project_folder = self.project_data.GetProjectFolder()
         bin_dir = os.path.join(project_folder, '.config', 'output', 'bin_files')
         
@@ -964,27 +947,15 @@ class EmulatorService:
 
     
     def _get_pid(self, process_name: str) -> Optional[int]:
-        """Get process ID by name (case-insensitive prefix match)"""
         from services.pid_service import get_pid_by_prefix
         return get_pid_by_prefix(process_name)
-    
-    # def _is_process_running(self, process_name: str) -> bool:
-    #     """Check if a process is currently running"""
-    #     return self._get_pid(process_name) is not None
 
     # Cache for auto JIT cache clear support detection
     _dolphin_jit_cache = {}  # exe_path -> (symbol_rva, base_address) or None
 
-    def _try_auto_jit_cache_clear(self, handle: int, pid: int) -> None:
-        """
-        Try to trigger automatic JIT cache clear on custom Dolphin builds.
-        Checks if the Dolphin executable has the exported symbol 'g_dolphin_request_jit_cache_clear',
-        and if so, writes 0x1 to it to trigger the JIT cache refresh.
 
-        Args:
-            handle: Process handle
-            pid: Process ID
-        """
+    # Only for my custom dolphin build
+    def _try_auto_jit_cache_clear(self, handle: int, pid: int) -> None:
         from functions.PE import find_export_rva
         from functions.verbose_print import verbose_print
 
@@ -1046,10 +1017,7 @@ class EmulatorService:
             import traceback
             verbose_print(traceback.format_exc())
 
-# services/emulator_service.py - ADD this test method
-
     def test_memory_access(self, handle: int, address: int) -> bool:
-        """Test if we can read from an address (to verify it's valid)"""
         try:
             # Try to read 4 bytes
             test_data = self._read_memory(handle, address, 4)
@@ -1064,10 +1032,6 @@ class EmulatorService:
             return False
         
     def _get_dolphin_base_address(self) -> Optional[int]:
-        """
-        Get Dolphin's MEM1 base address using DolphinMemoryEngine.
-        Returns the base address as an integer, or None if not found.
-        """
         import subprocess
         
         tool_dir = os.getcwd()

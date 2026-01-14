@@ -10,40 +10,20 @@ from functions.verbose_print import verbose_print
 
 import xml.etree.ElementTree as ET
 
-# Add compatibility shim for older Python versions
-if not hasattr(ET, 'indent'):
-    def indent(tree, space="  ", level=0):
-        """Add pretty-printing to XML (backport for Python < 3.9)"""
-        i = "\n" + level * space
-        if len(tree):
-            if not tree.text or not tree.text.strip():
-                tree.text = i + space
-            if not tree.tail or not tree.tail.strip():
-                tree.tail = i
-            for elem in tree:
-                indent(elem, space, level + 1)
-            if not elem.tail or not elem.tail.strip():
-                elem.tail = i
-        else:
-            if level and (not tree.tail or not tree.tail.strip()):
-                tree.tail = i
-    ET.indent = indent
 
 class ISOResult:
-    """Represents the result of an ISO operation"""
     def __init__(self, success: bool, message: str = "", output_path: str = ""):
         self.success = success
         self.message = message
         self.output_path = output_path
 
 class ISOService:
-    """Handles ISO/ROM extraction and rebuilding for all platforms"""
 
     def __init__(self, project_data: ProjectData, verbose: bool = False,
                  on_progress: Optional[Callable] = None, on_error: Optional[Callable] = None,
                  tool_dir: Optional[str] = None):
         self.project_data = project_data
-        # Use provided tool_dir or fall back to getcwd() for backwards compatibility
+
         self.tool_dir = tool_dir if tool_dir is not None else os.getcwd()
         self.verbose = verbose
         self.on_progress = on_progress
@@ -66,51 +46,34 @@ class ISOService:
         }
         
     def _log_progress(self, message: str):
-        """Short/normal messages (always printed)."""
         self._log_verbose(message)
         if self.on_progress:
             self.on_progress(message)
 
     def _log_verbose(self, message: str):
-        """Verbose-only messages (printed only if verbose=True)."""
         if self.verbose:
             verbose_print(message)
             if self.on_progress:
                 self.on_progress(message)
 
     def _log_error(self, message: str):
-        """Error messages (always printed)."""
         print_error(message)
         if self.on_error:
             self.on_error(message)
 
-    # ==================== BUILD DIRECTORY OPTIMIZATION ====================
 
     def _prepare_build_directory(self, game_folder: str, temp_build_dir: str) -> bool:
-        """
-        Prepare build directory optimally:
-        - First build: Full copy (unavoidable)
-        - Subsequent builds: Build folder already exists, just use it
-
-        Returns: True if successful, False otherwise
-        """
-        # First build - need full copy
+        # First build, full copy
         if not os.path.exists(temp_build_dir):
             self._log_verbose("First build - performing full copy...")
             shutil.copytree(game_folder, temp_build_dir)
             return True
 
-        # Subsequent build - build folder already exists
+        # Next builds, build folder already exists
         self._log_verbose("Incremental build - using existing build folder...")
         return True
 
     def _copy_injection_files_from_original(self, game_folder: str, temp_build_dir: str, current_build):
-        """
-        Copy all current injection files from original game folder to build folder.
-        This resets them to vanilla state before patching.
-
-        Called BEFORE patching to prepare files, and AFTER build to reset them.
-        """
         current_modified = current_build.GetInjectionFiles()
 
         if not current_modified:
@@ -135,12 +98,6 @@ class ISOService:
             self._log_verbose(f"  Copied: {file_name}")
 
     def _remove_new_files_from_build(self, temp_build_dir: str, current_build):
-        """
-        Remove all new files (codecaves with IsNewFile) from build folder.
-        This ensures the build folder only contains original game files + current injection files.
-
-        Called AFTER ISO build completes to clean up new files.
-        """
         new_files_removed = 0
 
         for codecave in current_build.GetEnabledCodeCaves():
@@ -167,14 +124,10 @@ class ISOService:
         if new_files_removed > 0:
             self._log_verbose(f"Removed {new_files_removed} new file(s) from build folder")
 
-    # ==================== EXTRACTION ====================
 
-    #! NOT USED YET
+
+    #! EXTRACTION
     def _dolphin_tool_convert(self, path: str, output_type: str) -> tuple[bool, str, str]:
-        """
-        Convert RVZ file to ISO format using DolphinTool.
-        Returns: (success, iso_path, error_message)
-        """
         self._log_verbose(f"Converting ISO to {output_type}: {path}")
 
         # Get project-specific conversion directory
@@ -237,10 +190,6 @@ class ISOService:
             return False, "", error_msg
         
     def _convert_rvz_to_iso(self, rvz_path: str) -> tuple[bool, str, str]:
-        """
-        Convert RVZ file to ISO format using DolphinTool.
-        Returns: (success, iso_path, error_message)
-        """
         self._log_verbose(f"Converting RVZ to ISO: {rvz_path}")
 
         # Get project-specific conversion directory
@@ -312,11 +261,6 @@ class ISOService:
             return False, "", error_msg
         
     def _convert_ciso_to_iso(self, ciso_path: str) -> tuple[bool, str, str]:
-        """
-        Convert CISO file to ISO format using WIT (direct copy method).
-        This is needed for GameCube because gc-fst can't read CISO directly.
-        Returns: (success, iso_path, error_message)
-        """
         self._log_verbose(f"Converting CISO to ISO: {ciso_path}")
 
         # Get project-specific conversion directory
@@ -406,7 +350,6 @@ class ISOService:
             return ISOResult(False, f"Unsupported platform: {platform}")
     
     def _extract_ps1(self, iso_path: str, output_dir: str) -> ISOResult:
-        """Extract PS1 BIN/CUE using dumpsxiso"""
         self._log_progress(f"Extracting PS1 BIN: {iso_path}")
         
         # UPDATED: Use build-specific output directory
@@ -488,7 +431,6 @@ class ISOService:
             return ISOResult(False, f"Extraction error: {str(e)}\n{traceback.format_exc()}")
     
     def _extract_ps2(self, iso_path: str, output_dir: str) -> ISOResult:
-        """Extract PS2 ISO using 7-Zip"""
         self._log_progress(f"Extracting PS2 ISO: {iso_path}")
         
         os.makedirs(output_dir, exist_ok=True)
@@ -531,7 +473,6 @@ class ISOService:
             return ISOResult(False, f"Extraction error: {str(e)}\n{traceback.format_exc()}")
     
     def _extract_gamecube(self, iso_path: str, output_dir: str, disc_format: str = "iso") -> ISOResult:
-        """Extract GameCube ISO using gc-fst (supports .iso, .nkit.iso, .gcm, .rvz, and .ciso)"""
         self._log_progress(f"Extracting GameCube ISO: {iso_path}")
 
         current_build = self.project_data.GetCurrentBuildVersion()
@@ -628,7 +569,6 @@ class ISOService:
         
         
     def _extract_wii(self, iso_path: str, output_dir: str) -> ISOResult:
-        # Spports .iso, .nkit.iso, .wbfs, .ciso, and .rvz
         self._log_progress(f"Extracting Wii ISO/WBFS: {iso_path}")
         
         disk_format = "iso" # Assume ISO
@@ -667,13 +607,12 @@ class ISOService:
         
         wit_tool = self.tools['wit']
         
-        # WIT extracts directly to the specified directory
         cmd = [
             wit_tool,
             'extract',
             iso_path,
             output_dir,
-            '--psel=DATA',  # Only extract game data, not UPDATE partition
+            '--psel=DATA',  # Only extract game data, no UPDATE partition
             '--overwrite'   # Allow overwriting if directory exists
         ]
         
@@ -711,8 +650,8 @@ class ISOService:
             import traceback
             return ISOResult(False, f"Extraction error: {str(e)}\n{traceback.format_exc()}")
     
-    # ==================== REBUILDING ====================
     
+    #! REBUILDING
     def rebuild_iso(self) -> ISOResult:
         platform = self.project_data.GetCurrentBuildVersion().GetPlatform()
         
@@ -742,7 +681,6 @@ class ISOService:
             return ISOResult(False, f"Unsupported platform: {platform}")
     
     def _rebuild_ps1(self) -> ISOResult:
-        """Rebuild PS1 BIN/CUE using mkpsxiso"""
         self._log_progress("Rebuilding PS1 BIN/CUE...")
         
         project_folder = self.project_data.GetProjectFolder()
@@ -772,17 +710,12 @@ class ISOService:
         # Use build-specific XML
         xml_path = os.path.join(project_folder, '.config', 'output', f'psxbuild_{build_name}.xml')
         
-        # CRITICAL: XML must exist from extraction - never generate it manually
+        # XML must exist from extraction
         if not os.path.exists(xml_path):
             return ISOResult(False,
                 f"PS1 build XML not found: {xml_path}\n\n"
-                "This file should have been created during ISO extraction.\n\n"
-                "Please re-extract the PS1 BIN/CUE to generate the proper XML file.\n\n"
-                "The XML cannot be generated manually because it requires:\n"
-                "• Exact file ordering from the original disc\n"
-                "• Dummy sector information for proper spacing\n"
-                "• Correct file type attributes (data/mixed/audio)\n"
-                "• Proper timestamps and metadata")
+                "Mkpsxiso xml file should have been created during ISO extraction.\n\n"
+                "Re-extract the PS1 BIN/CUE to fix this.\n\n")
         
         self._log_verbose(f"Using XML: {xml_path}")
         
@@ -792,7 +725,6 @@ class ISOService:
                 "PS1 build XML is invalid or incomplete.\n\n"
                 "Please re-extract the PS1 BIN/CUE to regenerate the XML.")
         
-        # Rest of the function continues as before...
         xml_path = os.path.abspath(xml_path)
         project_folder = os.path.abspath(project_folder)
         local_game_files = os.path.abspath(local_game_files)
@@ -832,7 +764,6 @@ class ISOService:
             
             self._log_verbose(f"mkpsxiso completed with return code: {result.returncode}")
 
-            # Always show mkpsxiso output for debugging
             if result.stdout:
                 self._log_verbose(f"\n=== mkpsxiso stdout ===")
                 self._log_verbose(result.stdout)
@@ -866,7 +797,7 @@ class ISOService:
             if os.path.exists(cue_dst):
                 os.remove(cue_dst)
             
-            # Rename new files (with build name)
+            # Rename new files
             os.rename(bin_src, bin_dst)
             if os.path.exists(cue_src):
                 os.rename(cue_src, cue_dst)
@@ -887,14 +818,8 @@ class ISOService:
                 except Exception as e:
                     self._log_verbose(f"  Warning: Could not update .cue file {e}")
 
-            # NOTE: Multi-bin CUE creation disabled due to timing issues
-            # Multi-bin CUE files require correct INDEX positions for each track
-            # When mkpsxiso rebuilds Track 01, the size may change slightly, which
-            # causes all the INDEX positions for audio tracks (Track 02+) to be incorrect
-            # This leads to CD-ROM timing errors in emulators like DuckStation
-            #
-            # For now, we only output the single modded BIN file
-            # Users can load just this BIN (without music) or use other methods to add audio
+            # NOTE: Multi-bin CUE creation not finished yet
+            # For now, we only output the single modded BIN file. I need to look more into binmerge
             source_path = current_build.GetSourcePath()
             if source_path and source_path.lower().endswith('.cue'):
                 from services.binmerge_service import BinmergeService
@@ -910,112 +835,95 @@ class ISOService:
             
         except subprocess.TimeoutExpired:
             return ISOResult(False, 
-                "mkpsxiso timed out after 60 seconds.\n\n"
-                "Possible causes:\n"
-                "- XML file has incorrect paths\n"
-                "- mkpsxiso waiting for input\n"
-                "- Error in XML structure\n\n"
-                "Try running mkpsxiso manually to see the error.")
+                "mkpsxiso timed out\n\n")
         except Exception as e:
             import traceback
             return ISOResult(False, f"Rebuild error: {str(e)}\n{traceback.format_exc()}")
 
-    def _clean_ps1_xml_audio_references(self, xml_path: str, extracted_dir: str) -> bool:
-        """
-        Remove references to files that don't actually exist in the extracted directory.
-        This is necessary when extracting only Track 01 from multi-bin PS1 games,
-        as the XML references audio files that are in separate tracks (Track 02+).
+    # For multibin eventually
+    # def _clean_ps1_xml_audio_references(self, xml_path: str, extracted_dir: str) -> bool:
+    #     try:
+    #         import xml.etree.ElementTree as ET
 
-        The XML 'source' attribute points to where dumpsxiso extracted files,
-        so we simply check if each file's source path actually exists on disk.
+    #         tree = ET.parse(xml_path)
+    #         root = tree.getroot()
 
-        Also removes audio track elements (Track 02+) since we only have Track 01 (data track).
-        """
-        try:
-            import xml.etree.ElementTree as ET
+    #         removed_files_count = 0
+    #         removed_tracks_count = 0
 
-            tree = ET.parse(xml_path)
-            root = tree.getroot()
+    #         # Find all file elements
+    #         for file_elem in list(root.iter('file')):  # Use list() to avoid modification during iteration
+    #             filename = file_elem.get('name', '')
+    #             source = file_elem.get('source', '')
 
-            removed_files_count = 0
-            removed_tracks_count = 0
+    #             if not filename:
+    #                 continue
 
-            # Find all file elements
-            for file_elem in list(root.iter('file')):  # Use list() to avoid modification during iteration
-                filename = file_elem.get('name', '')
-                source = file_elem.get('source', '')
+    #             # The 'source' attribute tells us where dumpsxiso put the file
+    #             # If the file doesn't exist at that location, it's a reference to an audio track
+    #             if source:
+    #                 file_exists = os.path.exists(source)
+    #             else:
+    #                 # No source attribute - shouldn't happen with dumpsxiso, but handle it
+    #                 file_exists = os.path.exists(os.path.join(extracted_dir, filename))
 
-                if not filename:
-                    continue
+    #             if not file_exists:
+    #                 # File doesn't exist - remove it from XML
+    #                 # Find the parent element
+    #                 parent = None
+    #                 for p in root.iter():
+    #                     children = list(p)
+    #                     if file_elem in children:
+    #                         parent = p
+    #                         break
 
-                # The 'source' attribute tells us where dumpsxiso put the file
-                # If the file doesn't exist at that location, it's a reference to an audio track
-                if source:
-                    file_exists = os.path.exists(source)
-                else:
-                    # No source attribute - shouldn't happen with dumpsxiso, but handle it
-                    file_exists = os.path.exists(os.path.join(extracted_dir, filename))
+    #                 if parent is not None:
+    #                     parent.remove(file_elem)
+    #                     removed_files_count += 1
+    #                     self._log_verbose(f"  Removed missing file from XML: {filename}")
 
-                if not file_exists:
-                    # File doesn't exist - remove it from XML
-                    # Find the parent element
-                    parent = None
-                    for p in root.iter():
-                        children = list(p)
-                        if file_elem in children:
-                            parent = p
-                            break
 
-                    if parent is not None:
-                        parent.remove(file_elem)
-                        removed_files_count += 1
-                        self._log_verbose(f"  Removed missing file from XML: {filename}")
+    #         for track_elem in list(root.iter('track')):
+    #             track_type = track_elem.get('type', '')
+    #             track_id = track_elem.get('trackid', '')
 
-            # Remove audio track elements (Track 02+)
-            # These are <track type="audio"> elements that dumpsxiso creates for embedded XA audio
-            # We ALWAYS remove these because mkpsxiso only supports single-track (data) output
-            for track_elem in list(root.iter('track')):
-                track_type = track_elem.get('type', '')
-                track_id = track_elem.get('trackid', '')
+    #             # Remove ALL audio tracks (type="audio"), regardless of whether files exist
+    #             # Track 01 is the data track (type="data"), which we keep
+    #             # mkpsxiso cannot create multi-track images, so audio tracks must be removed
+    #             if track_type == 'audio':
+    #                 # Remove this audio track element
+    #                 parent = None
+    #                 for p in root.iter():
+    #                     children = list(p)
+    #                     if track_elem in children:
+    #                         parent = p
+    #                         break
 
-                # Remove ALL audio tracks (type="audio"), regardless of whether files exist
-                # Track 01 is the data track (type="data"), which we keep
-                # mkpsxiso cannot create multi-track images, so audio tracks must be removed
-                if track_type == 'audio':
-                    # Remove this audio track element
-                    parent = None
-                    for p in root.iter():
-                        children = list(p)
-                        if track_elem in children:
-                            parent = p
-                            break
+    #                 if parent is not None:
+    #                     parent.remove(track_elem)
+    #                     removed_tracks_count += 1
+    #                     self._log_verbose(f"  Removed audio track {track_id} from XML (mkpsxiso single-track limitation)")
 
-                    if parent is not None:
-                        parent.remove(track_elem)
-                        removed_tracks_count += 1
-                        self._log_verbose(f"  Removed audio track {track_id} from XML (mkpsxiso single-track limitation)")
+    #         total_removed = removed_files_count + removed_tracks_count
 
-            total_removed = removed_files_count + removed_tracks_count
+    #         if total_removed > 0:
+    #             # Save the cleaned XML
+    #             # IMPORTANT: Preserve element order by not reformatting
+    #             # Use method='xml' to maintain original formatting as much as possible
+    #             tree.write(xml_path, encoding='utf-8', xml_declaration=True, method='xml')
+    #             self._log_verbose(f"   Cleaned XML: Removed {removed_files_count} file(s) and {removed_tracks_count} audio track(s)")
+    #             self._log_verbose(f"    (These are audio files/tracks not present in Track 01 data track)")
 
-            if total_removed > 0:
-                # Save the cleaned XML
-                # IMPORTANT: Preserve element order by not reformatting
-                # Use method='xml' to maintain original formatting as much as possible
-                tree.write(xml_path, encoding='utf-8', xml_declaration=True, method='xml')
-                self._log_verbose(f"   Cleaned XML: Removed {removed_files_count} file(s) and {removed_tracks_count} audio track(s)")
-                self._log_verbose(f"    (These are audio files/tracks not present in Track 01 data track)")
+    #         return True
 
-            return True
-
-        except Exception as e:
-            self._log_verbose(f"  Warning: Failed to clean XML file references: {e}")
-            import traceback
-            traceback.print_exc()
-            # Don't fail the extraction if XML cleaning fails
-            return False
+    #     except Exception as e:
+    #         self._log_verbose(f"  Warning: Failed to clean XML file references: {e}")
+    #         import traceback
+    #         traceback.print_exc()
+    #         # Don't fail the extraction if XML cleaning fails
+    #         return False
 
     def _update_ps1_xml_for_local_files(self, xml_path: str, local_game_files: str) -> bool:
-        """Update XML file to use local game files directory with proper structure"""
         try:
             import xml.etree.ElementTree as ET
             
@@ -1025,7 +933,7 @@ class ISOService:
             project_folder = self.project_data.GetProjectFolder()
             current_build = self.project_data.GetCurrentBuildVersion()
             
-            # FIX: Patched files are in build/ directory, not project root
+            #  Patched files are in build/ directory
             build_dir = os.path.join(project_folder, 'build')
             
             # Convert to absolute path
@@ -1035,9 +943,8 @@ class ISOService:
             self._log_verbose(f"  Local game files: {local_game_files}")
             self._log_verbose(f"  Build directory: {build_dir}")
             
-            # Helper function to get directory path from XML tree
+            # Get directory path from XML tree
             def get_dir_path_from_parent(file_elem):
-                """Walk up the XML tree to build the directory path"""
                 path_parts = []
                 parent = file_elem
                 
@@ -1081,13 +988,13 @@ class ISOService:
                 if not filename:
                     continue
                 
-                # Skip license_data.dat - handled separately
+                # Skip license_data.dat
                 if filename.lower() == 'license_data.dat':
                     continue
                 
                 # Check if patched version exists
                 base_filename = os.path.basename(filename)
-                # FIX: Look in build/ directory for patched files
+                #  Look in build/ directory for patched files
                 patched_path = os.path.abspath(os.path.join(build_dir, f"patched_{base_filename}"))
                 
                 if os.path.exists(patched_path):
@@ -1110,7 +1017,7 @@ class ISOService:
                         file_elem.set('source', new_source)
                         updated_files += 1
                     else:
-                        # File doesn't exist - this shouldn't happen if XML was cleaned properly
+                        # File doesn't exist
                         self._log_verbose(f"  WARNING: File not found: {os.path.join(dir_path, filename) if dir_path else filename}")
                         self._log_verbose(f"      Expected path: {new_source}")
                         self._log_verbose(f"      This file will be skipped in the build")
@@ -1141,7 +1048,6 @@ class ISOService:
             return False
     
     def _rebuild_ps2(self) -> ISOResult:
-        """Rebuild PS2 ISO using ps2iso (Ps2IsoTools)"""
         self._log_progress("Rebuilding PS2 ISO...")
 
         current_build = self.project_data.GetCurrentBuildVersion()
@@ -1154,7 +1060,7 @@ class ISOService:
 
         output_iso = os.path.join(build_dir, f'ModdedGame_{build_name}.iso')
 
-        # Delete existing ISO (ps2iso will create new one)
+        # Delete existing ISO
         if os.path.exists(output_iso):
             try:
                 self._log_verbose(f"Existing ISO found, deleting: {output_iso}")
@@ -1259,7 +1165,6 @@ class ISOService:
 
     
     def _rebuild_gamecube(self) -> ISOResult:
-        """Rebuild GameCube ISO using gc-fst"""
         self._log_verbose("\n" + "=" * 60)
         self._log_verbose("GAMECUBE ISO REBUILD")
         self._log_verbose("=" * 60)
@@ -1296,25 +1201,23 @@ class ISOService:
         
         self._log_verbose(f"Building from: {game_folder}")
         
-        # List what's actually in game_folder
+        # List what's in game_folder
         if os.path.exists(game_folder):
             files = os.listdir(game_folder)
             self._log_verbose(f"  Files in game_folder: {len(files)} items")
             self._log_verbose(f"  First 5 items: {files[:5]}")
 
-        # Use persistent build directory for optimization
+        # Use persistent build directory for optimization (might remove, since it takes up more space, but speeds up build)
         temp_build_dir = os.path.join(project_folder, '.config', 'output', 'iso_build', build_name)
         temp_root = os.path.join(temp_build_dir, 'root')
 
         self._log_verbose(f"Preparing build folder: {temp_build_dir}")
         self._log_verbose(f"Root directory: {temp_root}")
 
-        # Smart copy: full copy on first build, use existing on subsequent builds
-        # GameCube needs the 'root' subdirectory structure for gc-fst
         if not self._prepare_build_directory(game_folder, temp_root):
             return ISOResult(False, "Failed to prepare build directory")
 
-        # Copy injection files from original to reset them to vanilla before patching
+        # Copy injection files from original to reset them before patching
         self._copy_injection_files_from_original(game_folder, temp_root, current_build)
 
         # Copy patched files
@@ -1440,9 +1343,8 @@ class ISOService:
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                cwd=os.getcwd(),  # Run from main directory, not temp_build_dir
-                timeout=300
-            )
+                cwd=os.getcwd(),
+                timeout=300)
             
             if result.stdout:
                 self._log_verbose(f"stdout: {result.stdout}")
@@ -1453,7 +1355,7 @@ class ISOService:
             
             if result.returncode != 0:
                 error_msg = result.stderr if result.stderr else "Unknown error"
-                # Don't clean up temp folder on error so we can inspect it
+                # Don't clean up temp folder on error
                 return ISOResult(False, 
                     f"gc-fst rebuild failed (exit code {result.returncode}):\n\n{error_msg}\n\n"
                     f"Temp folder preserved for inspection: {temp_build_dir}")
@@ -1499,7 +1401,6 @@ class ISOService:
             return ISOResult(False, f"Rebuild error: {str(e)}\n{traceback.format_exc()}\n\nTemp folder: {temp_build_dir}")
         
     def _rebuild_gamecube_with_wit(self, output_format: str = "iso") -> ISOResult:
-        """Rebuild GameCube image using two-step process: gc-fst -> ISO, then WIT -> format"""
         self._log_verbose("\n" + "=" * 60)
         self._log_progress(f"GAMECUBE {output_format.upper()} REBUILD")
         self._log_verbose("=" * 60)
@@ -1526,21 +1427,20 @@ class ISOService:
         
         self._log_verbose(f"Building from: {game_folder}")
 
-        # Use persistent build directory for optimization (same as _rebuild_gamecube)
         temp_build_dir = os.path.join(project_folder, '.config', 'output', 'iso_build', build_name)
         temp_root = os.path.join(temp_build_dir, 'root')
 
         self._log_verbose(f"Preparing build folder: {temp_build_dir}")
         self._log_verbose(f"Root directory: {temp_root}")
 
-        # Smart copy: full copy on first build, use existing on subsequent builds
+        # Full copy on first build, use existing on next
         if not self._prepare_build_directory(game_folder, temp_root):
             return ISOResult(False, "Failed to prepare build directory")
 
-        # Copy injection files from original to reset them to vanilla before patching
+        # Copy injection files from original to reset
         self._copy_injection_files_from_original(game_folder, temp_root, current_build)
         
-        # Copy patched files (same logic as _rebuild_gamecube)
+        # Copy patched files
         main_exe = current_build.GetMainExecutable()
         if not main_exe:
             return ISOResult(False, "Main executable not set")
@@ -1610,7 +1510,7 @@ class ISOService:
         # Add new files
         self._add_gamecube_new_files(temp_root, current_build, build_files_dir)
         
-        # STEP 1: Build temporary ISO with gc-fst
+        # Build temporary ISO with gc-fst
         self._log_progress(f"\nStep 1/2: Building temporary ISO with gc-fst...")
         
         temp_iso_path = os.path.join(temp_build_dir, 'temp_build.iso')
@@ -1665,7 +1565,7 @@ class ISOService:
             import traceback
             return ISOResult(False, f"gc-fst error: {str(e)}\n{traceback.format_exc()}\n\nTemp folder: {temp_build_dir}")
         
-        # STEP 2: Convert ISO to desired format using WIT
+        # Convert ISO to desired format using WIT
         self._log_verbose(f"\nStep 2/2: Converting ISO to {output_format.upper()} with WIT...")
         
         output_file = os.path.join(build_dir, f'ModdedGame_{build_name}.{output_format}')
@@ -1742,7 +1642,6 @@ class ISOService:
             import traceback
             return ISOResult(False, f"WIT error: {str(e)}\n{traceback.format_exc()}\n\nTemp folder: {temp_build_dir}")
         
-        # Clean up temp ISO (but keep build folder for faster subsequent builds)
         try:
             # Delete temp ISO
             if os.path.exists(temp_iso_path):
@@ -1751,7 +1650,7 @@ class ISOService:
         except Exception as e:
             self._log_verbose(f"Warning: Could not delete temporary ISO: {e}")
 
-        # Reset injection files back to vanilla for next build
+        # Reset injection files
         self._log_verbose("Resetting injection files to vanilla...")
         self._copy_injection_files_from_original(game_folder, temp_root, current_build)
 
@@ -1759,8 +1658,8 @@ class ISOService:
         self._log_verbose("Removing new files from build folder...")
         self._remove_new_files_from_build(temp_root, current_build)
 
-        # Keep temp_build_dir persistent for faster subsequent builds
-        self._log_verbose(f" Build folder kept for optimization: {temp_build_dir}")
+        # Keep temp_build_dir persistent
+        self._log_verbose(f" Build folder kept: {temp_build_dir}")
         
         final_size = os.path.getsize(output_file)
         self._log_progress(f"\n{output_format.upper()} created:")
@@ -1774,7 +1673,6 @@ class ISOService:
         return ISOResult(True, f"GameCube {output_format.upper()} rebuilt successfully", output_file)
     
     def _add_gamecube_new_files(self, temp_root: str, current_build, build_files_dir: str):
-        """Add new files to GameCube build folder"""
         self._log_progress(f"\n[Adding New Files]")
         
         project_folder = self.project_data.GetProjectFolder()
@@ -1801,7 +1699,6 @@ class ISOService:
                     continue
                 
                 # Determine target path in temp_root
-                # filename might have path separators
                 target_path = os.path.join(temp_root, filename.replace('\\', '/'))
                 
                 try:
@@ -1883,7 +1780,6 @@ class ISOService:
             self._log_verbose(f"\n  Total new files added: {new_files_added}")
     
     def _rebuild_wii(self, disc_format: str = "iso") -> ISOResult:
-        """Rebuild Wii ISO using WIT"""
         self._log_verbose("\n" + "=" * 60)
         self._log_progress("WII ISO REBUILD")
         self._log_verbose("=" * 60)
@@ -1920,7 +1816,7 @@ class ISOService:
         
         self._log_verbose(f"Building from: {game_folder}")
         
-        # List what's actually in game_folder
+        # List what's in game_folder
         if os.path.exists(game_folder):
             files = os.listdir(game_folder)
             self._log_verbose(f"  Files in game_folder: {len(files)} items")
@@ -1935,7 +1831,7 @@ class ISOService:
         if not self._prepare_build_directory(game_folder, temp_build_dir):
             return ISOResult(False, "Failed to prepare build directory")
 
-        # Copy injection files from original to reset them to vanilla before patching
+        # Copy injection files from original
         self._copy_injection_files_from_original(game_folder, temp_build_dir, current_build)
 
         # Copy patched files
@@ -2084,7 +1980,7 @@ class ISOService:
                     f"ISO file was not created by WIT.\n\n"
                     f"Temp folder preserved for inspection: {temp_build_dir}")
 
-            # Reset injection files back to vanilla for next build
+            # Reset injection files
             self._log_verbose("Resetting injection files to vanilla...")
             self._copy_injection_files_from_original(game_folder, temp_build_dir, current_build)
 
@@ -2092,7 +1988,7 @@ class ISOService:
             self._log_verbose("Removing new files from build folder...")
             self._remove_new_files_from_build(temp_build_dir, current_build)
 
-            # Keep temp_build_dir persistent for faster subsequent builds
+            # Keep temp_build_dir
             self._log_verbose(f" Build folder kept for optimization: {temp_build_dir}")
 
             final_size = os.path.getsize(output_iso)
@@ -2113,7 +2009,6 @@ class ISOService:
             return ISOResult(False, f"Rebuild error: {str(e)}\n{traceback.format_exc()}\n\nTemp folder: {temp_build_dir}")
         
     def _add_wii_new_files(self, temp_build_dir: str, current_build, build_files_dir: str):
-        """Add new files to Wii build folder"""
         self._log_progress(f"\n[Adding New Files]")
         
         project_folder = self.project_data.GetProjectFolder()
@@ -2222,7 +2117,6 @@ class ISOService:
             self._log_verbose(f"\n  Total new files added: {new_files_added}")
     
     def _rebuild_n64(self) -> ISOResult:
-        """N64 ROM doesn't need rebuilding, just checksum fix"""
         self._log_verbose("N64 ROM ready (checksum should be fixed separately)")
         
         project_folder = self.project_data.GetProjectFolder()
@@ -2241,10 +2135,9 @@ class ISOService:
         
         return ISOResult(True, "N64 ROM ready (fix checksum with n64crc)", patched_rom)
     
-    # ==================== PATCHING ====================
+    #! PATCHING
     
     def patch_executable(self) -> ISOResult:
-        """Patch all injection files with compiled binary sections"""
         self._log_progress("Patching game files...")
 
         project_folder = self.project_data.GetProjectFolder()
@@ -2477,7 +2370,7 @@ class ISOService:
         
         return ISOResult(True, "Files patched successfully", f"{len(patched_files)} files patched")
     
-    # ==================== FULL BUILD ====================
+    #! Full build
     
     def full_build(self) -> ISOResult:
         self._log_progress("=" * 60)
@@ -2541,9 +2434,6 @@ class ISOService:
 
             return ISOResult(True, f"Single file patched successfully!\n\nOutput: patched_{main_exe}", patched_file)
 
-        # For GameCube/Wii, we no longer need the ISO after extraction
-        # The rebuild works directly from the extracted files
-
         self._log_progress(f"\n[2/3] Rebuilding {platform} ISO...")
         rebuild_result = self.rebuild_iso()
 
@@ -2557,7 +2447,6 @@ class ISOService:
         return rebuild_result
 
     def _add_ps1_new_files_to_xml(self, root, local_game_files: str):
-        """Add new files to PS1 XML structure"""
         import xml.etree.ElementTree as ET
         
         current_build = self.project_data.GetCurrentBuildVersion()
@@ -2630,11 +2519,11 @@ class ISOService:
                     except Exception as e:
                         self._log_verbose(f"  Error copying {filename}: {e}")
         
-        # CLEANUP: Remove orphaned files from XML (files that were added in previous builds but are no longer referenced)
+        # Remove orphaned files from XML
         # We mark files we add with added_by_tool="true" to distinguish them from original template files
         files_to_remove = []
         for existing_file in dir_tree.findall('.//file'):  # Search all files recursively
-            # Only consider files that WE added (marked with added_by_tool attribute)
+            # Only consider files that we added
             if existing_file.attrib.get('added_by_tool') == 'true':
                 existing_filename = existing_file.attrib.get('name')
 
@@ -2670,7 +2559,6 @@ class ISOService:
                 self._log_verbose(f"  Added new file to PS1 ISO: {filename}")
             
     def _copy_ps2_new_files_to_build(self, temp_build_dir: str):
-        """Copy new files to PS2 build folder"""
         current_build = self.project_data.GetCurrentBuildVersion()
         project_folder = self.project_data.GetProjectFolder()
         bin_output_dir = os.path.join(project_folder, '.config', 'output', 'bin_files')
@@ -2686,7 +2574,6 @@ class ISOService:
                     self._log_verbose(f"  Added new file to PS2 build: {filename}")
                     
     def _inject_gamecube_new_files(self, modded_iso: str, current_build):
-        """Inject new files into GameCube ISO"""
         project_folder = self.project_data.GetProjectFolder()
         bin_output_dir = os.path.join(project_folder, '.config', 'output', 'bin_files')
         gcr_path = self.tools['gcr']
@@ -2736,7 +2623,6 @@ class ISOService:
                 self._log_verbose(f"  Error: {str(e)}")
 
     def _generate_ps1_xml_from_folder(self, game_folder: str, xml_output_path: str) -> bool:
-        """Generate a complete PS1 build XML from an existing folder structure"""
         try:
             import xml.etree.ElementTree as ET
             
@@ -2836,7 +2722,6 @@ class ISOService:
             return False
         
     def _validate_ps1_xml(self, xml_path: str) -> bool:
-        """Validate that PS1 XML has proper structure from dumpsxiso"""
         try:
             import xml.etree.ElementTree as ET
             tree = ET.parse(xml_path)
@@ -2862,7 +2747,6 @@ class ISOService:
             return False
 
     def _add_directory_to_xml(self, parent_elem, dir_name: str, dir_path: str):
-        """Recursively add a directory and its contents to XML"""
         import xml.etree.ElementTree as ET
         
         dir_elem = ET.SubElement(parent_elem, 'dir')
@@ -2893,10 +2777,6 @@ class ISOService:
             
             
     def _handle_external_files(self, current_build) -> ISOResult:
-        """
-        Process external files separately (not part of ISO rebuild).
-        These files should be patched and saved to project folder.
-        """
         project_folder = self.project_data.GetProjectFolder()
         external_files = []
         
@@ -2922,18 +2802,9 @@ class ISOService:
         
         return ISOResult(True, f"Processed {len(external_files)} external file(s)")
 
-    # ==================== XDELTA PATCH GENERATION ====================
+    #! XDELTA PATCH GENERATION
 
     def _get_file_format(self, file_path: str) -> str:
-        """
-        Get the format of a file from its extension.
-
-        Args:
-            file_path: Path to the file
-
-        Returns:
-            Format string: 'iso', 'ciso', 'wbfs', 'gcm', 'bin', or 'unknown'
-        """
         ext = os.path.splitext(file_path)[1].lower()
         format_map = {
             '.iso': 'iso',
@@ -2941,8 +2812,8 @@ class ISOService:
             '.wbfs': 'wbfs',
             '.gcm': 'gcm',
             '.bin': 'bin',
-            '.rvz': 'rvz',  # Dolphin compressed format
-            '.nkit': 'nkit'  # NKit format
+            '.rvz': 'rvz',
+            '.nkit': 'nkit'
         }
         return format_map.get(ext, 'unknown')
 
@@ -2977,10 +2848,8 @@ class ISOService:
             modded_file = None
 
             if platform == "PS1":
-                # PS1 outputs as build/ModdedGame_{build_name}.bin
                 modded_file = os.path.join(build_dir, f"ModdedGame_{build_name}.bin")
             elif platform == "PS2":
-                # PS2 outputs as build/ModdedGame_{build_name}.iso
                 modded_file = os.path.join(build_dir, f"ModdedGame_{build_name}.iso")
             elif platform in ["Gamecube", "Wii"]:
                 # Get the actual output format from build settings
@@ -2993,10 +2862,8 @@ class ISOService:
                 # Normalize format to lowercase for extension
                 ext = output_format.lower()
 
-                # GC/Wii output as build/ModdedGame_{build_name}.{format}
                 modded_file = os.path.join(build_dir, f"ModdedGame_{build_name}.{ext}")
             elif platform == "N64":
-                # N64 outputs as patched_{filename} in project folder (not build/)
                 main_exe = current_build.GetMainExecutable()
                 if main_exe:
                     modded_file = os.path.join(project_folder, f"patched_{main_exe}")
@@ -3038,15 +2905,14 @@ class ISOService:
         original_format = self._get_file_format(original_file)
         modded_format = self._get_file_format(modded_file)
 
-        # Warning if formats don't match
+        # Warning if formats don't match (Since GC/Wii can be extracted from 1 format, and rebuild a different way)
         format_warning = ""
         if platform in ["Gamecube", "Wii"] and original_format != modded_format:
             format_warning = (
                 f"\nWARNING: Format mismatch detected!\n"
                 f"  Original file format: {original_format.upper()}\n"
                 f"  Built file format:    {modded_format.upper()}\n"
-                f"  This patch will ONLY work with {modded_format.upper()} files.\n"
-                f"  Users with {original_format.upper()} files will need to convert to {modded_format.upper()} first.\n"
+                f"  This patch will be huge unless the formats match\n"
             )
 
         # Generate output patch filename

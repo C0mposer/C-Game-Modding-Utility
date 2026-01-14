@@ -1,14 +1,8 @@
 # services/memory_utils.py
-"""
-Consolidated memory read/write utilities for Windows process memory operations.
-Used by emulator services (PCSX2, DuckStation, etc.) for memory access.
-"""
-
 import ctypes
 import ctypes.wintypes
 from typing import Optional
 
-# --- Windows API Definitions (Kernel32.dll) ---
 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
 
 # Define necessary Win32 types and constants
@@ -43,17 +37,6 @@ VirtualQueryEx = kernel32.VirtualQueryEx
 
 
 def read_process_memory(handle: HANDLE, address: int, size: int) -> Optional[bytes]:
-    """
-    Read memory from a target process using Windows ReadProcessMemory API.
-
-    Args:
-        handle: Process handle (from OpenProcess)
-        address: Memory address to read from
-        size: Number of bytes to read
-
-    Returns:
-        Raw bytes read from memory, or None if read fails
-    """
     try:
         # Create a buffer of the required size
         buffer = ctypes.create_string_buffer(size)
@@ -78,17 +61,6 @@ def read_process_memory(handle: HANDLE, address: int, size: int) -> Optional[byt
 
 
 def write_process_memory(handle: int, address: int, data: bytes) -> bool:
-    """
-    Write data to process memory with proper error handling.
-
-    Args:
-        handle: Process handle (from OpenProcess)
-        address: Memory address to write to
-        data: Bytes to write
-
-    Returns:
-        True if write succeeded, False otherwise
-    """
     size = len(data)
 
     # Query memory information to see if this region is valid

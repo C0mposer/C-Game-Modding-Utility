@@ -81,15 +81,13 @@ class BuildVersion:
         return self.injection_files
 
     def AddInjectionFile(self, file_path: str):
-        """Add a file to the injection list with automatic type determination"""
         game_folder = self.GetGameFolder()
         abs_file_path = os.path.abspath(file_path)
         filename = os.path.basename(abs_file_path)
 
-        # 1. Automatic Type Determination
-        file_type = "external"  # Default to external
+        file_type = "external"  # Default to external until proven otherwise
         
-        # OVERRIDE: Main executable is ALWAYS a disk file
+        # Main executable is ALWAYS a disk file
         if filename == self.GetMainExecutable():
             file_type = "disk"
         elif game_folder:
@@ -105,11 +103,9 @@ class BuildVersion:
                     file_type = "external"
                     
             except ValueError:
-                # Different drives or no common path
                 file_type = "external"
         else:
-            # No game folder set yet - check if it's in a common game extraction location
-            # This handles the case where main executable is added before game folder is set
+            # No game folder set yet
             game_related_paths = [".config/game_files", "extracted_games", "extracted", "game_files"]
             
             for path_indicator in game_related_paths:
@@ -117,7 +113,7 @@ class BuildVersion:
                     file_type = "disk"
                     break
         
-        # 2. Remove duplicates
+        # Remove duplicates
         if filename in self.injection_files:
             self.injection_files.remove(filename)
             if filename in self.injection_file_offsets:
@@ -127,33 +123,31 @@ class BuildVersion:
             if filename in self.external_file_full_paths:
                 del self.external_file_full_paths[filename]
 
-        # 3. Add the file
+        # Add the file
         self.injection_files.append(filename)
         
-        # 4. Store the determined type
+        # Store the determined type
         self.injection_file_types[filename] = file_type
         
-        # 5. Store the path if external
+        # Store the path if external
         if file_type == "external":
             self.external_file_full_paths[filename] = abs_file_path
         
-        # 6. Initialize offset
+        # Set offset
         if filename not in self.injection_file_offsets:
             self.injection_file_offsets[filename] = 0
 
-        # Print condensed message for main executable, verbose for others
         if filename == self.GetMainExecutable():
             print(f"Added {filename} as disk file")
         else:
             verbose_print(f"Added '{filename}' as {file_type} file")
 
     def _determine_file_type(self, file_path: str) -> str:
-        # No game folder set yet - assume disk (normal case)
+        # No game folder set yet, assume disk
         if not self.extracted_game_folder:
             return "disk"
         
         try:
-            # Normalize paths
             file_abs = os.path.abspath(file_path)
             game_folder_abs = os.path.abspath(self.extracted_game_folder)
             
@@ -162,13 +156,12 @@ class BuildVersion:
                 return "disk"
             
             # Check if it's in common game file storage locations
-            # (even if not in the current game folder, might be in local copy)
             game_related_paths = [".config/game_files", "extracted_games", "extracted", "game_files"]
             for path_indicator in game_related_paths:
                 if path_indicator in file_abs:
                     return "disk"
             
-            # File is truly external - not in game folder or any common extraction location
+            # File is external, not in game folder
             return "external"
             
         except Exception as e:
@@ -179,7 +172,6 @@ class BuildVersion:
         return self.injection_file_types.get(filename, "disk")  # Default to "disk"
 
     def SetInjectionFileType(self, filename: str, file_type: str):
-        """Manually set file type (for loading from save file)"""
         if file_type in ["disk", "external"]:
             self.injection_file_types[filename] = file_type
         else:
@@ -198,11 +190,6 @@ class BuildVersion:
             del self.external_file_full_paths[file_name]
             
     def BuildSectionMapForFile(self, filename: str) -> bool:
-        """
-        Build section map for an executable file.
-        Returns True on success, False if sections couldn't be parsed.
-        """
-        # Find the file path
         file_path = self.FindFileInGameFolder(filename)
         
         if not file_path or not os.path.exists(file_path):
@@ -221,18 +208,13 @@ class BuildVersion:
         # Store section map
         self.section_maps[filename] = sections
 
-        print(f"Built section map for {filename}: {len(sections)} sections")
+        verbose_print(f"Built section map for {filename}: {len(sections)} sections")
         for section in sections:
             verbose_print(f"    {section}")
 
         return True
         
     def GetFileOffsetForAddress(self, filename: str, memory_address: int) -> Optional[int]:
-        """
-        Get the file offset for a specific memory address.
-        Uses section map for accurate offset calculation.
-        Returns file offset, or None if address not in any section.
-        """
         # Try section map first
         if filename in self.section_maps:
             sections = self.section_maps[filename]
@@ -245,10 +227,10 @@ class BuildVersion:
             print(f"Address 0x{memory_address:X} not found in any section of {filename}")
             section = SectionParserService.find_section_for_address(sections, memory_address)
             if section:
-                print(f"    Closest section: {section}")
+                verbose_print(f"    Closest section: {section}")
             return None
         
-        # Fallback to old single-offset method
+        # Fallback to old single-offset method (mainly for ps1)
         offset_str = self.GetInjectionFileOffset(filename)
         if offset_str:
             try:
@@ -262,11 +244,10 @@ class BuildVersion:
             except ValueError:
                 pass
         
-        print(f"No section map or offset available for {filename}")
+        verbose_print(f"No section map or offset available for {filename}")
         return None
     
     def GetSectionInfoForAddress(self, filename: str, memory_address: int) -> Optional[Dict]:
-        """Get section information for a memory address"""
         if filename not in self.section_maps:
             return None
         
@@ -284,11 +265,11 @@ class BuildVersion:
                 'size': section.size,
                 'offset_diff': section.offset_diff
             }
-        
         return None
+    
     def ValidateMemoryAddress(self, filename: str, memory_address: int) -> Tuple[bool, str]:
         if filename not in self.section_maps:
-            return True, "No section map available (using fallback offset)"
+            return True, "No section map available (using single offset)"
         
         section = SectionParserService.find_section_for_address(
             self.section_maps[filename],
@@ -299,6 +280,7 @@ class BuildVersion:
             return True, f"Address in {section.section_type} section"
         else:
             return False, f"Address 0x{memory_address:X} is not in any valid section"
+        
         
     def AddInjectionFileOffset(self, file_offset_from_ram, file_name):
         if file_name:
@@ -318,7 +300,6 @@ class BuildVersion:
         print_dark_grey(f"Removed {offset_removed} from injection file offsets")
         
     def SetMainExecutable(self, filename: str):
-        """Set the main executable file"""
         self.main_executable = filename
         
         # If main executable isn't in injection files yet, add it
@@ -328,7 +309,7 @@ class BuildVersion:
                 file_path = os.path.join(self.extracted_game_folder, filename)
                 self.AddInjectionFile(file_path)
             else:
-                # No game folder yet - add with pending classification
+                # No game folder yet
                 self.injection_files.append(filename)
                 self.injection_file_types[filename] = "pending"
                 verbose_print(f" Added {filename} as pending file (will classify after game folder is set)")
@@ -337,13 +318,11 @@ class BuildVersion:
     
     
     def GetMainExecutableFullPath(self):
-        """Get the full absolute path to the main executable"""
         if not self.main_executable or not self.extracted_game_folder:
             return None
         return os.path.join(self.extracted_game_folder, self.main_executable)
 
     def GetMainExecutableDirectory(self):
-        """Get the directory containing the main executable"""
         if not self.main_executable or not self.extracted_game_folder:
             return None
         full_path = self.GetMainExecutableFullPath()
@@ -379,7 +358,6 @@ class BuildVersion:
     def GetCodeCaves(self):
         return self.code_caves
     def GetEnabledCodeCaves(self):
-        """Get only enabled codecaves"""
         return [cc for cc in self.code_caves if cc.IsEnabled()]
     def GetCodeCaveNames(self):
         code_cave_names = []
@@ -393,7 +371,6 @@ class BuildVersion:
     def GetHooks(self):
         return self.hooks
     def GetEnabledHooks(self):
-        """Get only enabled hooks"""
         return [h for h in self.hooks if h.IsEnabled()]
     def GetHookNames(self):
         hook_names = []
@@ -402,16 +379,11 @@ class BuildVersion:
             hook_names.append(hook.GetName())
         return hook_names
         
-        for code_cave in self.code_caves:
-            code_cave_names.append(code_cave.GetName())
-        return code_cave_names
-        
     def AddBinaryPatch(self, patch):
         self.binary_patches.append(patch)
     def GetBinaryPatches(self):
         return self.binary_patches
     def GetEnabledBinaryPatches(self):
-        """Get only enabled binary patches"""
         return [p for p in self.binary_patches if p.IsEnabled()]
     def GetBinaryPatchNames(self):
         patch_names = []
@@ -430,60 +402,42 @@ class BuildVersion:
         return [mp.GetName() for mp in self.multi_patches]
     
     def SetSourcePath(self, path: str):
-        """Set the source path (original ISO for GC/Wii, or extracted folder for PS1/PS2)"""
         self.source_path = path
     
     def GetSourcePath(self):
-        """Get the source path for building"""
         return self.source_path
     
     def GetCompilerFlags(self) -> str:
-        """Get compiler flags for this build version"""
         return self.compiler_flags if hasattr(self, 'compiler_flags') else "-O2"
     
     def SetCompilerFlags(self, flags: str):
-        """Set compiler flags for this build version"""
         self.compiler_flags = flags
 
     def IsDebugMode(self) -> bool:
-        """Check if debug build mode is enabled (-O0 for better debugging)"""
         return self.debug_mode if hasattr(self, 'debug_mode') else False
 
     def SetDebugMode(self, enabled: bool):
-        """
-        Enable or disable debug build mode.
-
-        When enabled, compiles with -O0 (no optimization) for accurate
-        C-to-assembly line mapping and better variable inspection.
-        """
         self.debug_mode = enabled
 
     def IsSingleFileMode(self) -> bool:
-        """Check if this build version is in single file mode"""
         return self.is_single_file_mode if hasattr(self, 'is_single_file_mode') else False
 
     def SetSingleFileMode(self, enabled: bool):
-        """Enable or disable single file mode"""
         self.is_single_file_mode = enabled
         
     def GetSingleFilePath(self) -> str:
-        """Get the path to the single file being modified"""
         return self.single_file_path if hasattr(self, 'single_file_path') else None
 
     def SetSingleFilePath(self, path: str):
-        """Set the path to the single file being modified"""
         self.single_file_path = path    
 
     def GetOutputFormat(self) -> str:
-        """Get output format preference (iso, gcn, ciso, wbfs)"""
         return getattr(self, 'output_format', 'iso')
 
     def SetOutputFormat(self, format: str):
-        """Set output format preference"""
         self.output_format = format.lower()
 
     def SearchForMainExecutableInGameFolder(self):
-        """Search for main executable, including recursive search for GameCube/Wii"""
         matching_file = None
         game_folder = self.GetGameFolder()
         
@@ -495,15 +449,14 @@ class BuildVersion:
 
         # Check if this is GameCube/Wii (they extract to root/ subfolder with various structures)
         if self.IsPlatformGameCube() or self.IsPlatformWii():
-            verbose_print("Platform is GameCube/Wii - searching recursively...")
+            verbose_print("Platform is GameCube/Wii - searching recursively (for root)")
 
-            # Recursively search for main.dol or start.dol (case-insensitive)
             try:
                 for root, dirs, files in os.walk(game_folder):
                     for filename in files:
                         filename_lower = filename.lower()
                         if filename_lower == "main.dol" or filename_lower == "start.dol":
-                            # Found it! Return just the actual filename (preserving case)
+                            # Found
                             verbose_print(f"Found GC/Wii executable: {filename} in {root}")
                             return filename  # Just return "Start.dol" or "main.dol"
 
@@ -531,36 +484,35 @@ class BuildVersion:
     def FindFileInGameFolder(self, filename: str) -> Optional[str]:     
         file_type = self.GetInjectionFileType(filename)
 
-        # 1. Handle External Files (Use Stored Absolute Path)
+        # Handle External Files
         if file_type == "external":
             if filename in self.external_file_full_paths:
                 full_path = self.external_file_full_paths[filename]
                 
-                # Check if the stored path is still valid
+                # Check if the stored path is valid
                 if os.path.exists(full_path):
                     return full_path
                 else:
                     print(f"Stored external file path no longer exists for '{filename}': {full_path}")
-            # If external, but not found in the map, proceed to general search (fallback)
             
-        # 2. Handle Disk Files (Search within Game Folder)
+        # Handle Disk Files
         if file_type == "disk":
             game_folder = self.GetGameFolder()
             if not game_folder:
                 print(f"Error: Game folder not set for disk file '{filename}'.")
                 return None
 
-            # Check in the root of the game folder (build-specific now)
+            # Check in the root of the game folder
             path_in_game_folder = os.path.join(game_folder, filename)
             if os.path.exists(path_in_game_folder):
                 return path_in_game_folder
             
-            # Recursively search the game folder for the file (e.g., if in subdirectory)
+            # Recursively search the game folder
             for root, _, files in os.walk(game_folder):
                 if filename in files:
                     return os.path.join(root, filename)
 
-        # 3. General Fallback (For files with missing or unknown type)
+        # Fallback
         source_path = self.GetSourcePath()
         if source_path and os.path.isdir(source_path):
             # Recursively search the project's source path
@@ -568,7 +520,7 @@ class BuildVersion:
                 if filename in files:
                     return os.path.join(root, filename)
 
-        # File not found
+        # Not found
         print(f"File '{filename}' not found in any expected location.")
         return None
 
@@ -599,29 +551,25 @@ class BuildVersion:
         import shutil
         
         if not self.build_name:
-            print(" Error: Build name not set, cannot determine local path")
+            print(" Error: Build name not set")
             return False
         
-        # Build-specific local path
         local_path = os.path.join(project_folder, '.config', 'game_files', self.build_name)
         
         try:
             # Remove old copy if exists
             if os.path.exists(local_path):
-                print(f"Removing old game files copy for build '{self.build_name}'...")
+                print(f"Removing old game files")
                 shutil.rmtree(local_path)
             
-            # Ensure parent directory exists
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             
-            # Copy entire folder
+            # Copy entire folder (maybe make more effecient somehow later)
             verbose_print(f"Copying game files from: {source_folder}")
             verbose_print(f"                     to: {local_path}")
             shutil.copytree(source_folder, local_path)
             
-            # Count items copied
-            item_count = sum(1 for _ in os.walk(local_path))
-            verbose_print(f"Copied {item_count} directories with files for build '{self.build_name}'")
+            verbose_print(f"Copied game files for '{self.build_name}'")
             return True
             
         except Exception as e:
@@ -630,7 +578,6 @@ class BuildVersion:
             traceback.print_exc()
             return False
         
-    # classes/project_data/build_version.py - Add new method
 
     def AutoSetFileOffsetForPlatform(self):
         if not self.main_executable:
@@ -639,7 +586,7 @@ class BuildVersion:
         platform = self.GetPlatform()
         
         if platform == "PS1":
-            # PS1 always uses F800 for SCUS/SCES/SLUS/SLES files
+            # PS1 always uses 0xF800 for SCUS/SCES/SLUS/SLES files (I think? Check more games)
             main_exe_upper = self.main_executable.upper()
             is_ps1_exe = any(main_exe_upper.startswith(prefix) for prefix in 
                             ["SCUS", "SCES", "SLUS", "SLES", "SCPS", "SLPS"])
@@ -647,7 +594,7 @@ class BuildVersion:
             if is_ps1_exe:
                 self.SetInjectionFileOffset(self.main_executable, "F800")
                 verbose_print(f"Auto-set PS1 file offset: 0xF800 (fixed offset, no section map)")
-                # DO NOT build section map for PS1
+                # DO NOT build section map for PS1, since the exe is not an elf
                 return True
 
         elif platform == "PS2":
@@ -677,11 +624,10 @@ class BuildVersion:
         return False
     
     def _calculate_ps2_offset(self) -> Optional[str]:
-        """Calculate PS2 ELF offset using ee-objdump. First checks if section map is already cached."""
         if not self.main_executable:
             return None
 
-        # Check if section map already exists (avoid running objdump again)
+        # Check if section map already exists
         if self.main_executable in self.section_maps:
             sections = self.section_maps[self.main_executable]
             if sections:
@@ -689,8 +635,7 @@ class BuildVersion:
                 verbose_print(f" Using cached section map for PS2 offset: 0x{offset:X}")
                 return f"{offset:X}"
 
-        # No cached section map - run objdump
-        # Find the executable file
+        # No cached section map
         exe_path = self.FindFileInGameFolder(self.main_executable)
         if not exe_path or not os.path.exists(exe_path):
             return None
@@ -748,11 +693,10 @@ class BuildVersion:
             return None
 
     def _calculate_gamecube_wii_offset(self) -> Optional[str]:
-        """Calculate GameCube/Wii DOL offset using doltool. First checks if section map is already cached."""
         if not self.main_executable:
             return None
 
-        # Check if section map already exists (avoid running doltool again)
+        # Check if section map already exists
         if self.main_executable in self.section_maps:
             sections = self.section_maps[self.main_executable]
             # Find first text section (GameCube/Wii uses first text section)
@@ -762,8 +706,7 @@ class BuildVersion:
                 verbose_print(f" Using cached section map for GC/Wii offset: 0x{offset:X}")
                 return f"{offset:X}"
 
-        # No cached section map - run doltool
-        # Find the executable file
+        # No cached section map
         exe_path = self.FindFileInGameFolder(self.main_executable)
         if not exe_path or not os.path.exists(exe_path):
             return None

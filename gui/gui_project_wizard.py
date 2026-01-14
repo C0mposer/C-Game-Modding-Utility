@@ -1,19 +1,3 @@
-# gui/gui_project_wizard.py
-"""
-Project Creation Wizard - Step-by-step guided project setup
-
-Replaces the old create_project flow with a more intuitive wizard interface.
-Guides users through:
-  1. Naming the project
-  2. Choosing platform
-  3. Selecting input mode (extract ISO, existing folder, or single file)
-  4. Selecting the file/folder
-
-Usage:
-    from gui.gui_project_wizard import show_project_wizard
-    show_project_wizard()
-"""
-
 import dearpygui.dearpygui as dpg
 from tkinter import filedialog
 from gui import gui_messagebox as messagebox
@@ -31,11 +15,10 @@ from functions.verbose_print import verbose_print
 from path_helper import get_application_directory
 
 class ProjectWizardState:
-    """Holds the state of the wizard"""
     def __init__(self):
         self.project_name: str = ""
         self.platform: str = ""
-        self.file_mode: str = ""  # "extract_iso", "existing_folder", "single_file"
+        self.file_mode: str = ""  # extract_iso, existing_folder, single_file
         self.selected_file_path: str = ""
         self.extracted_folder: str = ""
         self.current_step: int = 1
@@ -44,7 +27,6 @@ class ProjectWizardState:
 _wizard_state = ProjectWizardState()
 
 def show_project_wizard():
-    """Entry point - creates and shows the wizard window"""
     global _wizard_state
     _wizard_state = ProjectWizardState()  # Reset state
     
@@ -65,21 +47,21 @@ def show_project_wizard():
         no_collapse=True,
         modal=False
     ):
-        # Progress indicator at top
+        # Progress indicator
         with dpg.group(tag="wizard_progress_group", horizontal=True):
             dpg.add_text("Step 1 of 4", tag="wizard_progress_text")
         
         dpg.add_separator()
         dpg.add_spacer(height=10)
         
-        # Content area (will be dynamically updated)
+
         with dpg.group(tag="wizard_content_group"):
             _render_step_1()
         
         dpg.add_spacer(height=20)
         dpg.add_separator()
         
-        # Navigation buttons at bottom
+        # Navigation
         with dpg.group(tag="wizard_nav_group", horizontal=True):
             dpg.add_button(
                 label="Back",
@@ -104,10 +86,8 @@ def show_project_wizard():
     
     dpg.set_primary_window("project_wizard_window", True)
 
-# ==================== STEP RENDERING ====================
 
 def _render_step_1():
-    """Step 1: Project Name"""
     global _wizard_state
     
     with dpg.group(parent="wizard_content_group"):
@@ -131,7 +111,6 @@ def _render_step_1():
         )
 
 def _render_step_2():
-    """Step 2: Platform Selection"""
     global _wizard_state
     
     with dpg.group(parent="wizard_content_group"):
@@ -168,7 +147,6 @@ def _render_step_2():
                 dpg.add_spacer(height=5)
 
 def _render_step_3():
-    """Step 3: File Mode Selection"""
     global _wizard_state
     
     with dpg.group(parent="wizard_content_group"):
@@ -229,7 +207,6 @@ def _render_step_3():
                     color=(150, 150, 150))
 
 def _render_step_4():
-    """Step 4: File Selection"""
     global _wizard_state
     
     with dpg.group(parent="wizard_content_group"):
@@ -304,10 +281,9 @@ def _render_step_4():
                     size_mb = os.path.getsize(_wizard_state.selected_file_path) / (1024 * 1024)
                     dpg.add_text(f"  Size: {size_mb:.1f} MB", color=(150, 150, 150))
 
-# ==================== NAVIGATION ====================
+
 
 def _update_wizard_ui():
-    """Update the wizard UI for the current step"""
     global _wizard_state
     
     # Update progress text
@@ -338,7 +314,6 @@ def _update_wizard_ui():
             _render_step_4()
 
 def _on_next_clicked():
-    """Handle Next button click"""
     global _wizard_state
     
     # Validate current step
@@ -349,7 +324,7 @@ def _on_next_clicked():
     if _wizard_state.current_step == 1:
         _wizard_state.project_name = dpg.get_value("wizard_project_name_input")
     
-    # Last step - create project
+    # Last step, create project
     if _wizard_state.current_step == _wizard_state.total_steps:
         _create_project()
         return
@@ -359,7 +334,6 @@ def _on_next_clicked():
     _update_wizard_ui()
 
 def _on_back_clicked():
-    """Handle Back button click"""
     global _wizard_state
     
     if _wizard_state.current_step > 1:
@@ -367,7 +341,6 @@ def _on_back_clicked():
         _update_wizard_ui()
 
 def _on_cancel_clicked():
-    """Handle Cancel button click"""
     from gui.gui_startup_window import InitMainWindow
     
     response = messagebox.askyesno(
@@ -380,10 +353,7 @@ def _on_cancel_clicked():
         InitMainWindow()
         dpg.set_primary_window("startup_window", True)
 
-# ==================== VALIDATION ====================
-
 def _validate_current_step() -> bool:
-    """Validate the current step before proceeding"""
     global _wizard_state
     
     if _wizard_state.current_step == 1:
@@ -441,33 +411,29 @@ def _validate_current_step() -> bool:
     
     return True
 
-# ==================== CALLBACKS ====================
 
 def _on_platform_selected(platform: str):
-    """Handle platform selection"""
     global _wizard_state
 
     # Check prerequisites when platform is selected
     tool_dir = get_application_directory()
 
     if not check_and_prompt_prereqs(tool_dir, platform, None):
-        # User cancelled download - don't change platform selection
+        # Cancelled download
         return
 
     _wizard_state.platform = platform
     _update_wizard_ui()
 
 def _on_file_mode_selected(mode: str):
-    """Handle file mode selection"""
     global _wizard_state
     _wizard_state.file_mode = mode
     _update_wizard_ui()
 
 def _on_browse_iso_clicked():
-    """Browse for ISO file"""
     global _wizard_state
     
-    # Platform-specific file types
+    # Platform file types
     if _wizard_state.platform == "PS1":
         filetypes = [("PS1 Images", "*.bin;*.cue"), ("All Files", "*.*")]
         title = "Choose PS1 BIN/CUE File (use .cue for multi-bin games)"
@@ -491,7 +457,6 @@ def _on_browse_iso_clicked():
         dpg.set_value("wizard_file_path_input", file_path)
 
 def _on_browse_folder_clicked():
-    """Browse for extracted folder"""
     global _wizard_state
     
     folder_path = filedialog.askdirectory(
@@ -503,7 +468,6 @@ def _on_browse_folder_clicked():
         dpg.set_value("wizard_file_path_input", folder_path)
 
 def _on_browse_single_file_clicked():
-    """Browse for single executable file"""
     global _wizard_state
     
     # Platform-specific file types
@@ -527,18 +491,14 @@ def _on_browse_single_file_clicked():
         _wizard_state.selected_file_path = file_path
         dpg.set_value("wizard_file_path_input", file_path)
 
-# ==================== PROJECT CREATION ====================
 
 def _create_project():
-    """Create the project with the wizard settings"""
+    from functions.verbose_print import is_verbose
+    
     global _wizard_state
 
     LoadingIndicator.show("Creating project...")
-
-    # Import verbose checking
-    from functions.verbose_print import is_verbose
-
-    # Print condensed header for normal mode
+    
     if not is_verbose:
         print("\nCreating Project:")
 
@@ -556,8 +516,9 @@ def _create_project():
             
             if current_build.platform == "PS2":
                 current_build.compiler_flags = "-O2 -fsingle-precision-constant"  # Default flags for PS2. Always use floats if PS2. Might need to change, because unsure if double support is needed, but
-                                                                                  # The problem is it tries to link to libraries like fptodp, dpadd, dptofp, etc.
-            # Handle file/folder based on mode
+                                                                                  # The problem is it tries to link to libraries like fptodp, dpadd, dptofp, etc. So for now, I assume this is needed.
+                                                                                  
+            # Handle file/folder/single file
             if _wizard_state.file_mode == "extract_iso":
                 _handle_iso_extraction(project_data)
             elif _wizard_state.file_mode == "existing_folder":
@@ -565,15 +526,15 @@ def _create_project():
             elif _wizard_state.file_mode == "single_file":
                 _handle_single_file(project_data)
 
-            # Scan for OS library function patterns (PS1/PS2 only)
+            # Scan for OS library function patterns
             if _wizard_state.platform in ["PS1", "PS2"]:
-                #_scan_for_ghidra_patterns(project_data)
+                #_scan_for_ghidra_patterns(project_data) # WIP. Will flesh out after the 1.0.0 release.
                 pass
 
             # Save project
             save_success = ProjectSerializer.save_project(project_data)
 
-            # Add to recent projects immediately
+            # Add to recent projects
             if save_success:
                 try:
                     from services.recent_projects_service import RecentProjectsService
@@ -589,22 +550,20 @@ def _create_project():
                 except Exception as e:
                     print(f"Warning: Failed to add new project to recent list: {e}")
 
-            # Print condensed completion message for normal mode
             if not is_verbose:
                 print("Project Saved")
             
-            # Update UI on main thread - THIS is the key part
             def update_ui():
                 LoadingIndicator.hide()
                 
-                # Close wizard
+                # Close
                 dpg.delete_item("project_wizard_window")
                 
                 # Open project
                 from gui.gui_main_project import InitMainProjectWindowWithData
                 InitMainProjectWindowWithData(project_data)
                 
-                # Show PS1 template prompt AFTER success message, with delay
+                # Show PS1 template prompt
                 if _wizard_state.platform == "PS1":
                     def show_template_delayed():
                         import time
@@ -620,7 +579,6 @@ def _create_project():
             dpg.set_frame_callback(dpg.get_frame_count() + 1, update_ui)
             
         except Exception as ex:
-            # Capture the exception immediately before creating nested functions
             import traceback
             error_msg = str(ex)
             error_trace = traceback.format_exc()
@@ -631,7 +589,6 @@ def _create_project():
                     f"Failed to create project:\n\n{error_msg}\n\n{error_trace}")
                 print(f"Failed to create project:\n\n{error_msg}\n\n{error_trace}")
             
-            # Schedule error handling on next frame
             dpg.split_frame(delay=1)
             dpg.set_frame_callback(dpg.get_frame_count() + 1, hide_and_error)
     
@@ -640,7 +597,6 @@ def _create_project():
     thread.start()
 
 def _handle_iso_extraction(project_data: ProjectData):
-    """Handle ISO extraction during project creation"""
     current_build = project_data.GetCurrentBuildVersion()
     project_folder = project_data.GetProjectFolder()
     build_name = current_build.GetBuildName()
@@ -648,14 +604,13 @@ def _handle_iso_extraction(project_data: ProjectData):
 
     output_dir = os.path.join(project_folder, ".config", "game_files", build_name)
 
-    # For PS1, handle multi-bin games with binmerge
     file_to_extract = _wizard_state.selected_file_path
     original_source_path = _wizard_state.selected_file_path  # Preserve original file path for source_path
 
     if platform == "PS1":
         from services.binmerge_service import BinmergeService
         print(f"\nProcessing PS1 file: {os.path.basename(file_to_extract)}")
-        success, bin_path, message = BinmergeService.process_ps1_file(file_to_extract)
+        success, bin_path, message = BinmergeService.process_ps1_file(file_to_extract) # Doesn't currently work. I'll need to work on multi-bin support later.
 
         if not success:
             raise Exception(f"Failed to process PS1 file: {message}")
@@ -681,7 +636,7 @@ def _handle_iso_extraction(project_data: ProjectData):
             game_folder = root_subdir
             verbose_print(f"  Using GameCube 'root' subdirectory: {game_folder}")
     elif platform == "Wii":
-        # For Wii, Dolphin extraction creates a 'DATA' subdirectory with all the files
+        # For Wii, Dolphin extraction creates a 'DATA' subdirectory
         data_subdir = os.path.join(output_dir, 'DATA')
         if os.path.exists(data_subdir):
             game_folder = data_subdir
@@ -698,7 +653,7 @@ def _handle_iso_extraction(project_data: ProjectData):
         current_build.AddInjectionFile(main_exe)
         current_build.AutoSetFileOffsetForPlatform()
 
-        # Try to find and setup OSReport for GameCube/Wii Hello World
+        # Try to find and setup OSReport
         platform = current_build.GetPlatform()
         if platform in ["Gamecube", "Wii"]:
             verbose_print("Searching for OSReport pattern...")
@@ -725,7 +680,6 @@ def _handle_iso_extraction(project_data: ProjectData):
 
 
 def _handle_existing_folder(project_data: ProjectData):
-    """Handle existing folder during project creation"""
     current_build = project_data.GetCurrentBuildVersion()
     project_folder = project_data.GetProjectFolder()
     build_name = current_build.GetBuildName()
@@ -744,13 +698,13 @@ def _handle_existing_folder(project_data: ProjectData):
         game_folder = _wizard_state.selected_file_path  # Default to user selection
 
         if platform in ["Gamecube", "Wii"]:
-            # Check for Wii 'DATA' folder first (Dolphin extraction format)
+            # Check for Wii 'DATA' folder first
             data_subdir = os.path.join(_wizard_state.selected_file_path, 'DATA')
             if os.path.exists(data_subdir) and os.path.isdir(data_subdir):
                 game_folder = data_subdir
                 print(f"  Detected 'DATA' subdirectory (Wii Dolphin extraction), using: {game_folder}")
             else:
-                # Check for GameCube 'root' folder (wit/gc-fst extraction format)
+                # Check for GameCube 'root' folder
                 root_subdir = os.path.join(_wizard_state.selected_file_path, 'root')
                 if os.path.exists(root_subdir) and os.path.isdir(root_subdir):
                     game_folder = root_subdir
@@ -794,7 +748,6 @@ def _handle_existing_folder(project_data: ProjectData):
 
 
 def _handle_single_file(project_data: ProjectData):
-    """Handle single file mode during project creation"""
     current_build = project_data.GetCurrentBuildVersion()
     
     filename = os.path.basename(_wizard_state.selected_file_path)
@@ -816,7 +769,6 @@ def _handle_single_file(project_data: ProjectData):
 
 
 def _scan_for_ghidra_patterns(project_data: ProjectData):
-    """Scan main executable for OS library function patterns and add to symbols file"""
     current_build = project_data.GetCurrentBuildVersion()
     platform = current_build.GetPlatform()
 
@@ -877,10 +829,7 @@ def _scan_for_ghidra_patterns(project_data: ProjectData):
         traceback.print_exc()
 
 
-# ==================== HELPER FUNCTIONS ====================
-
 def _get_file_mode_display() -> str:
-    """Get display text for current file mode"""
     mode_map = {
         "extract_iso": "Extract ISO File",
         "existing_folder": "Use Extracted Folder",

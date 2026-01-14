@@ -3,7 +3,6 @@ from typing import List, Dict, Optional, Tuple, NamedTuple
 from classes.project_data.project_data import ProjectData
 
 class PatchRegion(NamedTuple):
-    """Stores info about a single applied patch"""
     name: str
     type: str  # "Codecave", "Hook", "Binary Patch"
     offset: int
@@ -13,11 +12,6 @@ class PatchRegion(NamedTuple):
     allocated_size: int  # The cave's allocated size from GetSize()
 
 class VisualPatcherService:
-    """
-    Generates an in-memory diff between an original game file
-    and a version patched with all user modifications.
-    """
-    
     def __init__(self, project_data: ProjectData):
         self.project_data = project_data
         self.bin_output_dir = os.path.join(
@@ -25,15 +19,9 @@ class VisualPatcherService:
         )
 
     def generate_diff(self, file_name: str) -> Tuple[Optional[bytearray], Optional[bytearray], List[PatchRegion]]:
-        """
-        Generates the diff for the specified game file.
-        
-        Returns:
-            (original_data, patched_data, patch_regions)
-        """
         current_build = self.project_data.GetCurrentBuildVersion()
         
-        # 1. Find and read the original file
+        # Find and read the original file
         original_file_path = current_build.FindFileInGameFolder(file_name)
         if not original_file_path or not os.path.exists(original_file_path):
             print(f"VisualPatcher: Could not find original file {file_name}")
@@ -50,7 +38,7 @@ class VisualPatcherService:
             
         patch_regions = []
 
-        # 2. Apply all patches, similar to ISOService.patch_executable
+        # Apply all patches
         all_targets = [
             (current_build.GetEnabledCodeCaves(), "Codecave"),
             (current_build.GetEnabledHooks(), "Hook"),
