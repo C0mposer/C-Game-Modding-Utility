@@ -1,7 +1,7 @@
 # C/C++ Game Modding Utility
 ![Latest](https://img.shields.io/github/v/release/c0mposer/C-Game-Modding-Utility?style=flat-square&color=blue&link=https%3A%2F%2Fgithub.com%2FC0mposer%2FC-Game-Modding-Utility%2Freleases%2Ftag%2Flatest) ![Downloads](https://img.shields.io/github/downloads/C0mposer/C-Game-Modding-Utility/total?style=flat-square&color=purple&link=https%3A%2F%2Fgithub.com%2FC0mposer%2FC-Game-Modding-Utility%2Freleases%2Ftag%latest)
 
-![Logo](images/logo.gif) ![UI](images/UI.png)  
+![UI](images/UI.png)  
 
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
 
