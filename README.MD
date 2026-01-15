@@ -5,7 +5,7 @@
 
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
   
-This utility handles all the tedious setup, letting you focus on actually writing code.  
+It handles all the tedious setup, letting you focus on actually writing code.  
 No manual cross-compiler setup.  
 No manual ISO rebuilding.  
 No complicated testing workflows.  
