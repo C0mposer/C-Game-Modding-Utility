@@ -4,6 +4,11 @@
 ![UI](images/UI.png)  
 
 **This utility aims to make writing mods for 5th/6th generation console games in C/C++ easier.**   
+  
+This utility handles all the tedious setup, letting you focus on actually writing code.  
+No manual cross-compiler setup.  
+No manual ISO rebuilding.  
+No complicated testing workflows.  
 
 ## Features  
 - Supports PS1, PS2, GameCube, & Wii
