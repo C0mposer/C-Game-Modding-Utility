@@ -12,11 +12,12 @@ No complicated testing workflows.
 
 ## Features  
 - Supports PS1, PS2, GameCube, & Wii
+- Automatically downloads required compilers/toolchains for chosen platforms
 - GUI and CLI interfaces
-- Rebuild's game ISO's
-- Live emulator injection into [supported emulators](https://github.com/C0mposer/C-Game-Modding-Utility?tab=readme-ov-file#supported-emulators)
+- Rebuild game ISO's with your code modifications
+- Live emulator injection into supported emulators for rapid testing
+- Code cave finder and every frame hook finder
 - Multi-version symbol management
-- Code cave finder and pattern-based hook detection
 - And much more!
 
 [Click here to see the Wiki](https://github.com/C0mposer/C-Game-Modding-Utility/wiki)
