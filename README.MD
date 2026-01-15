@@ -93,4 +93,4 @@ Click **Compile** in the build tab to compile your mod. Then, you can either inj
 
 ## Contact
 
-If you need any help using this utility, feel free to join the community discord: [Join Discord](https://discord.gg/Hw8pSMcB)
+If you need any help using this utility, feel free to join the community discord: [Join Discord](https://discord.gg/8dvxHUAwxD)
